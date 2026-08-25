@@ -194,7 +194,7 @@ elseif (count($reportEvents) > 1) $eventScope = number_format(count($reportEvent
         stage.style.minHeight = '0';
     }
     function setZoom(percent) {
-        userZoom = Math.max(50, Math.min(200, Math.round(Number(percent) || 100)));
+        userZoom = Math.max(50, Math.min(400, Math.round(Number(percent) || 100)));
         fitSheet();
         return userZoom;
     }
@@ -203,7 +203,7 @@ elseif (count($reportEvents) > 1) $eventScope = number_format(count($reportEvent
     window.addEventListener('resize', fitSheet);
 }());
 </script>
-<script src="<?= e(base_url('assets/js/print-preview.js')) ?>?v=1"></script>
+<script src="<?= e(base_url('assets/js/print-preview.js')) ?>?v=2"></script>
 <?php endif; ?>
 </body>
 </html>
