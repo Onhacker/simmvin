@@ -83,6 +83,17 @@ if ($reportKind === 'expense') {
         $expenseSummary[$moneyKey] = simp_money_from_signed_cents($expenseSummary[$moneyKey]);
     }
 }
+$expensePrintTotal = '0.00';
+if ($reportKind === 'expense') {
+    // Keep the printed grand total in integer cents; adding DECIMAL strings as
+    // PHP floats can lose precision for large financial amounts.
+    $verifiedPrintCents = simp_money_cents($expenseSummary['verified_total']);
+    $pendingPrintCents = simp_money_cents($expenseSummary['pending_total']);
+    $expensePrintTotal = simp_money_from_signed_cents(
+        ($verifiedPrintCents === NULL ? 0 : $verifiedPrintCents) +
+        ($pendingPrintCents === NULL ? 0 : $pendingPrintCents)
+    );
+}
 $accountSummary = array_merge(array(
     'account_count'=>count($accounts), 'active_count'=>0, 'inactive_count'=>0,
     'included_count'=>0, 'excluded_count'=>0, 'included_balance'=>0,
@@ -243,7 +254,7 @@ $accountSummary = array_merge(array(
                 <td><span class="summary-label">Tunai Terverifikasi</span><span class="summary-value"><?= e($printRupiah($expenseSummary['cash_total'])) ?></span></td>
                 <td><span class="summary-label">Transfer Terverifikasi</span><span class="summary-value"><?= e($printRupiah($expenseSummary['transfer_total'])) ?></span></td>
                 <td><span class="summary-label">QRIS Terverifikasi</span><span class="summary-value"><?= e($printRupiah($expenseSummary['qris_total'])) ?></span></td>
-                <td><span class="summary-label">Total Tercetak</span><span class="summary-value positive"><?= e($printRupiah($expenseSummary['verified_total'] + $expenseSummary['pending_total'])) ?></span></td>
+                <td><span class="summary-label">Total Tercetak</span><span class="summary-value positive"><?= e($printRupiah($expensePrintTotal)) ?></span></td>
             </tr>
         </table>
     <?php elseif ($reportKind === 'debt'): ?>
