@@ -1,0 +1,12 @@
+Options -Indexes
+
+# PDF/XLSX files in this directory are generated for an authenticated
+# request.  They must be streamed by their controller, never served as
+# public static files.
+<IfModule authz_core_module>
+    Require all denied
+</IfModule>
+<IfModule !authz_core_module>
+    Order allow,deny
+    Deny from all
+</IfModule>

@@ -1,0 +1,726 @@
+/* Business-only adaptations on top of the supplied AppKit v22 stylesheet. */
+
+/*
+ * AppKit's stock accent pairs use almost identical foreground/background
+ * colours (for example blue-dark on blue-light).  They look attractive in
+ * the demo, but become hard to read for financial values and small labels.
+ * Keep the same palette while giving every semantic colour a clear contrast.
+ */
+.theme-light .color-highlight,
+.theme-light .color-blue-dark { color: #2459a6 !important; }
+.theme-light .color-green-dark { color: #256b2a !important; }
+.theme-light .color-red-dark { color: #b42331 !important; }
+.theme-light .color-yellow-dark { color: #765000 !important; }
+.theme-light .color-magenta-dark { color: #6842a8 !important; }
+.theme-light .color-gray-dark { color: #111 !important; }
+.theme-light .color-brown-dark { color: #72562f !important; }
+
+.theme-dark .color-highlight,
+.theme-dark .color-blue-dark { color: #9fc5f8 !important; }
+.theme-dark .color-green-dark { color: #91d69a !important; }
+.theme-dark .color-red-dark { color: #ff929c !important; }
+.theme-dark .color-yellow-dark { color: #ffd27a !important; }
+.theme-dark .color-magenta-dark { color: #cfb4f6 !important; }
+.theme-dark .color-gray-dark { color: #d1d5db !important; }
+.theme-dark .color-brown-dark { color: #dfc296 !important; }
+
+/* Plain values (without a semantic colour class) also need a dark-mode ink. */
+.theme-dark .page-content { color: #d1d5db; }
+
+.bg-highlight,
+.bg-blue-dark { background-color: #2459a6 !important; color: #fff !important; }
+.bg-green-dark { background-color: #256b2a !important; color: #fff !important; }
+.bg-red-dark { background-color: #b42331 !important; color: #fff !important; }
+.bg-yellow-dark { background-color: #765000 !important; color: #fff !important; }
+.bg-magenta-dark { background-color: #6842a8 !important; color: #fff !important; }
+.bg-gray-dark { background-color: #59616b !important; color: #fff !important; }
+.bg-brown-dark { background-color: #72562f !important; color: #fff !important; }
+.bg-orange-dark { background-color: #963f20 !important; color: #fff !important; }
+
+.border-highlight,
+.border-blue-dark { border-color: #2459a6 !important; }
+.border-green-dark { border-color: #256b2a !important; }
+.border-red-dark { border-color: #b42331 !important; }
+.border-yellow-dark { border-color: #765000 !important; }
+.border-magenta-dark { border-color: #6842a8 !important; }
+.border-gray-dark { border-color: #59616b !important; }
+.border-brown-dark { border-color: #72562f !important; }
+
+/* True light surfaces: dark text remains readable instead of blending in. */
+.bg-blue-light,
+.bg-fade-blue-light { background-color: #e8f1fc !important; color: #1b3f73 !important; }
+.bg-green-light { background-color: #eaf6e8 !important; color: #225d26 !important; }
+.bg-red-light { background-color: #fcebed !important; color: #7f1d27 !important; }
+.bg-yellow-light { background-color: #fff4d6 !important; color: #624400 !important; }
+.bg-magenta-light { background-color: #f1ecfb !important; color: #55348a !important; }
+.bg-gray-light { background-color: #eef0f3 !important; color: #111 !important; }
+
+.theme-light .bg-blue-light :where(p, small),
+.theme-light .bg-fade-blue-light :where(p, small),
+.theme-light .bg-green-light :where(p, small),
+.theme-light .bg-red-light :where(p, small),
+.theme-light .bg-yellow-light :where(p, small),
+.theme-light .bg-magenta-light :where(p, small),
+.theme-light .bg-gray-light :where(p, small) { color: #111; }
+
+/* Explicit semantic labels keep their intended tone inside pale callouts. */
+.theme-light .bg-blue-light .color-blue-dark,
+.theme-light .bg-fade-blue-light .color-blue-dark { color: #2459a6 !important; }
+.theme-light .bg-blue-light .color-green-dark,
+.theme-light .bg-green-light .color-green-dark { color: #256b2a !important; }
+.theme-light .bg-blue-light .color-red-dark,
+.theme-light .bg-red-light .color-red-dark { color: #b42331 !important; }
+.theme-light .bg-yellow-light .color-yellow-dark { color: #765000 !important; }
+.theme-light .bg-magenta-light .color-magenta-dark { color: #6842a8 !important; }
+.theme-light .bg-gray-light .color-gray-dark { color: #111 !important; }
+
+/* Dark mode normally turns every span white; restore dark ink inside pale callouts. */
+.theme-dark .bg-blue-light,
+.theme-dark .bg-blue-light p,
+.theme-dark .bg-blue-light span:not(.badge),
+.theme-dark .bg-fade-blue-light,
+.theme-dark .bg-fade-blue-light p,
+.theme-dark .bg-fade-blue-light span:not(.badge),
+.theme-dark .bg-green-light,
+.theme-dark .bg-green-light p,
+.theme-dark .bg-green-light span:not(.badge),
+.theme-dark .bg-red-light,
+.theme-dark .bg-red-light p,
+.theme-dark .bg-red-light span:not(.badge),
+.theme-dark .bg-yellow-light,
+.theme-dark .bg-yellow-light p,
+.theme-dark .bg-yellow-light span:not(.badge),
+.theme-dark .bg-magenta-light,
+.theme-dark .bg-magenta-light p,
+.theme-dark .bg-magenta-light span:not(.badge),
+.theme-dark .bg-gray-light,
+.theme-dark .bg-gray-light p,
+.theme-dark .bg-gray-light span:not(.badge) { color: #27313d !important; }
+
+.theme-dark .bg-blue-light :where(h1, h2, h3, h4, h5, h6, strong),
+.theme-dark .bg-fade-blue-light :where(h1, h2, h3, h4, h5, h6, strong),
+.theme-dark .bg-green-light :where(h1, h2, h3, h4, h5, h6, strong),
+.theme-dark .bg-red-light :where(h1, h2, h3, h4, h5, h6, strong),
+.theme-dark .bg-yellow-light :where(h1, h2, h3, h4, h5, h6, strong),
+.theme-dark .bg-magenta-light :where(h1, h2, h3, h4, h5, h6, strong),
+.theme-dark .bg-gray-light :where(h1, h2, h3, h4, h5, h6, strong) { color: #27313d !important; }
+
+.theme-dark .bg-blue-light .color-blue-dark,
+.theme-dark .bg-fade-blue-light .color-blue-dark { color: #2459a6 !important; }
+.theme-dark .bg-blue-light .color-green-dark { color: #256b2a !important; }
+.theme-dark .bg-blue-light .color-red-dark { color: #b42331 !important; }
+.theme-dark .bg-green-light .color-green-dark { color: #256b2a !important; }
+.theme-dark .bg-red-light .color-red-dark { color: #b42331 !important; }
+.theme-dark .bg-yellow-light .color-yellow-dark { color: #765000 !important; }
+.theme-dark .bg-magenta-light .color-magenta-dark { color: #6842a8 !important; }
+.theme-dark .bg-gray-light .color-gray-dark { color: #59616b !important; }
+
+.gradient-highlight,
+.gradient-blue { background-image: linear-gradient(to bottom, #2f6fbd, #2459a6) !important; color: #fff !important; }
+.gradient-green { background-image: linear-gradient(to bottom, #3b8f45, #25642b) !important; color: #fff !important; }
+.gradient-magenta { background-image: linear-gradient(to bottom, #7b57b7, #5b378d) !important; color: #fff !important; }
+.gradient-red { background-image: linear-gradient(to bottom, #c03445, #8f1f2d) !important; color: #fff !important; }
+.gradient-orange { background-image: linear-gradient(to bottom, #ad4a25, #7d3218) !important; color: #fff !important; }
+.gradient-teal { background-image: linear-gradient(to bottom, #187f83, #10585b) !important; color: #fff !important; }
+.gradient-brown { background-image: linear-gradient(to bottom, #87683f, #5d4629) !important; color: #fff !important; }
+
+/* Small explanatory text must stay legible; image overlays keep their opacity. */
+#page .opacity-50:not(.card-overlay),
+#page .opacity-60:not(.card-overlay),
+#page .opacity-70:not(.card-overlay) { opacity: 1 !important; }
+
+.theme-light .input-style em { color: #111 !important; opacity: 1 !important; }
+.theme-dark .input-style em { color: #d1d5db !important; opacity: 1 !important; }
+
+.theme-light .list-custom-large a strong { color: #111; }
+.simp-table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+.simp-table-wrap .table { min-width: 760px; margin-bottom: 0; }
+.simp-table-wrap .table th { white-space: nowrap; }
+.simp-table-wrap .table td { vertical-align: middle; }
+.simp-table-wrap .table td small { display: block; opacity: 1; }
+.simp-table-wrap .table a:not(.btn) { text-decoration: none; }
+
+.simp-empty { padding: 38px 20px !important; text-align: center; opacity: 1; }
+.simp-divider-title { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.simp-divider-title > :last-child { flex-shrink: 0; }
+
+select[multiple].form-control,
+select[multiple].form-select { height: auto !important; min-height: 150px; padding-top: 10px; padding-bottom: 10px; }
+
+.simp-balance-value { font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.min-width-zero { min-width: 0; }
+
+.footer-bar-6 .circle-nav.active-nav i { color: #fff !important; }
+
+/* AppKit uses flex-basis:auto for footer items, so longer labels such as
+ * "Pengeluaran" receive a wider slot and push the center action sideways.
+ * MVIN always renders five actions; keep each one at exactly one fifth. */
+#footer-bar.footer-bar-6 {
+  margin-left: 0;
+}
+
+#footer-bar.footer-bar-6 > a {
+  flex: 0 0 20%;
+  width: 20%;
+  min-width: 0;
+}
+
+#footer-bar.footer-bar-6 > a > span {
+  white-space: nowrap;
+}
+
+/* AppKit's btn-full targets link buttons; native form buttons also need the full column width. */
+button.btn-full { width: 100%; }
+
+/* Keep the POST logout trigger visually identical to the supplied menu links. */
+.list-menu .logout-form { margin: 0; padding: 0; }
+.list-menu .logout-menu-item {
+  display: block;
+  width: 100%;
+  min-height: 50px;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: #1f1f1f;
+  font: inherit;
+  font-weight: 600;
+  font-size: 13px;
+  line-height: 50px;
+  text-align: left;
+}
+.list-menu .logout-menu-item i:first-child {
+  float: left;
+  width: 32px;
+  height: 32px;
+  margin: 10px 10px 0 0;
+  line-height: 33px;
+  border-radius: 12px;
+  text-align: center;
+  box-shadow: 0 5px 30px 0 rgba(0,0,0,.11), 0 5px 15px 0 rgba(0,0,0,.02);
+}
+.list-menu .logout-menu-item i:last-child {
+  float: right;
+  margin-top: 19px;
+  font-size: 10px;
+  opacity: .5;
+}
+.theme-dark .list-menu .logout-menu-item { color: #fff; }
+.list-menu .logout-menu-item:focus-visible { outline: 2px solid #2459a6; outline-offset: -2px; }
+
+/* Form modals keep AppKit's original centered-menu behavior on small phones. */
+.menu.menu-box-modal {
+  max-width: calc(100vw - 30px) !important;
+  max-height: calc(100vh - 30px) !important;
+  padding-top: 10px;
+  padding-bottom: 20px;
+  display: flex !important;
+  flex-direction: column !important;
+  overflow: hidden !important;
+  background-color: #fff !important;
+  background-image: none !important;
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
+  color: #212529;
+}
+
+/* The shared AppKit alert/confirmation can contain messages of different
+ * lengths. Let its surface grow with the content so the final action never
+ * sits against the rounded bottom edge. On short screens the dialog itself
+ * remains scrollable and keeps a consistent safe area below the buttons. */
+#menu-simp-dialog {
+  height: auto !important;
+  min-height: 300px;
+  max-height: calc(100vh - 30px) !important;
+  max-height: calc(100dvh - 30px) !important;
+  overflow-x: hidden !important;
+  overflow-y: auto !important;
+  padding-bottom: 24px;
+}
+
+#menu-simp-dialog > h1,
+#menu-simp-dialog > h3,
+#menu-simp-dialog > p,
+#menu-simp-dialog > #simp-dialog-confirm-actions,
+#menu-simp-dialog > #simp-dialog-alert-actions {
+  flex-shrink: 0;
+}
+
+#simp-dialog-message {
+  margin-bottom: 22px;
+  overflow-wrap: anywhere;
+}
+
+#simp-dialog-confirm-actions,
+#simp-dialog-alert-actions {
+  margin-bottom: 0 !important;
+}
+
+/* Keep the modal surface opaque in light mode.  The stock AppKit menu uses a
+ * translucent white surface so the page behind it intentionally bleeds
+ * through; application forms need a clean, paper-white reading surface. */
+.theme-light .menu.menu-box-modal {
+  background-color: #fff !important;
+  color: #212529 !important;
+}
+
+.theme-dark .menu.menu-box-modal {
+  background-color: #21252a !important;
+  background-image: none !important;
+  color: #fff !important;
+}
+
+/* Give modal content a little breathing room at both edges. The supplied
+ * AppKit menus are intentionally compact; application forms need extra room
+ * for their heading and final action without changing the component style. */
+.menu.menu-box-modal > .content {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding-top: 10px;
+  padding-bottom: 26px;
+}
+
+/* Every application modal puts its heading/close control first.  Make that
+ * row sticky inside the scrolling content so the close button remains
+ * reachable while long participant/payment forms are being filled out. */
+.menu.menu-box-modal > .content > .d-flex:first-child {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  background-color: #fff;
+  padding-top: 4px;
+  padding-bottom: 10px;
+  margin-bottom: 12px !important;
+  box-shadow: 0 4px 10px rgba(15, 23, 42, .06);
+}
+
+.theme-dark .menu.menu-box-modal > .content > .d-flex:first-child {
+  background-color: #21252a;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, .24);
+}
+
+.menu.menu-box-modal > .content > form > :last-child {
+  margin-bottom: 8px;
+}
+
+/* Searchable position fields have both a native datalist affordance and an
+ * AppKit validation icon. Keep the three right-side indicators separated. */
+.position-picker > .valid,
+.position-picker > .invalid { right: 24px !important; }
+.position-picker > em { right: 46px !important; opacity: .65; }
+.position-picker [data-position-search] { padding-right: 70px !important; }
+
+/* Content typography is intentionally larger than AppKit's compact demo
+ * scale. Headings keep the supplied template sizes; only reading text,
+ * controls, badges, and supporting labels are enlarged. */
+body {
+  font-size: 14px !important;
+  line-height: 25px !important;
+}
+
+#page :where(.page-content, .menu.menu-box-modal) {
+  font-size: 15px !important;
+  line-height: 27px !important;
+}
+
+#page .input-style input,
+#page .input-style select,
+#page .input-style textarea {
+  font-size: 15px !important;
+}
+
+#page .input-style label {
+  font-size: 13px !important;
+}
+
+#page .btn-m,
+#page .btn-l {
+  font-size: 14px !important;
+}
+
+#page :where(.page-content, .menu.menu-box-modal) .badge {
+  font-size: 12px !important;
+  line-height: 1.3 !important;
+}
+
+#page :where(.page-content, .menu.menu-box-modal) .font-8:not(i):not(h1):not(h2):not(h3):not(h4):not(h5):not(h6) { font-size: 11px !important; }
+#page :where(.page-content, .menu.menu-box-modal) .font-9:not(i):not(h1):not(h2):not(h3):not(h4):not(h5):not(h6) { font-size: 12px !important; }
+#page :where(.page-content, .menu.menu-box-modal) .font-10:not(i):not(h1):not(h2):not(h3):not(h4):not(h5):not(h6) { font-size: 13px !important; }
+#page :where(.page-content, .menu.menu-box-modal) .font-11:not(i):not(h1):not(h2):not(h3):not(h4):not(h5):not(h6) { font-size: 14px !important; }
+#page :where(.page-content, .menu.menu-box-modal) .font-12:not(i):not(h1):not(h2):not(h3):not(h4):not(h5):not(h6) { font-size: 15px !important; }
+#page :where(.page-content, .menu.menu-box-modal) .font-13:not(i):not(h1):not(h2):not(h3):not(h4):not(h5):not(h6) { font-size: 16px !important; }
+#page :where(.page-content, .menu.menu-box-modal) .font-14:not(i):not(h1):not(h2):not(h3):not(h4):not(h5):not(h6) { font-size: 17px !important; }
+#page :where(.page-content, .menu.menu-box-modal) .font-15:not(i):not(h1):not(h2):not(h3):not(h4):not(h5):not(h6) { font-size: 18px !important; }
+#page :where(.page-content, .menu.menu-box-modal) .font-16:not(i):not(h1):not(h2):not(h3):not(h4):not(h5):not(h6) { font-size: 19px !important; }
+#page :where(.page-content, .menu.menu-box-modal) .font-17:not(i):not(h1):not(h2):not(h3):not(h4):not(h5):not(h6) { font-size: 20px !important; }
+
+/* AppKit uses muted gray for nearly every paragraph. Application content
+ * needs black body copy in light mode, while explicit semantic colours
+ * (blue, green, red, and white) retain their meaning. */
+.theme-light #page :where(.page-content, .menu.menu-box-modal) {
+  color: #111 !important;
+}
+
+.theme-light #page :where(.page-content, .menu.menu-box-modal)
+  :where(p, small, li, td, th, label, em, strong, span):not(.badge):not([class*="color-"]) {
+  color: #111 !important;
+}
+
+.theme-light #page :where(.page-content, .menu.menu-box-modal)
+  :where(input:not([type="file"]), select, textarea) {
+  color: #111 !important;
+}
+
+.theme-light #page :where(.page-content, .menu.menu-box-modal)
+  :where(input, textarea)::placeholder {
+  color: #303030 !important;
+  opacity: 1 !important;
+}
+
+/* Plain copy inside solid/gradient cards must remain white. */
+.theme-light #page :where(.page-content, .menu.menu-box-modal)
+  :is(.bg-highlight, .bg-blue-dark, .bg-green-dark, .bg-red-dark,
+    .bg-yellow-dark, .bg-magenta-dark, .bg-gray-dark, .bg-brown-dark,
+    .bg-orange-dark, .gradient-highlight, .gradient-blue, .gradient-green,
+    .gradient-red, .gradient-magenta, .gradient-orange, .gradient-teal,
+    .gradient-brown)
+  :where(p, small, li, label, em, strong, span):not([class*="color-"]) {
+  color: #fff !important;
+}
+
+/* Dark mode receives the same contrast improvement without forcing black
+ * text onto its dark surfaces. */
+.theme-dark #page :where(.page-content, .menu.menu-box-modal)
+  :where(p, small, li, td, th, label, em, strong, span):not(.badge):not([class*="color-"]) {
+  color: #f3f4f6 !important;
+}
+
+.theme-dark #page :where(.page-content, .menu.menu-box-modal)
+  :is(.bg-blue-light, .bg-fade-blue-light, .bg-green-light, .bg-red-light,
+    .bg-yellow-light, .bg-magenta-light, .bg-gray-light)
+  :where(p, small, li, label, em, strong, span):not([class*="color-"]) {
+  color: #27313d !important;
+}
+
+/* Children of an explicitly coloured label inherit that semantic colour
+ * instead of being reset to the plain body ink above. */
+#page :where(.page-content, .menu.menu-box-modal) [class*="color-"]
+  :where(small, em, strong, span):not([class*="color-"]) {
+  color: inherit !important;
+}
+
+/* Page titles in the supplied shell are designed as a single line. */
+.page-title > h1,
+.page-title > div { min-width: 0; }
+
+/* Keep the event hero stable after its AJAX fragment is refreshed. The
+ * original template calculates data-card-height only during the first load. */
+.event-detail-hero {
+  height: 250px !important;
+  min-height: 250px;
+  overflow: hidden;
+  position: relative;
+}
+
+.event-detail-summary-head > .min-width-zero {
+  min-width: 0;
+}
+.page-title > h1 {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Large document preview. The report itself lives in a same-origin iframe so
+ * AppKit's modal/theme CSS cannot change the F4 paper layout. */
+.menu.menu-box-modal.simp-print-modal {
+  width: min(1080px, calc(100vw - 24px)) !important;
+  height: calc(100vh - 24px) !important;
+  max-width: 1080px !important;
+  max-height: calc(100vh - 24px) !important;
+  padding: 0 !important;
+}
+
+.menu.menu-box-modal.simp-print-modal > .content {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  margin-top: 0 !important;
+  margin-bottom: 0 !important;
+  padding-top: 12px;
+  padding-bottom: 12px;
+  overflow: hidden !important;
+}
+
+.simp-print-modal-header {
+  flex: 0 0 auto;
+  padding-left: 2px;
+  padding-right: 2px;
+}
+
+.simp-print-zoom-toolbar {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 7px;
+  min-height: 44px;
+  padding: 6px 2px;
+}
+
+.simp-print-zoom-title {
+  margin-right: auto;
+  color: #4b5563;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.simp-print-zoom-toolbar .btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  height: 34px;
+  margin: 0 !important;
+  padding: 0 !important;
+}
+
+.simp-print-zoom-toolbar .btn:disabled {
+  opacity: .42;
+}
+
+.simp-print-zoom-value {
+  min-width: 52px;
+  color: #111827;
+  font-size: 13px;
+  font-weight: 700;
+  text-align: center;
+}
+
+.theme-dark .simp-print-zoom-title,
+.theme-dark .simp-print-zoom-value {
+  color: #f3f4f6 !important;
+}
+
+.simp-print-frame-shell {
+  position: relative;
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: hidden;
+  border: 1px solid #d7dee8;
+  border-radius: 10px;
+  background: #e9eef5;
+}
+
+.simp-print-frame {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border: 0;
+  background: #fff;
+}
+
+.simp-print-frame-loading {
+  position: absolute;
+  z-index: 2;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  background: #f5f7fa;
+  color: #1f2937;
+  font-weight: 600;
+}
+
+.simp-print-frame-shell.is-loaded .simp-print-frame-loading {
+  display: none;
+}
+
+.simp-print-modal-actions {
+  display: flex;
+  flex: 0 0 auto;
+  gap: 10px;
+  padding-top: 10px;
+}
+
+.simp-print-modal-actions > .btn {
+  flex: 1 1 0;
+  width: auto;
+  margin: 0 !important;
+}
+
+.simp-print-paper-note {
+  flex: 0 0 auto;
+  padding-top: 5px;
+  color: #4b5563;
+  font-size: 12px !important;
+  line-height: 1.4 !important;
+  text-align: center;
+}
+
+.theme-dark .simp-print-frame-shell,
+.theme-dark .simp-print-frame-loading {
+  background: #f5f7fa !important;
+  color: #111827 !important;
+}
+
+/* Compact install badges follow the active AUSI footer pattern while all
+ * messages continue to use MVIN's AppKit dialog. */
+.simp-pwa-footer-card {
+  padding-top: 18px;
+  padding-bottom: 18px;
+}
+
+.simp-pwa-install {
+  padding-right: 18px;
+  padding-left: 18px;
+  text-align: center;
+}
+
+.simp-pwa-install[hidden] {
+  display: none !important;
+}
+
+.simp-pwa-install-label {
+  color: #111827;
+  font-size: 15px !important;
+  line-height: 1.4 !important;
+}
+
+.simp-pwa-store-badges {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  width: 100%;
+  max-width: 370px;
+  margin-right: auto;
+  margin-left: auto;
+}
+
+.simp-pwa-store-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  min-width: 0;
+  min-height: 48px;
+  margin: 0;
+  padding: 9px 13px;
+  border: 2px solid #2f6fbd;
+  border-radius: 999px;
+  background: #050505;
+  box-shadow: 0 8px 18px rgba(10, 18, 30, .16);
+  color: #fff !important;
+  font-family: inherit;
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 1.2;
+  text-decoration: none;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: transform .18s ease, background-color .18s ease, box-shadow .18s ease;
+}
+
+.simp-pwa-store-badge i {
+  flex: 0 0 auto;
+  width: 23px;
+  color: #fff !important;
+  font-size: 23px;
+  line-height: 1;
+  text-align: center;
+}
+
+#page .simp-pwa-store-badge span {
+  overflow: hidden;
+  color: #fff !important;
+  text-overflow: ellipsis;
+}
+
+.simp-pwa-store-badge:hover,
+.simp-pwa-store-badge:focus {
+  background: #151515;
+  color: #fff !important;
+  text-decoration: none;
+  transform: translateY(-1px);
+  box-shadow: 0 10px 22px rgba(10, 18, 30, .22);
+}
+
+.simp-pwa-store-badge:focus-visible {
+  outline: 3px solid rgba(47, 111, 189, .36);
+  outline-offset: 3px;
+}
+
+.simp-pwa-store-badge:disabled {
+  opacity: .55;
+  cursor: wait;
+  transform: none;
+}
+
+.theme-dark .simp-pwa-install-label {
+  color: #f3f4f6 !important;
+}
+
+.theme-dark .simp-pwa-store-badge {
+  border-color: #6ca7ef;
+  background: #050505;
+}
+
+@media (max-width: 575.98px) {
+  .menu.menu-box-modal.simp-print-modal {
+    width: calc(100vw - 12px) !important;
+    height: calc(100vh - 12px) !important;
+    max-width: calc(100vw - 12px) !important;
+    max-height: calc(100vh - 12px) !important;
+  }
+
+  .menu.menu-box-modal.simp-print-modal > .content {
+    margin-left: 10px !important;
+    margin-right: 10px !important;
+  }
+
+  .simp-print-modal-actions { gap: 6px; }
+  .simp-print-zoom-title { font-size: 11px; }
+  .simp-print-paper-note { font-size: 11px !important; }
+
+  .simp-pwa-install {
+    padding-right: 14px;
+    padding-left: 14px;
+  }
+
+  .simp-pwa-store-badges { gap: 8px; }
+
+  .simp-pwa-store-badge {
+    min-height: 46px;
+    padding-right: 10px;
+    padding-left: 10px;
+    font-size: 14px;
+  }
+
+  .simp-pwa-store-badge i {
+    width: 21px;
+    font-size: 21px;
+  }
+}
+
+@media (max-width: 350px) {
+  .simp-pwa-install { padding-right: 10px; padding-left: 10px; }
+  .simp-pwa-store-badges { gap: 6px; }
+  .simp-pwa-store-badge { gap: 6px; padding-right: 8px; padding-left: 8px; font-size: 12.5px; }
+  .simp-pwa-store-badge i { width: 19px; font-size: 19px; }
+}
+
+.registration-read-only [data-registration-payment-review] {
+  display: none !important;
+}
+
+@media print {
+  #preloader, .header, #footer-bar, .page-title, #menu-main, .menu-hider,
+  .simp-no-print, .back-to-top, .simp-pwa-install { display: none !important; }
+  .page-title-clear { display: none !important; }
+  .page-content { max-width: none !important; padding: 0 !important; }
+  .card { box-shadow: none !important; break-inside: avoid; }
+}

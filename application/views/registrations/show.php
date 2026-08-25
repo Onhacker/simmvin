@@ -1,0 +1,234 @@
+<?php
+defined('BASEPATH') OR exit('No direct script access allowed');
+$registration = isset($registration) && is_array($registration) ? $registration : array();
+$positions = isset($positions) && is_array($positions) ? $positions : array();
+$accounts = isset($accounts) && is_array($accounts) ? $accounts : array();
+$participantHistory = isset($registration['participants_history']) && is_array($registration['participants_history']) ? $registration['participants_history'] : array();
+$participantRevisions = isset($registration['participant_revisions']) && is_array($registration['participant_revisions']) ? $registration['participant_revisions'] : array();
+$isCancelled = isset($registration['status']) && $registration['status'] === 'cancelled';
+$isReadOnly = isset($isReadOnly)
+    ? (bool) $isReadOnly
+    : (($registration['event_status'] ?? '') !== 'open' || ($registration['status'] ?? '') !== 'active');
+$billingMode = isset($registration['billing_mode']) ? $registration['billing_mode'] : 'per_village';
+$isPerParticipant = $billingMode === 'per_participant';
+$isVillageExtra = $billingMode === 'per_village_extra';
+$canRecordPayment = !empty($canRecordPayment);
+$canReviewPayments = $this->Auth_model->can('payments.verify') && !$isReadOnly;
+$canRestoreRegistration = $this->Auth_model->can('registrations.edit')
+    && $isCancelled
+    && $registration['event_status'] === 'open';
+$canManageParticipants = $this->Auth_model->can('registrations.edit')
+    && $registration['status'] === 'active'
+    && $registration['event_status'] === 'open';
+$canAddParticipant = $canManageParticipants;
+$verifiedRegistrationCents = simp_money_cents($registration['paid_amount']);
+$pendingRegistrationCents = simp_money_cents(isset($registration['pending_amount']) ? $registration['pending_amount'] : '0');
+if ($verifiedRegistrationCents === NULL) $verifiedRegistrationCents = 0;
+if ($pendingRegistrationCents === NULL) $pendingRegistrationCents = 0;
+$committedRegistrationCents = isset($registration['committed_amount'])
+    ? simp_money_cents($registration['committed_amount'])
+    : $verifiedRegistrationCents + $pendingRegistrationCents;
+if ($committedRegistrationCents === NULL) $committedRegistrationCents = $verifiedRegistrationCents + $pendingRegistrationCents;
+$expectedRegistrationCents = simp_money_cents($registration['expected_amount']);
+if ($expectedRegistrationCents === NULL) $expectedRegistrationCents = 0;
+$verifiedRegistration = simp_money_from_cents($verifiedRegistrationCents);
+$pendingRegistration = simp_money_from_cents($pendingRegistrationCents);
+$committedRegistration = simp_money_from_cents($committedRegistrationCents);
+$overall = payment_status($committedRegistration, $registration['expected_amount']);
+$remainingAmountCents = max(0, $expectedRegistrationCents - $committedRegistrationCents);
+$remainingAmount = simp_money_from_cents($remainingAmountCents);
+$remainingCommitted = $remainingAmount;
+$positionGroups = array();
+foreach ($positions as $position) {
+    $categoryLabel = isset($position['category_label']) ? $position['category_label'] : (isset($position['category']) ? $position['category'] : 'Lainnya');
+    if (!isset($positionGroups[$categoryLabel])) $positionGroups[$categoryLabel] = array();
+    $positionGroups[$categoryLabel][] = $position;
+}
+$accountPayload = array();
+foreach ($accounts as $account) $accountPayload[] = array('id'=>(int)$account['id'],'name'=>$account['name'],'type'=>$account['type']);
+?>
+
+<div id="registration-detail-content" class="<?= ($registration['event_status'] !== 'open' || $registration['status'] !== 'active') ? 'registration-read-only' : '' ?>">
+<div class="card card-style">
+    <div class="content mb-3">
+        <div class="d-flex align-items-start"><div><p class="font-600 color-highlight mb-n1">Status registrasi</p><div class="mt-1"><?= status_badge($registration['status']) ?><?php if (!$isCancelled): ?> <?= status_badge($overall) ?><?php if ($pendingRegistrationCents > 0): ?> <?= status_badge('pending') ?><?php endif; ?><?php endif; ?></div></div><div class="ms-auto text-end"><span class="badge bg-blue-light color-blue-dark"><?= e($registration['village_name']) ?></span><?php if ($canManageParticipants): ?><button type="button" class="btn btn-xxs border-red-dark color-red-dark rounded-s font-600 d-block mt-2 ms-auto" data-registration-cancel-open><i class="fa fa-ban me-1"></i>Batal Registrasi</button><?php endif; ?></div></div>
+        <?php if ($registration['status'] === 'cancelled'): ?>
+            <div class="rounded-s bg-red-light px-3 py-3 mt-3">
+                <p class="font-12 color-red-dark font-600 mb-1"><i class="fa fa-ban me-1"></i>Registrasi dibatalkan</p>
+                <p class="font-12 mb-1 text-break"><?= e(!empty($registration['cancellation_reason']) ? $registration['cancellation_reason'] : 'Alasan pembatalan tidak tercatat.') ?></p>
+                <p class="font-10 opacity-70 mb-0">
+                    <?= e(!empty($registration['canceller_name']) ? $registration['canceller_name'] : 'Pengguna tidak tersedia') ?>
+                    <?php if (!empty($registration['cancelled_at'])): ?> · <?= e(tanggal_id($registration['cancelled_at'], TRUE)) ?><?php endif; ?>
+                </p>
+                <?php if ($canRestoreRegistration): ?><button type="button" class="btn btn-full btn-m bg-green-dark color-white rounded-s font-600 mt-3" data-registration-restore-open><i class="fa fa-undo me-1"></i>Pulihkan Registrasi</button><?php endif; ?>
+            </div>
+        <?php endif; ?>
+        <?php if ($isReadOnly): ?>
+            <div class="rounded-s bg-gray-light px-3 py-3 mt-3">
+                <div class="d-flex align-items-start">
+                    <i class="fa fa-lock color-gray-dark font-18 me-3 mt-1"></i>
+                    <div class="min-width-zero">
+                        <strong class="font-13"><?= $isCancelled ? 'Data arsip registrasi' : 'Mode baca saja' ?></strong>
+                        <p class="font-11 opacity-70 mb-0"><?= $isCancelled ? 'Registrasi telah dibatalkan. Data peserta, tagihan, dan pembayaran di bawah hanya merupakan catatan historis.' : 'Event tidak aktif. Data peserta dan transaksi tetap dapat dilihat, tetapi tidak dapat diubah.' ?></p>
+                    </div>
+                </div>
+                <a href="<?= site_url('event/'.(int)$registration['event_id'].'/registrasi') ?>" class="btn btn-full btn-m bg-theme color-theme border rounded-s font-600 mt-3"><i class="fa fa-arrow-left me-1"></i>Kembali ke Arsip Event</a>
+            </div>
+        <?php endif; ?>
+    </div>
+</div>
+
+<div class="card card-style">
+    <div class="content mb-2">
+        <p class="font-600 color-highlight mb-n1">Wilayah peserta</p>
+        <h2 class="font-22 mb-3"><?= e($registration['village_name']) ?></h2>
+        <div class="d-flex align-items-start"><span class="icon icon-m rounded-xl gradient-blue color-white shadow-s me-3 flex-shrink-0"><i class="fa fa-map-marker-alt"></i></span><div class="min-width-zero"><p class="font-11 opacity-60 mb-n1">Kecamatan · Kabupaten · Provinsi</p><h5 class="mb-0 text-break"><?= e($registration['district_name'].' · '.$registration['regency_name']) ?></h5><p class="font-11 opacity-60 mb-0 text-break"><?= e($registration['province_name']) ?></p></div></div>
+    </div>
+</div>
+
+<div class="content mt-0 mb-0"><div class="row mb-0">
+    <div class="col-12 col-sm-6"><div class="card card-style mx-0 mb-2 p-3"><h6 class="font-12 opacity-60"><?= $isCancelled ? 'Tagihan Arsip' : 'Total Tagihan' ?></h6><h4 class="color-blue-dark mb-0 simp-balance-value"><?= rupiah($registration['expected_amount']) ?></h4></div></div>
+    <div class="col-12 col-sm-6"><div class="card card-style mx-0 mb-2 p-3"><h6 class="font-12 opacity-60"><?= $isCancelled ? 'Dana Tercatat' : 'Terverifikasi' ?></h6><h4 class="color-green-dark mb-0 simp-balance-value"><?= rupiah($verifiedRegistration) ?></h4></div></div>
+    <?php if ($pendingRegistrationCents > 0): ?><div class="col-12"><div class="card card-style mx-0 mb-2 p-3"><h6 class="font-12 opacity-60"><?= $isCancelled ? 'Menunggu pada Arsip' : 'Menunggu verifikasi' ?></h6><h4 class="color-yellow-dark mb-0 simp-balance-value"><?= rupiah($pendingRegistration) ?></h4></div></div><?php endif; ?>
+    <div class="col-12 col-sm-6"><div class="card card-style mx-0 mb-2 p-3"><h6 class="font-12 opacity-60"><?= $isCancelled ? 'Status Tagihan' : 'Sisa Tagihan' ?></h6><?php if ($isCancelled): ?><h4 class="color-red-dark mb-0">Dibatalkan</h4><?php else: ?><h4 class="<?= $remainingAmountCents > 0 ? 'color-red-dark' : 'color-green-dark' ?> mb-0 simp-balance-value"><?= rupiah($remainingAmount) ?></h4><?php endif; ?></div></div>
+    <div class="col-12 col-sm-6"><div class="card card-style mx-0 mb-2 p-3"><h6 class="font-12 opacity-60"><?= $isCancelled ? 'Peserta Arsip' : 'Jumlah Peserta' ?></h6><h4 class="color-highlight mb-0"><?= number_format($isCancelled ? count($participantHistory) : count($registration['participants'])) ?> orang</h4></div></div>
+</div></div>
+
+<div class="card card-style mt-4">
+    <div class="content mb-2">
+        <div class="d-flex align-items-center"><div><p class="font-600 color-highlight mb-n1">Data desa</p><h4 class="mb-0">Daftar Peserta</h4></div><?php if ($canAddParticipant): ?><button type="button" class="btn btn-xxs gradient-highlight rounded-s font-600 ms-auto" data-registration-participant-open><i class="fa fa-user-plus me-1"></i>Tambah</button><?php endif; ?></div>
+        <?php if (!$isPerParticipant && $canRecordPayment && $registration['status'] === 'active' && $remainingAmountCents > 0): ?>
+            <div class="d-flex align-items-center rounded-s bg-green-light px-3 py-3 mb-3"><span class="icon icon-s rounded-xl bg-green-dark color-white me-3"><i class="fa fa-wallet"></i></span><div class="min-width-zero"><p class="font-11 color-green-dark font-600 mb-n1">Pembayaran desa</p><p class="font-11 opacity-60 mb-0">Sisa komitmen <?= rupiah($remainingCommitted) ?></p></div><button type="button" class="btn btn-s bg-green-dark color-white rounded-s font-600 ms-auto" data-payment-open data-target-type="village" data-target-id="" data-target-label="<?= e($registration['village_name']) ?>" data-target-remaining="<?= e($remainingCommitted) ?>">Catat Bayar</button></div>
+        <?php endif; ?>
+
+        <?php if (!$registration['participants']): ?><div class="text-center opacity-60 py-4"><?= $isCancelled && $participantHistory ? 'Tidak ada peserta aktif. Riwayat peserta tersedia di bawah.' : 'Belum ada peserta.' ?></div><?php endif; ?>
+        <?php foreach ($registration['participants'] as $participant): ?>
+            <?php
+            $participantExpectedCents = simp_money_cents($participant['expected_amount']);
+            $participantPaidCents = simp_money_cents($participant['paid_amount']);
+            $participantPendingCents = simp_money_cents(isset($participant['pending_amount']) ? $participant['pending_amount'] : '0');
+            if ($participantExpectedCents === NULL) $participantExpectedCents = 0;
+            if ($participantPaidCents === NULL) $participantPaidCents = 0;
+            if ($participantPendingCents === NULL) $participantPendingCents = 0;
+            $participantCommittedCents = isset($participant['committed_amount']) ? simp_money_cents($participant['committed_amount']) : $participantPaidCents;
+            if ($participantCommittedCents === NULL) $participantCommittedCents = $participantPaidCents + $participantPendingCents;
+            $participantRemainingCents = max(0, $participantExpectedCents - $participantCommittedCents);
+            $isExtraParticipant = $isVillageExtra && $participantExpectedCents > 0;
+            $participantPaid = simp_money_from_cents($participantPaidCents);
+            $participantCommitted = simp_money_from_cents($participantCommittedCents);
+            $participantPending = simp_money_from_cents($participantPendingCents);
+            $participantRemaining = simp_money_from_cents($participantRemainingCents);
+            $participantPositionId = isset($participant['position_id']) ? (int) $participant['position_id'] : 0;
+            ?>
+            <div class="card bg-theme border rounded-s shadow-0 mb-3"><div class="content my-3">
+                <div class="d-flex align-items-start"><span class="icon icon-s rounded-xl bg-blue-light color-blue-dark me-3 flex-shrink-0"><i class="fa fa-user"></i></span><div class="min-width-zero"><h4 class="font-16 mb-n1 text-break"><?= e($participant['full_name']) ?></h4><p class="font-11 opacity-60 mb-0 text-break"><?= e($participant['position'] ?: '-') ?></p></div><?php if ($isPerParticipant): ?><div class="ms-auto text-end"><?= status_badge(payment_status($participantCommitted,$participant['expected_amount'])) ?><?php if ($participantPendingCents > 0): ?><div class="mt-1"><?= status_badge('pending') ?></div><?php endif; ?></div><?php elseif ($isVillageExtra): ?><div class="ms-auto"><span class="badge <?= $isExtraParticipant ? 'bg-yellow-dark' : 'bg-blue-dark' ?> color-white"><?= $isExtraParticipant ? 'Peserta Tambahan' : 'Termasuk Paket Desa' ?></span></div><?php endif; ?></div>
+                <div class="divider mt-3 mb-2"></div><div class="d-flex py-2 border-bottom"><span class="opacity-60">Nomor HP</span><strong class="ms-auto text-end"><?= e($participant['phone'] ?: '-') ?></strong></div>
+                <?php if ($isPerParticipant): ?>
+                    <div class="d-flex py-2 border-bottom"><span class="opacity-60">Tagihan</span><strong class="ms-auto simp-balance-value"><?= rupiah($participant['expected_amount']) ?></strong></div><div class="d-flex py-2 border-bottom"><span class="opacity-60">Terverifikasi</span><strong class="color-green-dark ms-auto simp-balance-value"><?= rupiah($participantPaid) ?></strong></div><?php if ($participantPendingCents > 0): ?><div class="d-flex py-2 border-bottom"><span class="opacity-60">Menunggu verifikasi</span><strong class="color-yellow-dark ms-auto simp-balance-value"><?= rupiah($participantPending) ?></strong></div><?php endif; ?><div class="d-flex py-2"><span class="opacity-60">Sisa setelah komitmen</span><strong class="<?= $participantRemainingCents > 0 ? 'color-red-dark' : 'color-green-dark' ?> ms-auto simp-balance-value"><?= rupiah($participantRemaining) ?></strong></div>
+                    <?php if ($canRecordPayment && $registration['status'] === 'active' && $participantRemainingCents > 0): ?><button type="button" class="btn btn-full btn-m border-green-dark color-green-dark rounded-s font-600 mt-3" data-payment-open data-target-type="participant" data-target-id="<?= (int)$participant['id'] ?>" data-target-label="<?= e($participant['full_name']) ?>" data-target-remaining="<?= e($participantRemaining) ?>"><i class="fa fa-money-bill-wave me-1"></i>Catat Bayar</button><?php endif; ?>
+                <?php elseif ($isVillageExtra): ?><div class="d-flex py-2 border-bottom"><span class="opacity-60">Komponen biaya</span><strong class="ms-auto text-end"><?= $isExtraParticipant ? rupiah($participant['expected_amount']) : 'Termasuk paket' ?></strong></div><div class="d-flex py-2"><span class="opacity-60">Pembayaran</span><strong class="ms-auto text-end">Digabung pada tagihan desa</strong></div>
+                <?php else: ?><div class="d-flex py-2"><span class="opacity-60">Tagihan</span><strong class="ms-auto">Dicatat per desa</strong></div><?php endif; ?>
+                <?php if ($canManageParticipants): ?>
+                    <div class="row mb-0 mt-3" data-participant-actions>
+                        <div class="col-12 col-sm-4 mb-2 mb-sm-0"><button type="button" class="btn btn-full btn-m border-blue-dark color-blue-dark rounded-s font-600" data-participant-edit-open data-participant-id="<?= (int) $participant['id'] ?>" data-participant-name="<?= e($participant['full_name']) ?>" data-participant-position-id="<?= $participantPositionId ?>" data-participant-phone="<?= e(isset($participant['phone']) ? $participant['phone'] : '') ?>"><i class="fa fa-edit me-1"></i>Ubah</button></div>
+                        <div class="col-12 col-sm-4 mb-2 mb-sm-0"><button type="button" class="btn btn-full btn-m border-orange-dark color-orange-dark rounded-s font-600" data-participant-replace-open data-participant-id="<?= (int) $participant['id'] ?>" data-participant-name="<?= e($participant['full_name']) ?>" data-participant-position-id="<?= $participantPositionId ?>" data-participant-phone="<?= e(isset($participant['phone']) ? $participant['phone'] : '') ?>"><i class="fa fa-exchange-alt me-1"></i>Ganti</button></div>
+                        <div class="col-12 col-sm-4"><button type="button" class="btn btn-full btn-m border-red-dark color-red-dark rounded-s font-600" data-participant-deactivate-open data-participant-id="<?= (int) $participant['id'] ?>" data-participant-name="<?= e($participant['full_name']) ?>"><i class="fa fa-user-slash me-1"></i>Nonaktifkan</button></div>
+                    </div>
+                <?php endif; ?>
+            </div></div>
+        <?php endforeach; ?>
+        <?php if ($participantHistory): ?>
+            <div class="divider mt-4 mb-3"></div>
+            <div class="d-flex align-items-center mb-2"><div><p class="font-600 color-highlight mb-n1">Riwayat perubahan</p><h5 class="mb-0">Peserta nonaktif / diganti</h5></div><span class="badge bg-gray-dark color-white ms-auto"><?= number_format(count($participantHistory)) ?></span></div>
+            <?php foreach ($participantHistory as $history): ?>
+                <?php $historyCommitted = simp_money_cents(isset($history['committed_amount']) ? $history['committed_amount'] : '0'); if ($historyCommitted === NULL) $historyCommitted = 0; ?>
+                <div class="rounded-s bg-gray-light px-3 py-3 mb-2">
+                    <div class="d-flex align-items-start"><span class="icon icon-s rounded-xl bg-gray-dark color-white me-3"><i class="fa fa-user-slash"></i></span><div class="min-width-zero"><strong class="font-13 text-break"><?= e($history['full_name']) ?></strong><p class="font-11 opacity-70 mb-1 text-break"><?= e($history['position'] ?: ($history['position_label'] ?? '-')) ?> · <?= e($history['phone'] ?: '-') ?></p><p class="font-10 opacity-70 mb-1"><?= e($history['deactivation_reason'] ?: 'Peserta dinonaktifkan') ?></p><?php if (!empty($history['replacement_name'])): ?><p class="font-10 color-blue-dark mb-1"><i class="fa fa-exchange-alt me-1"></i>Diganti oleh <?= e($history['replacement_name']) ?></p><?php endif; ?><p class="font-10 opacity-60 mb-0"><i class="fa fa-user-shield me-1"></i><?= e(!empty($history['deactivator_name']) ? $history['deactivator_name'] : 'Pengguna tidak tersedia') ?><?php if (!empty($history['deleted_at'])): ?> · <?= e(tanggal_id($history['deleted_at'], TRUE)) ?><?php endif; ?></p></div><span class="badge bg-gray-dark color-white ms-auto flex-shrink-0">Arsip</span></div>
+                    <?php if ($historyCommitted > 0): ?><p class="font-10 color-yellow-dark mb-0 mt-2"><i class="fa fa-money-bill-wave me-1"></i>Komitmen tersimpan: <?= rupiah(simp_money_from_cents($historyCommitted)) ?></p><?php endif; ?>
+                </div>
+            <?php endforeach; ?>
+        <?php endif; ?>
+        <?php if ($participantRevisions): ?>
+            <div class="divider mt-4 mb-3"></div>
+            <div class="d-flex align-items-center mb-2"><div><p class="font-600 color-highlight mb-n1">Jejak audit</p><h5 class="mb-0">Koreksi Data Peserta</h5></div><span class="badge bg-blue-dark color-white ms-auto"><?= number_format(count($participantRevisions)) ?></span></div>
+            <?php foreach ($participantRevisions as $revision): ?>
+                <?php
+                $beforeRevision = json_decode(isset($revision['before_json']) ? $revision['before_json'] : '', TRUE);
+                $afterRevision = json_decode(isset($revision['after_json']) ? $revision['after_json'] : '', TRUE);
+                if (!is_array($beforeRevision)) $beforeRevision = array();
+                if (!is_array($afterRevision)) $afterRevision = array();
+                $revisionLabels = array(
+                    'update' => 'Data diperbarui',
+                    'replace' => 'Peserta diganti',
+                    'deactivate' => 'Peserta dinonaktifkan',
+                    'registration_cancel' => 'Registrasi dibatalkan',
+                    'registration_restore' => 'Registrasi dipulihkan'
+                );
+                $revisionLabel = isset($revisionLabels[$revision['action']]) ? $revisionLabels[$revision['action']] : 'Data berubah';
+                $revisionChanges = array();
+                foreach (array('full_name'=>'Nama','position'=>'Jabatan','phone'=>'Kontak') as $revisionField => $fieldLabel) {
+                    $oldValue = isset($beforeRevision[$revisionField]) && $beforeRevision[$revisionField] !== '' ? $beforeRevision[$revisionField] : '-';
+                    $newValue = isset($afterRevision[$revisionField]) && $afterRevision[$revisionField] !== '' ? $afterRevision[$revisionField] : '-';
+                    if ((string) $oldValue !== (string) $newValue) $revisionChanges[] = array('label'=>$fieldLabel,'before'=>$oldValue,'after'=>$newValue);
+                }
+                ?>
+                <div class="rounded-s bg-blue-light px-3 py-3 mb-2">
+                    <div class="d-flex align-items-start"><span class="icon icon-s rounded-xl bg-blue-dark color-white me-3 flex-shrink-0"><i class="fa fa-history"></i></span><div class="min-width-zero"><strong class="font-13"><?= e($revisionLabel) ?></strong><p class="font-11 mb-1 text-break"><?= e(isset($beforeRevision['full_name']) ? $beforeRevision['full_name'] : 'Peserta') ?></p><p class="font-10 opacity-70 mb-0"><i class="fa fa-user-shield me-1"></i><?= e(!empty($revision['actor_label']) ? $revision['actor_label'] : 'Pengguna tidak tersedia') ?><?php if (!empty($revision['occurred_at'])): ?> · <?= e(tanggal_id($revision['occurred_at'], TRUE)) ?><?php endif; ?></p></div></div>
+                    <?php foreach ($revisionChanges as $revisionChange): ?><p class="font-10 mb-1 mt-2 text-break"><strong><?= e($revisionChange['label']) ?>:</strong> <?= e($revisionChange['before']) ?> <i class="fa fa-arrow-right mx-1 opacity-50"></i> <?= e($revisionChange['after']) ?></p><?php endforeach; ?>
+                    <?php if (!empty($revision['reason'])): ?><p class="font-10 color-blue-dark mb-0 mt-2 text-break"><strong>Alasan:</strong> <?= e($revision['reason']) ?></p><?php endif; ?>
+                </div>
+            <?php endforeach; ?>
+        <?php endif; ?>
+    </div>
+</div>
+
+<div class="card card-style"><div class="content mb-2"><p class="font-600 color-highlight mb-n1">Transaksi registrasi</p><h4>Riwayat Pembayaran</h4>
+    <?php if (!$registration['payments']): ?><div class="text-center opacity-60 py-4">Belum ada pembayaran.</div><?php endif; ?>
+    <?php foreach ($registration['payments'] as $payment): ?>
+        <?php
+        $paymentHistory = isset($payment['status_history']) && is_array($payment['status_history']) ? $payment['status_history'] : array();
+        $paymentStatusLabels = array('pending'=>'Menunggu verifikasi','verified'=>'Terverifikasi','rejected'=>'Ditolak');
+        $reviewerName = $payment['status'] === 'rejected'
+            ? (!empty($payment['rejector_name']) ? $payment['rejector_name'] : (!empty($payment['verifier_name']) ? $payment['verifier_name'] : 'Pengguna tidak tersedia'))
+            : (!empty($payment['verifier_name']) ? $payment['verifier_name'] : 'Pengguna tidak tersedia');
+        $reviewedAt = $payment['status'] === 'rejected'
+            ? (!empty($payment['rejected_at']) ? $payment['rejected_at'] : $payment['verified_at'])
+            : $payment['verified_at'];
+        ?>
+        <div class="card bg-theme border rounded-s shadow-0 mb-3"><div class="content my-3">
+            <div class="d-flex align-items-start"><span class="icon icon-s rounded-xl bg-green-light color-green-dark me-3"><i class="fa fa-receipt"></i></span><div class="min-width-zero"><p class="font-10 color-highlight font-600 mb-n1"><?= e($payment['receipt_no']) ?></p><h4 class="font-17 mb-0 simp-balance-value"><?= rupiah($payment['amount']) ?></h4></div><div class="ms-auto"><?= status_badge($payment['status']) ?></div></div>
+            <div class="divider mt-3 mb-2"></div>
+            <div class="d-flex py-2 border-bottom"><span class="opacity-60">Tanggal</span><strong class="ms-auto"><?= tanggal_id($payment['payment_date']) ?></strong></div>
+            <div class="d-flex py-2 border-bottom"><span class="opacity-60">Untuk</span><strong class="ms-auto text-end"><?= e($payment['participant_name'] ?: $registration['village_name']) ?></strong></div>
+            <div class="d-flex py-2 border-bottom"><span class="opacity-60">Metode / Akun</span><strong class="ms-auto text-end"><?= e(ucfirst($payment['method']).' · '.$payment['account_name']) ?></strong></div>
+            <div class="d-flex py-2 border-bottom"><span class="opacity-60">Dicatat oleh</span><strong class="ms-auto text-end"><?= e(!empty($payment['creator_name']) ? $payment['creator_name'] : 'Pengguna tidak tersedia') ?><br><small class="font-10 font-400 opacity-60"><?= e(tanggal_id($payment['created_at'], TRUE)) ?></small></strong></div>
+            <?php if ($payment['status'] !== 'pending' && !empty($reviewedAt)): ?><div class="d-flex py-2 border-bottom"><span class="opacity-60"><?= $payment['status'] === 'verified' ? 'Diverifikasi oleh' : 'Ditolak oleh' ?></span><strong class="ms-auto text-end"><?= e($reviewerName) ?><br><small class="font-10 font-400 opacity-60"><?= e(tanggal_id($reviewedAt, TRUE)) ?></small></strong></div><?php endif; ?>
+            <div class="d-flex align-items-center py-2"><span class="opacity-60">Bukti</span><div class="ms-auto"><?php if($payment['proof_path']): ?><a class="btn btn-xxs border-blue-dark color-blue-dark rounded-s font-600" target="_blank" rel="noopener" href="<?= site_url('dokumen/pembayaran/'.$payment['id']) ?>"><i class="fa fa-paperclip me-1"></i>Lihat</a><?php else: ?><span class="opacity-50">Belum ada</span><?php endif; ?></div></div>
+            <?php if ($paymentHistory): ?><div class="rounded-s bg-gray-light px-3 py-2 mt-2"><p class="font-11 font-600 mb-1"><i class="fa fa-history me-1"></i>Jejak status</p><?php foreach ($paymentHistory as $statusHistory): ?><p class="font-10 mb-1 text-break"><strong><?= e(isset($paymentStatusLabels[$statusHistory['to_status']]) ? $paymentStatusLabels[$statusHistory['to_status']] : ucfirst($statusHistory['to_status'])) ?></strong> · <?= e(!empty($statusHistory['actor_label']) ? $statusHistory['actor_label'] : 'Pengguna tidak tersedia') ?><?php if (!empty($statusHistory['occurred_at'])): ?> · <?= e(tanggal_id($statusHistory['occurred_at'], TRUE)) ?><?php endif; ?></p><?php endforeach; ?></div><?php endif; ?>
+            <?php if($canReviewPayments): ?><div class="divider mt-2 mb-3"></div><div class="row mb-0"><?php if($payment['status']==='pending'): ?><div class="col-6 pe-1"><form method="post" action="<?= site_url('registrations/verify_payment/'.$payment['id']) ?>" data-registration-payment-review><?= csrf_field() ?><input type="hidden" name="decision" value="verify"><button class="btn btn-full btn-m bg-green-dark color-white rounded-s font-600" type="submit">Verifikasi</button></form></div><div class="col-6 ps-1"><form method="post" action="<?= site_url('registrations/verify_payment/'.$payment['id']) ?>" data-registration-payment-review data-confirm="Tolak pembayaran ini?" data-confirm-button="Ya, Tolak" data-confirm-tone="danger"><?= csrf_field() ?><input type="hidden" name="decision" value="reject"><button class="btn btn-full btn-m border-red-dark color-red-dark rounded-s font-600" type="submit">Tolak</button></form></div><?php elseif($payment['status']==='verified'): ?><div class="col-12"><form method="post" action="<?= site_url('registrations/verify_payment/'.$payment['id']) ?>" data-registration-payment-review data-confirm="Tolak pembayaran terverifikasi ini? Saldo akun akan dikoreksi." data-confirm-button="Ya, Batalkan" data-confirm-tone="danger"><?= csrf_field() ?><input type="hidden" name="decision" value="reject"><button class="btn btn-full btn-m border-red-dark color-red-dark rounded-s font-600" type="submit">Batalkan Verifikasi</button></form></div><?php endif; ?></div><?php endif; ?>
+        </div></div>
+    <?php endforeach; ?>
+</div></div>
+</div>
+
+<?php if ($canAddParticipant): ?>
+    <?php $positionPayload = array(); foreach ($positions as $position) $positionPayload[] = array('id'=>(int)$position['id'],'name'=>$position['name'],'category'=>isset($position['category_label'])?$position['category_label']:(isset($position['category'])?$position['category']:'Lainnya')); ?>
+    <a id="registration-participant-opener" href="#" class="d-none" data-menu="registration-participant-modal" aria-hidden="true" tabindex="-1"></a>
+    <div id="registration-participant-modal" class="menu menu-box-modal rounded-m" data-menu-width="390" data-menu-height="560" role="dialog" aria-modal="true" aria-labelledby="registration-participant-title"><div class="content mb-0"><div class="d-flex align-items-start mb-3"><div><p class="font-600 color-highlight mb-n1">Peserta baru</p><h3 id="registration-participant-title" class="font-20 mb-0">Tambah Peserta</h3></div><button type="button" class="close-menu btn btn-xxs bg-theme color-theme border rounded-s ms-auto"><i class="fa fa-times"></i></button></div><div class="d-flex align-items-center rounded-s bg-blue-light px-3 py-2 mb-3"><span class="icon icon-s rounded-xl bg-blue-dark color-white me-3"><i class="fa fa-map-marker-alt"></i></span><div class="min-width-zero"><p class="font-10 color-blue-dark font-600 mb-n1">Desa registrasi</p><p class="font-12 font-600 mb-0 text-break"><?= e($registration['village_name'].' · '.$registration['district_name']) ?></p></div></div><form id="registration-participant-form" method="post" action="<?= site_url('registrasi/'.$registration['id'].'/ajax/tambah-peserta') ?>" data-positions="<?= e(json_encode($positionPayload, JSON_HEX_TAG|JSON_HEX_APOS|JSON_HEX_AMP|JSON_HEX_QUOT)) ?>"><?= csrf_field() ?><input type="hidden" name="village_id" value="<?= e($registration['village_id']) ?>"><div id="registration-participant-rows"></div><button type="button" class="btn btn-full btn-m border-blue-dark color-blue-dark rounded-s font-600 mb-2" data-detail-add-row><i class="fa fa-plus me-1"></i> Tambah peserta lagi</button><button type="submit" class="btn btn-full btn-m gradient-highlight rounded-s font-600" data-detail-add-submit><i class="fa fa-save me-1"></i> Simpan Peserta</button></form></div></div>
+    <a id="registration-participant-mutation-opener" href="#" class="d-none" data-menu="registration-participant-mutation-modal" aria-hidden="true" tabindex="-1"></a>
+    <div id="registration-participant-mutation-modal" class="menu menu-box-modal rounded-m" data-menu-width="390" data-menu-height="620" role="dialog" aria-modal="true" aria-labelledby="registration-participant-mutation-title"><div class="content mb-0"><div class="d-flex align-items-start mb-3"><div><p class="font-600 color-highlight mb-n1" data-participant-mutation-eyebrow>Peserta</p><h3 id="registration-participant-mutation-title" class="font-20 mb-0" data-participant-mutation-title>Ubah Peserta</h3></div><button type="button" class="close-menu btn btn-xxs bg-theme color-theme border rounded-s ms-auto" aria-label="Tutup"><i class="fa fa-times"></i></button></div><div class="rounded-s bg-blue-light px-3 py-2 mb-3"><p class="font-10 color-blue-dark font-600 mb-n1">Peserta terpilih</p><p class="font-13 font-700 mb-0 text-break" data-participant-mutation-target><?= e($registration['village_name']) ?></p></div><form id="registration-participant-mutation-form" method="post" action="<?= site_url('registrasi/'.$registration['id'].'/ajax/peserta/0/ubah') ?>" data-action-base="<?= site_url('registrasi/'.$registration['id'].'/ajax/peserta') ?>" data-positions="<?= e(json_encode($positionPayload, JSON_HEX_TAG|JSON_HEX_APOS|JSON_HEX_AMP|JSON_HEX_QUOT)) ?>" data-registration-mutation-form="participant"><?= csrf_field() ?><input type="hidden" name="participant_id" id="registration-participant-mutation-id"><div class="input-style has-borders no-icon input-style-always-active mb-4"><input class="form-control" type="text" id="registration-participant-mutation-name" name="full_name" maxlength="160" required placeholder="Nama lengkap peserta"><label for="registration-participant-mutation-name" class="color-highlight">Nama lengkap</label><i class="fa fa-times disabled invalid color-red-dark"></i><i class="fa fa-check disabled valid color-green-dark"></i><em>(wajib)</em></div><div class="input-style has-borders no-icon input-style-always-active mb-4 position-picker" id="registration-participant-mutation-position-picker" data-position-picker data-position-value-id="registration-participant-mutation-position-value"><input class="form-control" type="search" id="registration-participant-mutation-position" list="registration-participant-mutation-position-list" autocomplete="off" spellcheck="false" required data-position-search aria-autocomplete="list" placeholder="Ketik untuk mencari jabatan"><label for="registration-participant-mutation-position" class="color-highlight">Jabatan</label><i class="fa fa-times disabled invalid color-red-dark"></i><i class="fa fa-check disabled valid color-green-dark"></i><em>(wajib)</em><datalist id="registration-participant-mutation-position-list"><?php foreach ($positionPayload as $position): ?><option value="<?= e($position['name']) ?>" label="<?= e($position['category']) ?>" data-position-id="<?= (int) $position['id'] ?>"></option><?php endforeach; ?></datalist></div><input type="hidden" name="position_id" id="registration-participant-mutation-position-value" data-position-value><div class="input-style has-borders no-icon input-style-always-active mb-4"><input class="form-control" type="tel" id="registration-participant-mutation-phone" name="phone" maxlength="30" placeholder="08xxxxxxxxxx"><label for="registration-participant-mutation-phone" class="color-highlight">No. HP</label><i class="fa fa-times disabled invalid color-red-dark"></i><i class="fa fa-check disabled valid color-green-dark"></i><em>(opsional)</em></div><div id="registration-participant-replace-reason-wrap" class="d-none"><div class="input-style has-borders no-icon input-style-always-active mb-3"><textarea class="form-control" id="registration-participant-replace-reason" name="reason" rows="3" maxlength="500" placeholder="Alasan mengganti peserta"></textarea><label for="registration-participant-replace-reason" class="color-highlight">Alasan penggantian</label><i class="fa fa-times disabled invalid color-red-dark"></i><i class="fa fa-check disabled valid color-green-dark"></i><em data-replace-reason-required-label>(wajib)</em></div></div><div class="row mb-0"><div class="col-5 pe-1"><button type="button" class="close-menu btn btn-full btn-m bg-theme color-theme border rounded-s font-600">Batal</button></div><div class="col-7 ps-1"><button type="submit" class="btn btn-full btn-m gradient-highlight rounded-s font-600" data-participant-mutation-submit><i class="fa fa-save me-1"></i>Simpan</button></div></div></form></div></div>
+    <a id="registration-participant-deactivate-opener" href="#" class="d-none" data-menu="registration-participant-deactivate-modal" aria-hidden="true" tabindex="-1"></a>
+    <div id="registration-participant-deactivate-modal" class="menu menu-box-modal rounded-m" data-menu-width="390" data-menu-height="430" role="dialog" aria-modal="true" aria-labelledby="registration-participant-deactivate-title"><div class="content mb-0"><div class="d-flex align-items-start mb-3"><div><p class="font-600 color-red-dark mb-n1">Peserta</p><h3 id="registration-participant-deactivate-title" class="font-20 mb-0">Nonaktifkan Peserta</h3></div><button type="button" class="close-menu btn btn-xxs bg-theme color-theme border rounded-s ms-auto" aria-label="Tutup"><i class="fa fa-times"></i></button></div><div class="rounded-s bg-red-light px-3 py-3 mb-3"><p class="font-11 color-red-dark font-600 mb-n1">Peserta yang dinonaktifkan tidak tampil pada daftar aktif.</p><p class="font-14 font-700 mb-0 text-break" data-participant-deactivate-target>-</p></div><form id="registration-participant-deactivate-form" method="post" action="<?= site_url('registrasi/'.$registration['id'].'/ajax/peserta/0/nonaktifkan') ?>" data-action-base="<?= site_url('registrasi/'.$registration['id'].'/ajax/peserta') ?>" data-registration-mutation-form="deactivate"><?= csrf_field() ?><input type="hidden" name="participant_id" id="registration-participant-deactivate-id"><div class="input-style has-borders no-icon input-style-always-active mb-3"><textarea class="form-control" id="registration-participant-deactivate-reason" name="reason" rows="3" maxlength="2000" required placeholder="Contoh: peserta mengundurkan diri"></textarea><label for="registration-participant-deactivate-reason" class="color-highlight">Alasan menonaktifkan</label><i class="fa fa-times disabled invalid color-red-dark"></i><i class="fa fa-check disabled valid color-green-dark"></i><em>(wajib)</em></div><div class="row mb-0"><div class="col-5 pe-1"><button type="button" class="close-menu btn btn-full btn-m bg-theme color-theme border rounded-s font-600">Batal</button></div><div class="col-7 ps-1"><button type="submit" class="btn btn-full btn-m border-red-dark color-red-dark rounded-s font-600" data-participant-deactivate-submit><i class="fa fa-user-slash me-1"></i>Nonaktifkan</button></div></div></form></div></div>
+    <a id="registration-cancel-opener" href="#" class="d-none" data-menu="registration-cancel-modal" aria-hidden="true" tabindex="-1"></a>
+    <div id="registration-cancel-modal" class="menu menu-box-modal rounded-m" data-menu-width="390" data-menu-height="430" role="dialog" aria-modal="true" aria-labelledby="registration-cancel-title"><div class="content mb-0"><div class="d-flex align-items-start mb-3"><div><p class="font-600 color-red-dark mb-n1">Registrasi</p><h3 id="registration-cancel-title" class="font-20 mb-0">Batalkan Registrasi</h3></div><button type="button" class="close-menu btn btn-xxs bg-theme color-theme border rounded-s ms-auto" aria-label="Tutup"><i class="fa fa-times"></i></button></div><div class="rounded-s bg-red-light px-3 py-3 mb-3"><p class="font-11 color-red-dark font-600 mb-n1">Registrasi dan peserta aktif akan dihentikan.</p><p class="font-14 font-700 mb-0 text-break"><?= e($registration['village_name'].' · '.$registration['district_name']) ?></p></div><form id="registration-cancel-form" method="post" action="<?= site_url('registrasi/'.$registration['id'].'/ajax/batalkan') ?>" data-registration-mutation-form="cancel"><?= csrf_field() ?><div class="input-style has-borders no-icon input-style-always-active mb-3"><textarea class="form-control" id="registration-cancel-reason" name="reason" rows="3" maxlength="2000" required placeholder="Contoh: registrasi dibatalkan oleh desa"></textarea><label for="registration-cancel-reason" class="color-highlight">Alasan pembatalan</label><i class="fa fa-times disabled invalid color-red-dark"></i><i class="fa fa-check disabled valid color-green-dark"></i><em>(wajib)</em></div><div class="row mb-0"><div class="col-5 pe-1"><button type="button" class="close-menu btn btn-full btn-m bg-theme color-theme border rounded-s font-600">Batal</button></div><div class="col-7 ps-1"><button type="submit" class="btn btn-full btn-m border-red-dark color-red-dark rounded-s font-600" data-registration-cancel-submit><i class="fa fa-ban me-1"></i>Batalkan</button></div></div></form></div></div>
+<?php endif; ?>
+
+<?php if ($canRestoreRegistration): ?>
+    <a id="registration-restore-opener" href="#" class="d-none" data-menu="registration-restore-modal" aria-hidden="true" tabindex="-1"></a>
+    <div id="registration-restore-modal" class="menu menu-box-modal rounded-m" data-menu-width="390" data-menu-height="430" role="dialog" aria-modal="true" aria-labelledby="registration-restore-title"><div class="content mb-0"><div class="d-flex align-items-start mb-3"><div><p class="font-600 color-green-dark mb-n1">Pemulihan data</p><h3 id="registration-restore-title" class="font-20 mb-0">Pulihkan Registrasi</h3></div><button type="button" class="close-menu btn btn-xxs bg-theme color-theme border rounded-s ms-auto" aria-label="Tutup"><i class="fa fa-times"></i></button></div><div class="rounded-s bg-green-light px-3 py-3 mb-3"><p class="font-11 color-green-dark font-600 mb-n1">Peserta dari pembatalan terakhir akan diaktifkan kembali.</p><p class="font-14 font-700 mb-0 text-break"><?= e($registration['village_name'].' · '.$registration['district_name']) ?></p></div><form id="registration-restore-form" method="post" action="<?= site_url('registrasi/'.$registration['id'].'/ajax/pulihkan') ?>" data-registration-mutation-form="restore"><?= csrf_field() ?><div class="input-style has-borders no-icon input-style-always-active mb-3"><textarea class="form-control" id="registration-restore-reason" name="reason" rows="3" maxlength="500" required placeholder="Contoh: pembatalan sebelumnya keliru"></textarea><label for="registration-restore-reason" class="color-highlight">Alasan pemulihan</label><i class="fa fa-times disabled invalid color-red-dark"></i><i class="fa fa-check disabled valid color-green-dark"></i><em>(wajib)</em></div><div class="row mb-0"><div class="col-5 pe-1"><button type="button" class="close-menu btn btn-full btn-m bg-theme color-theme border rounded-s font-600">Batal</button></div><div class="col-7 ps-1"><button type="submit" class="btn btn-full btn-m bg-green-dark color-white rounded-s font-600" data-registration-restore-submit><i class="fa fa-undo me-1"></i>Pulihkan</button></div></div></form></div></div>
+<?php endif; ?>
+
+<?php if ($canRecordPayment): ?>
+    <a id="registration-payment-opener" href="#" class="d-none" data-menu="registration-payment-modal" aria-hidden="true" tabindex="-1"></a>
+    <div id="registration-payment-modal" class="menu menu-box-modal rounded-m" data-menu-width="390" data-menu-height="650" role="dialog" aria-modal="true" aria-labelledby="registration-payment-title"><div class="content mb-0"><div class="d-flex align-items-start mb-3"><div><p class="font-600 color-highlight mb-n1">Transaksi masuk</p><h3 id="registration-payment-title" class="font-20 mb-0">Catat Pembayaran</h3></div><button type="button" class="close-menu btn btn-xxs bg-theme color-theme border rounded-s ms-auto"><i class="fa fa-times"></i></button></div><div class="rounded-s bg-green-light px-3 py-3 mb-3"><p class="font-11 color-green-dark font-600 mb-n1">Untuk</p><p class="font-14 font-700 mb-1" data-payment-target-label><?= e($registration['village_name']) ?></p><p class="font-11 opacity-60 mb-0">Sisa tagihan: <strong data-payment-target-remaining-text><?= rupiah($remainingCommitted) ?></strong></p></div><form id="registration-payment-form" method="post" enctype="multipart/form-data" action="<?= site_url('registrasi/'.$registration['id'].'/ajax/catat-bayar') ?>" data-accounts="<?= e(json_encode($accountPayload, JSON_HEX_TAG|JSON_HEX_APOS|JSON_HEX_AMP|JSON_HEX_QUOT)) ?>" data-default-date="<?= date('Y-m-d') ?>"><?= csrf_field() ?><input type="hidden" name="participant_id" id="registration-payment-participant"><div class="row mb-0"><div class="col-12"><div class="input-style has-borders no-icon input-style-always-active mb-4"><input class="form-control" type="date" name="payment_date" id="registration-payment-date" value="<?= date('Y-m-d') ?>" required><label for="registration-payment-date" class="color-highlight">Tanggal</label><i class="fa fa-check disabled valid color-green-dark"></i><i class="fa fa-times disabled invalid color-red-dark"></i><em>(wajib)</em></div></div><div class="col-12"><div class="input-style has-borders no-icon input-style-always-active mb-4"><label for="registration-payment-method" class="color-highlight">Metode</label><select name="method" id="registration-payment-method" required><option value="cash">Tunai</option><option value="transfer">Transfer</option><option value="qris">QRIS</option></select><span><i class="fa fa-chevron-down"></i></span><i class="fa fa-check disabled valid color-green-dark"></i><i class="fa fa-times disabled invalid color-red-dark"></i><em>(wajib)</em></div></div><div class="col-12"><div class="input-style has-borders no-icon input-style-always-active mb-4"><label for="registration-payment-account" class="color-highlight">Akun penerima</label><select name="account_id" id="registration-payment-account" required><option value="">Pilih akun</option></select><span><i class="fa fa-chevron-down"></i></span><i class="fa fa-check disabled valid color-green-dark"></i><i class="fa fa-times disabled invalid color-red-dark"></i><em>(wajib)</em></div></div><div class="col-12"><div class="input-style has-borders no-icon input-style-always-active mb-4"><input class="form-control" type="number" min="1" step="1" name="amount" id="registration-payment-amount" required><label for="registration-payment-amount" class="color-highlight">Nominal</label><i class="fa fa-check disabled valid color-green-dark"></i><i class="fa fa-times disabled invalid color-red-dark"></i><em>(wajib)</em></div><p class="font-10 opacity-60 mt-n3 mb-4" data-payment-max-label></p></div><div class="col-12"><div class="input-style has-borders no-icon input-style-always-active mb-4"><input class="form-control" type="file" name="proof" id="registration-payment-proof" accept="image/jpeg,image/png,application/pdf" style="padding-top:13px;"><label for="registration-payment-proof" class="color-highlight">Bukti pembayaran</label><i class="fa fa-check disabled valid color-green-dark"></i><i class="fa fa-times disabled invalid color-red-dark"></i><em id="registration-payment-proof-label">(opsional)</em></div></div><div class="col-12"><div class="input-style has-borders no-icon input-style-always-active mb-3"><textarea name="note" id="registration-payment-note" rows="2" maxlength="2000" placeholder="Catatan (opsional)"></textarea><label for="registration-payment-note" class="color-highlight">Catatan</label><i class="fa fa-check disabled valid color-green-dark"></i><i class="fa fa-times disabled invalid color-red-dark"></i><em class="mt-n3">(opsional)</em></div></div></div><button type="submit" class="btn btn-full btn-m gradient-highlight rounded-s font-600" data-payment-submit><i class="fa fa-save me-1"></i> Simpan Pembayaran</button></form></div></div>
+<?php endif; ?>

@@ -1,0 +1,13 @@
+{
+    "name": "simp/training-management",
+    "description": "Sistem Informasi Manajemen Pelatihan berbasis CodeIgniter 3",
+    "type": "project",
+    "license": "proprietary",
+    "require": {
+        "dompdf/dompdf": "^3.1",
+        "phpoffice/phpspreadsheet": "~2.1.18"
+    },
+    "config": {
+        "sort-packages": true
+    }
+}
