@@ -8,13 +8,13 @@
     <meta name="apple-mobile-web-app-title" content="MVIN">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="application-name" content="MVIN">
-    <meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1, maximum-scale=1, viewport-fit=cover">
+    <meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1, maximum-scale=5, user-scalable=yes, viewport-fit=cover">
     <meta name="theme-color" content="#4A89DC">
     <title><?= e($pageTitle) ?> | MVIN</title>
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@100;200;300;400;500;600;700;800;900&amp;display=swap">
     <link rel="stylesheet" type="text/css" href="<?= base_url('assets/v22/styles/bootstrap.css') ?>">
     <link rel="stylesheet" type="text/css" href="<?= base_url('assets/v22/fonts/css/fontawesome-all.min.css') ?>">
-    <link rel="stylesheet" type="text/css" href="<?= base_url('assets/css/simp-v22.css') ?>?v=33">
+    <link rel="stylesheet" type="text/css" href="<?= base_url('assets/css/simp-v22.css') ?>?v=34">
     <link rel="manifest" href="<?= base_url('manifest.webmanifest') ?>">
     <link rel="icon" type="image/png" sizes="192x192" href="<?= base_url('assets/pwa/icon-192.png') ?>">
     <link rel="apple-touch-icon" sizes="180x180" href="<?= base_url('assets/pwa/icon-180.png') ?>">
@@ -116,7 +116,7 @@ if (!empty($pageScripts) && is_array($pageScripts)) $resolvedPageScripts = array
 $resolvedPageScripts = array_values(array_unique(array_filter($resolvedPageScripts)));
 ?>
 <?php foreach ($resolvedPageScripts as $resolvedPageScript): ?>
-    <script src="<?= base_url('assets/js/' . basename($resolvedPageScript)) ?>?v=28"></script>
+    <script src="<?= base_url('assets/js/' . basename($resolvedPageScript)) ?>?v=29"></script>
 <?php endforeach; ?>
 </body>
 </html>

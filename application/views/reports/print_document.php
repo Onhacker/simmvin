@@ -62,12 +62,12 @@ $accountSummary = array_merge(array(
 <html lang="id">
 <head>
     <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=5, user-scalable=yes">
     <title><?= e($documentTitle) ?> | MVIN</title>
     <style>
         @page { size: 210mm 330mm; margin: 12mm 10mm 14mm; }
         * { box-sizing: border-box; }
-        html, body { margin: 0; padding: 0; color: #111827; font-family: "DejaVu Sans", Arial, sans-serif; font-size: 9px; line-height: 1.45; }
+        html, body { margin: 0; padding: 0; color: #111827; font-family: "DejaVu Sans", Arial, sans-serif; font-size: 9px; line-height: 1.45; touch-action: pan-x pan-y; }
         body { background: #e9eef5; }
         .screen-note { width: 210mm; max-width: calc(100% - 24px); margin: 14px auto 0; padding: 9px 12px; border: 1px solid #bfd2ee; border-radius: 8px; background: #eef5ff; color: #174b8b; font-size: 12px; text-align: center; }
         .sheet-stage { width: 210mm; min-height: 330mm; margin: 14px auto 24px; }
@@ -488,6 +488,7 @@ $accountSummary = array_merge(array(
     window.addEventListener('resize', fitSheet);
 }());
 </script>
+<script src="<?= e(base_url('assets/js/print-preview.js')) ?>?v=1"></script>
 <?php endif; ?>
 </body>
 </html>

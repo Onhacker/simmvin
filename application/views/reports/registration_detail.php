@@ -64,12 +64,12 @@ if ($eventLocation === '') $eventLocation = '-';
 <html lang="id">
 <head>
     <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=5, user-scalable=yes">
     <title>Laporan Detail Registrasi | MVIN</title>
     <style>
         @page { size: 210mm 330mm; margin: 12mm 10mm 14mm; }
         * { box-sizing: border-box; }
-        html, body { margin: 0; padding: 0; color: #111827; font-family: "DejaVu Sans", Arial, sans-serif; font-size: 9px; line-height: 1.4; }
+        html, body { margin: 0; padding: 0; color: #111827; font-family: "DejaVu Sans", Arial, sans-serif; font-size: 9px; line-height: 1.4; touch-action: pan-x pan-y; }
         body { background: #e9eef5; }
         .sheet-stage { width: 210mm; min-height: 330mm; margin: 14px auto 24px; }
         .sheet { width: 210mm; min-height: 330mm; margin: 0; padding: 12mm 10mm 14mm; background: #fff; box-shadow: 0 10px 34px rgba(15, 23, 42, .14); transform-origin: top left; }
@@ -269,6 +269,7 @@ if ($eventLocation === '') $eventLocation = '-';
     window.addEventListener('resize', fitSheet);
 }());
 </script>
+<script src="<?= e(base_url('assets/js/print-preview.js')) ?>?v=1"></script>
 <?php endif; ?>
 </body>
 </html>

@@ -37,12 +37,12 @@ elseif (count($reportEvents) > 1) $eventScope = number_format(count($reportEvent
 <html lang="id">
 <head>
     <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=5, user-scalable=yes">
     <title><?= e($documentTitle) ?> | MVIN</title>
     <style>
         @page { size: 330mm 210mm; margin: 9mm 9mm 11mm; }
         * { box-sizing: border-box; }
-        html, body { margin: 0; padding: 0; color: #111; font-family: "DejaVu Sans", Arial, sans-serif; font-size: 9.5px; line-height: 1.35; }
+        html, body { margin: 0; padding: 0; color: #111; font-family: "DejaVu Sans", Arial, sans-serif; font-size: 9.5px; line-height: 1.35; touch-action: pan-x pan-y; }
         body { background: #e9eef5; }
         .sheet-stage { width: 330mm; min-height: 210mm; margin: 14px auto 24px; }
         .sheet { width: 330mm; min-height: 210mm; padding: 9mm 9mm 11mm; background: #fff; box-shadow: 0 10px 34px rgba(15, 23, 42, .14); transform-origin: top left; }
@@ -203,6 +203,7 @@ elseif (count($reportEvents) > 1) $eventScope = number_format(count($reportEvent
     window.addEventListener('resize', fitSheet);
 }());
 </script>
+<script src="<?= e(base_url('assets/js/print-preview.js')) ?>?v=1"></script>
 <?php endif; ?>
 </body>
 </html>

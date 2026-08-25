@@ -830,7 +830,10 @@ body {
   position: relative;
   flex: 1 1 auto;
   min-height: 0;
-  overflow: hidden;
+  overflow: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+  touch-action: pan-x pan-y pinch-zoom;
   border: 1px solid #d7dee8;
   border-radius: 10px;
   background: #e9eef5;
@@ -842,6 +845,7 @@ body {
   height: 100%;
   border: 0;
   background: #fff;
+  touch-action: pan-x pan-y pinch-zoom;
 }
 
 .simp-print-frame-loading {

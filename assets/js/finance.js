@@ -284,6 +284,74 @@
     });
   }
 
+  function reportTouchDistance(touches) {
+    if (!touches || touches.length < 2) return 0;
+    var dx = touches[0].clientX - touches[1].clientX;
+    var dy = touches[0].clientY - touches[1].clientY;
+    return Math.sqrt((dx * dx) + (dy * dy));
+  }
+
+  /*
+   * Reports also load a small standalone pinch handler. This parent-side
+   * fallback covers cached/older report documents and keeps the percentage
+   * label in sync when a preview is embedded in an application modal.
+   */
+  function installReportPinchZoom(frame, previewApi) {
+    if (!frame || !previewApi || typeof previewApi.getZoom !== 'function' || typeof previewApi.setZoom !== 'function') return;
+    var reportDocument;
+    try { reportDocument = frame.contentDocument; } catch (error) { reportDocument = null; }
+    if (!reportDocument || !reportDocument.documentElement) return;
+
+    var surface = reportDocument.documentElement;
+    if (surface.getAttribute('data-simp-pinch-zoom') === 'true') return;
+    surface.setAttribute('data-simp-pinch-zoom', 'true');
+    surface.style.touchAction = 'pan-x pan-y';
+    if (reportDocument.body) reportDocument.body.style.touchAction = 'pan-x pan-y';
+
+    var pinch = null;
+    var webkitGestureZoom = null;
+    function start(event) {
+      if (webkitGestureZoom !== null) return;
+      if (!event.touches || event.touches.length !== 2) return;
+      var distance = reportTouchDistance(event.touches);
+      if (distance <= 0) return;
+      pinch = {distance: distance, zoom: previewApi.getZoom()};
+      if (event.cancelable) event.preventDefault();
+    }
+    function move(event) {
+      if (webkitGestureZoom !== null) return;
+      if (!pinch || !event.touches || event.touches.length < 2) return;
+      var distance = reportTouchDistance(event.touches);
+      if (distance <= 0) return;
+      var percent = previewApi.setZoom(pinch.zoom * distance / pinch.distance);
+      updateReportZoomControls(frame, percent, true);
+      if (event.cancelable) event.preventDefault();
+    }
+    function end(event) {
+      if (!event.touches || event.touches.length < 2) pinch = null;
+    }
+    function startWebkitGesture(event) {
+      if (typeof event.scale !== 'number') return;
+      pinch = null;
+      webkitGestureZoom = previewApi.getZoom();
+      if (event.cancelable) event.preventDefault();
+    }
+    function changeWebkitGesture(event) {
+      if (webkitGestureZoom === null || typeof event.scale !== 'number') return;
+      var percent = previewApi.setZoom(webkitGestureZoom * event.scale);
+      updateReportZoomControls(frame, percent, true);
+      if (event.cancelable) event.preventDefault();
+    }
+    function endWebkitGesture() { webkitGestureZoom = null; }
+    reportDocument.addEventListener('touchstart', start, {capture:true, passive:false});
+    reportDocument.addEventListener('touchmove', move, {capture:true, passive:false});
+    reportDocument.addEventListener('touchend', end, {capture:true, passive:true});
+    reportDocument.addEventListener('touchcancel', end, {capture:true, passive:true});
+    reportDocument.addEventListener('gesturestart', startWebkitGesture, {capture:true, passive:false});
+    reportDocument.addEventListener('gesturechange', changeWebkitGesture, {capture:true, passive:false});
+    reportDocument.addEventListener('gestureend', endWebkitGesture, {capture:true, passive:true});
+  }
+
   all('[data-report-preview-frame]').forEach(function (frame) {
     frame.addEventListener('load', function () {
       var shell = frame.closest('.simp-print-frame-shell');
@@ -297,6 +365,7 @@
       var previewApi = validDocument && frame.contentWindow ? frame.contentWindow.SIMPPrintPreview : null;
       var zoomPercent = previewApi && typeof previewApi.reset === 'function' ? previewApi.reset() : 100;
       updateReportZoomControls(frame, zoomPercent, !!previewApi);
+      if (validDocument && previewApi) installReportPinchZoom(frame, previewApi);
       if (!shell) return;
       shell.classList.toggle('is-loaded', validDocument);
       shell.classList.toggle('is-error', !validDocument);
@@ -304,6 +373,18 @@
         var loading = shell.querySelector('[data-report-preview-loading]');
         if (loading) loading.innerHTML = '<i class="fa fa-exclamation-circle color-red-dark"></i><span>Pratinjau gagal dimuat. Muat ulang halaman lalu coba kembali.</span>';
       }
+    });
+  });
+
+  // The standalone report handler posts zoom changes so the modal toolbar
+  // remains accurate while the user pinches inside the iframe.
+  window.addEventListener('message', function (event) {
+    var payload = event && event.data;
+    if (!payload || payload.type !== 'simp-print-zoom' || !event.source) return;
+    all('[data-report-preview-frame]').some(function (frame) {
+      if (!frame.contentWindow || event.source !== frame.contentWindow) return false;
+      updateReportZoomControls(frame, payload.percent, true);
+      return true;
     });
   });
 

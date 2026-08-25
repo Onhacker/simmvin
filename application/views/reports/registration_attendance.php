@@ -115,12 +115,12 @@ if (!$pages) {
 <html lang="id">
 <head>
     <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=5, user-scalable=yes">
     <title>Daftar Registrasi | MVIN</title>
     <style>
         @page { size: 330mm 210mm; margin: 0; }
         * { box-sizing: border-box; }
-        html, body { margin: 0; padding: 0; color: #000; font-family: "DejaVu Sans", Arial, sans-serif; font-size: 9px; line-height: 1.3; }
+        html, body { margin: 0; padding: 0; color: #000; font-family: "DejaVu Sans", Arial, sans-serif; font-size: 9px; line-height: 1.3; touch-action: pan-x pan-y; }
         body { background: #e9eef5; }
         .sheet-stage { width: 330mm; min-height: 210mm; margin: 14px auto 24px; }
         .sheet { width: 330mm; margin: 0; transform-origin: top left; }
@@ -264,6 +264,7 @@ if (!$pages) {
     window.addEventListener('resize', fitSheet);
 }());
 </script>
+<script src="<?= e(base_url('assets/js/print-preview.js')) ?>?v=1"></script>
 <?php endif; ?>
 </body>
 </html>
