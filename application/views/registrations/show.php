@@ -113,7 +113,7 @@ foreach ($accounts as $account) $accountPayload[] = array('id'=>(int)$account['i
         <div class="registration-participant-section-head">
             <div><p class="font-600 color-highlight mb-n1">Data desa</p><h4 class="mb-0">Daftar Peserta</h4></div>
             <div class="registration-participant-section-actions">
-                <?php if ($canPrint): ?><a href="<?= site_url('event/'.(int)$registration['event_id'].'/registrasi/cetak') ?>" class="btn btn-xxs bg-theme color-theme border rounded-s font-600" data-report-preview-open="registration-detail-print-modal"><i class="fa fa-print me-1 color-highlight"></i>Cetak</a><?php endif; ?>
+                <?php if ($canPrint): ?><a href="<?= site_url('registrasi/'.(int)$registration['id'].'/cetak') ?>" class="btn btn-xxs bg-theme color-theme border rounded-s font-600" data-report-preview-open="registration-detail-print-modal"><i class="fa fa-print me-1 color-highlight"></i>Cetak</a><?php endif; ?>
                 <?php if ($canAddParticipant): ?><button type="button" class="btn btn-xxs gradient-highlight rounded-s font-600" data-registration-participant-open><i class="fa fa-user-plus me-1"></i>Tambah</button><?php endif; ?>
             </div>
         </div>
@@ -234,11 +234,10 @@ foreach ($accounts as $account) $accountPayload[] = array('id'=>(int)$account['i
 <?php if ($canPrint): ?>
     <?php $this->load->view('reports/print_modal', array(
         'printModalId' => 'registration-detail-print-modal',
-        'printModalTitle' => 'Daftar Registrasi Peserta',
-        'printPreviewUrl' => site_url('event/'.(int)$registration['event_id'].'/registrasi/cetak'),
-        'printPdfUrl' => site_url('event/'.(int)$registration['event_id'].'/registrasi/pdf'),
-        'printExcelUrl' => site_url('event/'.(int)$registration['event_id'].'/registrasi/excel'),
-        'printExcelLabel' => 'Excel Mailing',
+        'printModalTitle' => 'Laporan Detail Registrasi',
+        'printPreviewUrl' => site_url('registrasi/'.(int)$registration['id'].'/cetak'),
+        'printPdfUrl' => site_url('registrasi/'.(int)$registration['id'].'/pdf'),
+        'printExcelUrl' => '',
         'printFormatLabel' => '',
         'printPaperNote' => '',
         'printIconOnly' => TRUE

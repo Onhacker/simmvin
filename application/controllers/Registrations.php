@@ -148,6 +148,38 @@ class Registrations extends App_Controller
         }
     }
 
+    /** HTML preview containing only one village registration and its payments. */
+    public function detail_print_preview($registrationId)
+    {
+        $this->require_permission('registrations.view');
+        $data = $this->registration_detail_print_data((int) $registrationId);
+        $data['isPdf'] = FALSE;
+        $html = $this->load->view('reports/registration_detail', $data, TRUE);
+        return $this->private_document_output('text/html', $html);
+    }
+
+    /** Download one village registration as an operational F4 report. */
+    public function detail_pdf($registrationId)
+    {
+        $this->require_permission('registrations.view');
+        $data = $this->registration_detail_print_data((int) $registrationId);
+        $data['isPdf'] = TRUE;
+        $html = $this->load->view('reports/registration_detail', $data, TRUE);
+
+        try {
+            $this->load->library('Pdf_renderer');
+            $pdf = $this->pdf_renderer->render_f4($html);
+            return $this->private_document_output(
+                'application/pdf',
+                $pdf,
+                'attachment; filename="detail-registrasi-' . (int) $registrationId . '-' . date('Ymd-His') . '.pdf"'
+            );
+        } catch (Throwable $e) {
+            log_message('error', 'Gagal membuat PDF detail registrasi #' . (int) $registrationId . ': ' . $e->getMessage());
+            show_error('PDF detail registrasi belum dapat dibuat. Silakan coba kembali.', 500, 'PDF Gagal Dibuat');
+        }
+    }
+
     /** AJAX batch registration used by the compact add modal on the index page. */
     public function create_ajax()
     {
@@ -590,6 +622,21 @@ class Registrations extends App_Controller
             'rows' => $this->registration->participants_for_print(array((int) $event['id']), TRUE),
             'generatedAt' => date('Y-m-d H:i:s'),
             'isArchive' => TRUE
+        );
+    }
+
+    /** Build an immutable print snapshot for exactly one registration. */
+    private function registration_detail_print_data($registrationId)
+    {
+        $registration = $this->registration->get((int) $registrationId);
+        if (!$registration) show_404();
+        $event = $this->registration->get_event((int) $registration['event_id'], FALSE);
+        if (!$event) show_404();
+
+        return array(
+            'registration' => $registration,
+            'event' => $event,
+            'generatedAt' => date('Y-m-d H:i:s')
         );
     }
 
