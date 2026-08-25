@@ -22,7 +22,7 @@ Antarmuka menggunakan aset dan pola komponen AppKit yang sudah tersedia di folde
    mysql -u root -p simp < database/seed.sql
    ```
 
-5. Pastikan koneksi `REGIONAL_DB_*` menunjuk database `rab_new`. Aplikasi hanya membaca tabel master `data_provinsi`, `data_kota`, `data_kecamatan`, dan `data_desa` dari koneksi tersebut.
+5. Pastikan koneksi `REGIONAL_DB_*` menunjuk database master wilayah (default lokal `rab_new`). Host, port, pengguna, dan nama database boleh berbeda sepenuhnya dari `DB_*`; aplikasi hanya membaca tabel `data_provinsi`, `data_kota`, `data_kecamatan`, dan `data_desa` melalui koneksi terpisah tersebut.
 6. Buka `http://localhost/simp/`.
 
 Pada server Linux, pastikan proses PHP dapat menulis ke `application/cache`. Generator PDF otomatis memakai direktori sementara sistem sebagai cadangan apabila cache aplikasi tidak dapat ditulis.
