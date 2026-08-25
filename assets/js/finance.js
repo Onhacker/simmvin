@@ -111,15 +111,30 @@
     });
   }
 
-  function refreshExpenseCards() {
-    return fetch(window.location.href, {
+  var expenseRefreshSequence = 0;
+  var expenseRefreshController = null;
+
+  function refreshExpenseCards(targetUrl, options) {
+    options = options || {};
+    var requestUrl = targetUrl || window.location.href;
+    var requestSequence = ++expenseRefreshSequence;
+    if (expenseRefreshController && typeof expenseRefreshController.abort === 'function') expenseRefreshController.abort();
+    expenseRefreshController = typeof AbortController === 'function' ? new AbortController() : null;
+    var fetchOptions = {
+      credentials:'same-origin', cache:'no-store',
       headers:{'X-Requested-With':'XMLHttpRequest','Accept':'text/html'}
-    }).then(function (response) {
-      if (!response.ok || response.redirected) throw new Error('Daftar pengeluaran gagal diperbarui.');
+    };
+    if (expenseRefreshController) fetchOptions.signal = expenseRefreshController.signal;
+    return fetch(requestUrl, fetchOptions).then(function (response) {
+      var responseUrl = String(response.url || '');
+      if (response.redirected || response.status === 401 || /\/login(?:[/?#]|$)/i.test(responseUrl)) throw new Error('Sesi Anda telah berakhir. Silakan masuk kembali.');
+      if (!response.ok) throw new Error('Daftar pengeluaran gagal diperbarui.');
       return response.text();
     }).then(function (html) {
+      if (requestSequence !== expenseRefreshSequence) return;
       var parsed = new DOMParser().parseFromString(html, 'text/html');
-      var ids = ['expense-summary','expense-list'];
+      var ids = ['expense-summary','expense-list','expense-pagination'];
+      if (options.replaceFilters) ids.push('expense-filters');
       var replacements = ids.map(function (id) {
         return {current:document.getElementById(id), next:parsed.getElementById(id)};
       });
@@ -129,8 +144,79 @@
       replacements.forEach(function (item) {
         item.current.replaceWith(document.importNode(item.next, true));
       });
+      if (options.updateHistory !== false && window.history && window.history.replaceState) {
+        window.history.replaceState({}, '', requestUrl);
+      }
+    }).catch(function (error) {
+      if (error && error.name === 'AbortError') return;
+      throw error;
     });
   }
+
+  function expenseFilterUrl(page) {
+    var form = document.querySelector('[data-expense-filter-form]');
+    if (!form) return window.location.href;
+    var url = new URL(form.action || window.location.href, window.location.href);
+    var search = form.querySelector('[name="q"]');
+    var category = form.querySelector('[name="category_id"]');
+    var query = (search ? search.value : '').trim();
+    var categoryId = category ? category.value : '';
+    url.search = '';
+    if (query) url.searchParams.set('q', query);
+    if (categoryId) url.searchParams.set('category_id', categoryId);
+    var targetPage = parseInt(page, 10) || 1;
+    if (targetPage > 1) url.searchParams.set('page', String(targetPage));
+    return url.toString();
+  }
+
+  function requestExpenseFilter(url, replaceFilters) {
+    refreshExpenseCards(url, {replaceFilters:!!replaceFilters, updateHistory:true}).catch(function (error) {
+      if (error && error.name === 'AbortError') return;
+      expenseAlert(error.message || 'Daftar pengeluaran gagal diperbarui.', 'Filter Gagal', 'danger');
+    });
+  }
+
+  var expenseSearchTimer = null;
+  document.addEventListener('input', function (event) {
+    var search = event.target.closest('[data-expense-filter-form] [name="q"]');
+    if (!search) return;
+    if (expenseSearchTimer) window.clearTimeout(expenseSearchTimer);
+    expenseSearchTimer = window.setTimeout(function () {
+      requestExpenseFilter(expenseFilterUrl(1), false);
+    }, 350);
+  });
+
+  document.addEventListener('change', function (event) {
+    var category = event.target.closest('[data-expense-filter-form] [name="category_id"]');
+    if (category) {
+      if (expenseSearchTimer) window.clearTimeout(expenseSearchTimer);
+      expenseSearchTimer = null;
+      requestExpenseFilter(expenseFilterUrl(1), false);
+    }
+  });
+
+  document.addEventListener('submit', function (event) {
+    var filterForm = event.target.closest('[data-expense-filter-form]');
+    if (!filterForm) return;
+    event.preventDefault();
+    if (expenseSearchTimer) window.clearTimeout(expenseSearchTimer);
+    expenseSearchTimer = null;
+    requestExpenseFilter(expenseFilterUrl(1), false);
+  });
+
+  document.addEventListener('click', function (event) {
+    var pageLink = event.target.closest('[data-expense-page-link]');
+    if (pageLink) {
+      event.preventDefault();
+      requestExpenseFilter(pageLink.href, false);
+      return;
+    }
+    var reset = event.target.closest('[data-expense-filter-reset]');
+    if (reset) {
+      event.preventDefault();
+      requestExpenseFilter(reset.href, true);
+    }
+  });
 
   function expenseAlert(message, title, tone) {
     if (typeof window.simpAlert === 'function') window.simpAlert(message, {title:title,tone:tone});
@@ -221,7 +307,7 @@
         .then(function (payload) {
           var closer = document.querySelector('#expense-add-modal .close-menu');
           if (closer) closer.click();
-          return refreshExpenseCards().then(
+          return refreshExpenseCards(window.location.href, {replaceFilters:true, updateHistory:false}).then(
             function () { notifyExpensePersisted(payload, false, 'Pengeluaran'); },
             function () { notifyExpensePersisted(payload, true, 'Pengeluaran'); }
           );
@@ -252,7 +338,7 @@
     fetch(statusForm.action, {method:'POST',headers:headers,body:new FormData(statusForm)})
       .then(function (response) { return expenseJson(response, 'Status pengeluaran gagal diperbarui.'); })
       .then(function (payload) {
-        return refreshExpenseCards().then(
+        return refreshExpenseCards(window.location.href, {replaceFilters:false, updateHistory:false}).then(
           function () { notifyExpensePersisted(payload, false, 'Status'); },
           function () { notifyExpensePersisted(payload, true, 'Status'); }
         );

@@ -37,8 +37,17 @@ $expenseSummary = array(
 );
 $expenseGroups = array();
 if ($reportKind === 'expense') {
+    // Rejected transactions are kept in the operational list for audit
+    // purposes, but they must never be part of a printed financial report.
+    // Filter before calculating summaries and category totals so a rejected
+    // row cannot affect any amount, count, or grand total shown below.
+    $rows = array_values(array_filter($rows, function ($expenseRow) {
+        $status = isset($expenseRow['status']) ? strtolower(trim((string) $expenseRow['status'])) : 'pending';
+        return $status !== 'rejected';
+    }));
+
     foreach ($rows as $expenseRow) {
-        $status = isset($expenseRow['status']) ? $expenseRow['status'] : 'pending';
+        $status = isset($expenseRow['status']) ? strtolower(trim((string) $expenseRow['status'])) : 'pending';
         $total = $moneyCents($expenseRow['amount']) + $moneyCents($expenseRow['admin_fee']);
         if (isset($expenseSummary[$status . '_count'])) {
             $expenseSummary[$status . '_count']++;
@@ -228,13 +237,13 @@ $accountSummary = array_merge(array(
                 <td><span class="summary-label">Jumlah Transaksi</span><span class="summary-value"><?= number_format(count($rows)) ?></span></td>
                 <td><span class="summary-label">Terverifikasi</span><span class="summary-value positive"><?= e($printRupiah($expenseSummary['verified_total'])) ?></span></td>
                 <td><span class="summary-label">Menunggu</span><span class="summary-value"><?= e($printRupiah($expenseSummary['pending_total'])) ?></span></td>
-                <td><span class="summary-label">Ditolak</span><span class="summary-value negative"><?= e($printRupiah($expenseSummary['rejected_total'])) ?></span></td>
+                <td><span class="summary-label">Status Data</span><span class="summary-value"><?= number_format($expenseSummary['verified_count']) ?> / <?= number_format($expenseSummary['pending_count']) ?></span></td>
             </tr>
             <tr>
                 <td><span class="summary-label">Tunai Terverifikasi</span><span class="summary-value"><?= e($printRupiah($expenseSummary['cash_total'])) ?></span></td>
                 <td><span class="summary-label">Transfer Terverifikasi</span><span class="summary-value"><?= e($printRupiah($expenseSummary['transfer_total'])) ?></span></td>
                 <td><span class="summary-label">QRIS Terverifikasi</span><span class="summary-value"><?= e($printRupiah($expenseSummary['qris_total'])) ?></span></td>
-                <td><span class="summary-label">Data Status</span><span class="summary-value"><?= number_format($expenseSummary['verified_count']) ?> / <?= number_format($expenseSummary['pending_count']) ?> / <?= number_format($expenseSummary['rejected_count']) ?></span></td>
+                <td><span class="summary-label">Total Tercetak</span><span class="summary-value positive"><?= e($printRupiah($expenseSummary['verified_total'] + $expenseSummary['pending_total'])) ?></span></td>
             </tr>
         </table>
     <?php elseif ($reportKind === 'debt'): ?>

@@ -14,11 +14,38 @@ class Expenses extends App_Controller
     public function index()
     {
         $this->require_permission('expenses.view');
-        $data = $this->expense_report_data();
-        $this->render('expenses/index',array('pageTitle'=>'Pengeluaran','rows'=>$data['rows'],
-            'activeEvents'=>$data['activeEvents'],'categories'=>$this->finance->categories(),
-            'accounts'=>$this->finance->accounts(TRUE),'canVerify'=>$this->Auth_model->can('expenses.verify'),
-            'pageScript'=>'finance.js'));
+        $activeEvents = $this->finance->active_events();
+        $activeEventIds = array_map(function ($event) { return (int)$event['id']; }, $activeEvents);
+        $perPage = 20;
+        $filters = array(
+            'q' => $this->expense_query_string($this->input->get('q', TRUE)),
+            'category_id' => $this->expense_query_integer($this->input->get('category_id', TRUE)),
+            'page' => max(1, $this->expense_query_integer($this->input->get('page', TRUE)))
+        );
+        $filterCategories = $this->finance->expense_categories_in_use($activeEventIds);
+        $availableCategoryIds = array_map(function ($category) { return (int)$category['id']; }, $filterCategories);
+        if ($filters['category_id'] > 0 && !in_array($filters['category_id'], $availableCategoryIds, TRUE)) {
+            $filters['category_id'] = 0;
+        }
+        $queryFilters = array('event_ids' => $activeEventIds);
+        if ($filters['q'] !== '') $queryFilters['search'] = $filters['q'];
+        if ($filters['category_id'] > 0) $queryFilters['category_id'] = $filters['category_id'];
+        $summaryFilters = $queryFilters;
+        $totalRows = $activeEventIds ? $this->finance->expenses_count($queryFilters) : 0;
+        $totalPages = max(1, (int)ceil($totalRows / $perPage));
+        if ($filters['page'] > $totalPages) $filters['page'] = $totalPages;
+        $queryFilters['limit'] = $perPage;
+        $queryFilters['offset'] = ($filters['page'] - 1) * $perPage;
+        $rows = $activeEventIds ? $this->finance->expenses($queryFilters) : array();
+        $summary = $activeEventIds ? $this->finance->expenses_summary($summaryFilters) : array('total_count'=>0,'verified_total'=>'0.00');
+        $verifiedTotal = simp_money_from_cents((int)(simp_money_cents(isset($summary['verified_total']) ? $summary['verified_total'] : '0') ?: 0));
+        $this->render('expenses/index',array(
+            'pageTitle'=>'Pengeluaran', 'rows'=>$rows, 'activeEvents'=>$activeEvents,
+            'categories'=>$this->finance->categories(), 'filterCategories'=>$filterCategories,
+            'accounts'=>$this->finance->accounts(TRUE), 'canVerify'=>$this->Auth_model->can('expenses.verify'),
+            'filters'=>$filters, 'totalRows'=>$totalRows, 'totalPages'=>$totalPages, 'perPage'=>$perPage,
+            'verifiedTotal'=>$verifiedTotal, 'pageScript'=>'finance.js'
+        ));
     }
 
     public function print_preview()
@@ -400,9 +427,24 @@ class Expenses extends App_Controller
         $activeEventIds = array_map(function ($event) { return (int) $event['id']; }, $activeEvents);
         return array(
             'activeEvents' => $activeEvents,
-            'rows' => $activeEventIds ? $this->finance->expenses(array('event_ids' => $activeEventIds)) : array(),
+            // A rejected expense remains visible in the audit/list screen, but
+            // is never a financial report row or total.
+            'rows' => $activeEventIds ? $this->finance->expenses(array('event_ids' => $activeEventIds, 'exclude_status' => 'rejected')) : array(),
             'organizationName' => $this->finance->setting_value('organization_name', 'Penyelenggara Pelatihan')
         );
+    }
+
+    private function expense_query_string($value)
+    {
+        if (!is_scalar($value)) return '';
+        $value = trim((string)$value);
+        return function_exists('mb_substr') ? mb_substr($value, 0, 120, 'UTF-8') : substr($value, 0, 120);
+    }
+
+    private function expense_query_integer($value)
+    {
+        if (!is_scalar($value) || !preg_match('/^\d+$/', (string)$value)) return 0;
+        return max(0, (int)$value);
     }
 
     private function private_document_output($contentType, $body, $disposition = NULL)

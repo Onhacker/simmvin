@@ -207,7 +207,52 @@ class Finance_model extends CI_Model
             ->join('training_events e', 'e.id=x.event_id', 'left')->join('company_debts d', 'd.id=x.debt_id', 'left')->join('fund_accounts a', 'a.id=x.account_id')
             ->join('users u', 'u.id=x.created_by', 'left')->order_by('x.expense_date', 'DESC')->order_by('x.id', 'DESC');
         $this->apply_transaction_filters('x', $filters);
+        if (array_key_exists('limit', $filters)) {
+            $limit = max(1, min(200, (int)$filters['limit']));
+            $offset = isset($filters['offset']) ? max(0, (int)$filters['offset']) : 0;
+            $this->db->limit($limit, $offset);
+        }
         return $this->db->get()->result_array();
+    }
+
+    /** Count expense rows using the same searchable fields as expenses(). */
+    public function expenses_count(array $filters = array())
+    {
+        $this->db->select('COUNT(*) AS total', FALSE)
+            ->from('expenses x')->join('expense_categories c', 'c.id=x.category_id')
+            ->join('training_events e', 'e.id=x.event_id', 'left')
+            ->join('company_debts d', 'd.id=x.debt_id', 'left')
+            ->join('fund_accounts a', 'a.id=x.account_id');
+        $this->apply_transaction_filters('x', $filters);
+        $row = $this->db->get()->row_array();
+        return $row ? (int)$row['total'] : 0;
+    }
+
+    /** Totals for the full filtered result, independent of the current page. */
+    public function expenses_summary(array $filters = array())
+    {
+        $this->db->select(
+            "COUNT(*) AS total_count, COALESCE(SUM(CASE WHEN x.status='verified' THEN COALESCE(x.amount,0)+COALESCE(x.admin_fee,0) ELSE 0 END),0) AS verified_total",
+            FALSE
+        )->from('expenses x')->join('expense_categories c', 'c.id=x.category_id')
+            ->join('training_events e', 'e.id=x.event_id', 'left')
+            ->join('company_debts d', 'd.id=x.debt_id', 'left')
+            ->join('fund_accounts a', 'a.id=x.account_id');
+        $this->apply_transaction_filters('x', $filters);
+        $row = $this->db->get()->row_array();
+        return $row ?: array('total_count' => 0, 'verified_total' => '0.00');
+    }
+
+    /** Only categories that actually have expenses in the selected events. */
+    public function expense_categories_in_use(array $eventIds)
+    {
+        $eventIds = array_values(array_unique(array_filter(array_map('intval', $eventIds))));
+        if (!$eventIds) return array();
+        return $this->db->select('c.id,c.name,COUNT(x.id) AS expense_count', FALSE)
+            ->from('expense_categories c')->join('expenses x', 'x.category_id=c.id')
+            ->where_in('x.event_id', $eventIds)
+            ->group_by(array('c.id', 'c.name'))->order_by('c.name', 'ASC')
+            ->get()->result_array();
     }
 
     public function expense($id)
@@ -1196,15 +1241,39 @@ class Finance_model extends CI_Model
 
     private function apply_transaction_filters($alias, array $filters)
     {
-        if (!empty($filters['event_ids']) && is_array($filters['event_ids'])) {
+        if (array_key_exists('event_ids', $filters) && is_array($filters['event_ids'])) {
             $eventIds = array_values(array_unique(array_filter(array_map('intval', $filters['event_ids']))));
             if ($eventIds) $this->db->where_in($alias.'.event_id', $eventIds);
+            else $this->db->where('1=0', NULL, FALSE);
         } elseif (!empty($filters['event_id'])) {
             $this->db->where($alias.'.event_id',(int)$filters['event_id']);
         }
         if (!empty($filters['date_from'])) $this->db->where($alias.'.expense_date >=',$filters['date_from']);
         if (!empty($filters['date_to'])) $this->db->where($alias.'.expense_date <=',$filters['date_to']);
         if (!empty($filters['status'])) $this->db->where($alias.'.status',$filters['status']);
+        if (!empty($filters['exclude_status'])) $this->db->where($alias.'.status !=',(string)$filters['exclude_status']);
+        if (!empty($filters['category_id'])) $this->db->where($alias.'.category_id',(int)$filters['category_id']);
+        if (isset($filters['search']) && is_scalar($filters['search'])) {
+            $search = trim((string)$filters['search']);
+            if ($search !== '') {
+                // Search the fields people can see on an expense card.  The
+                // joins in expenses() already expose each related label, so
+                // this remains one database query even when the list is
+                // paginated by the caller.
+                $this->db->group_start()
+                    ->like($alias.'.expense_no', $search)
+                    ->or_like($alias.'.description', $search)
+                    ->or_like($alias.'.payee', $search)
+                    ->or_like($alias.'.method', $search)
+                    ->or_like($alias.'.note', $search)
+                    ->or_like('c.name', $search)
+                    ->or_like('e.name', $search)
+                    ->or_like('a.name', $search)
+                    ->or_like('d.debt_no', $search)
+                    ->or_like('d.creditor', $search)
+                    ->group_end();
+            }
+        }
     }
 
 }

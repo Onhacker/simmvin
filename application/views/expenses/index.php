@@ -3,16 +3,34 @@ defined('BASEPATH') OR exit('No direct script access allowed');
 
 $activeEvents = isset($activeEvents) && is_array($activeEvents) ? $activeEvents : array();
 $rows = isset($rows) && is_array($rows) ? $rows : array();
-$verifiedTotalCents = 0;
+$filters = isset($filters) && is_array($filters) ? $filters : array();
+$filters['q'] = isset($filters['q']) ? (string)$filters['q'] : '';
+$filters['category_id'] = isset($filters['category_id']) ? (int)$filters['category_id'] : 0;
+$filters['page'] = max(1, isset($filters['page']) ? (int)$filters['page'] : 1);
+$totalRows = isset($totalRows) ? (int)$totalRows : count($rows);
+$perPage = max(1, isset($perPage) ? (int)$perPage : 20);
+$totalPages = max(1, isset($totalPages) ? (int)$totalPages : (int)ceil($totalRows / $perPage));
+$filterCategories = isset($filterCategories) && is_array($filterCategories) ? $filterCategories : array();
 
-foreach ($rows as $row) {
-    if (isset($row['status']) && $row['status'] === 'verified') {
-        $rowAmountCents = simp_money_cents($row['amount']);
-        $rowFeeCents = simp_money_cents($row['admin_fee']);
-        $verifiedTotalCents += ($rowAmountCents === NULL ? 0 : $rowAmountCents) + ($rowFeeCents === NULL ? 0 : $rowFeeCents);
+if (!isset($verifiedTotal)) {
+    $verifiedTotalCents = 0;
+    foreach ($rows as $row) {
+        if (isset($row['status']) && $row['status'] === 'verified') {
+            $rowAmountCents = simp_money_cents($row['amount']);
+            $rowFeeCents = simp_money_cents($row['admin_fee']);
+            $verifiedTotalCents += ($rowAmountCents === NULL ? 0 : $rowAmountCents) + ($rowFeeCents === NULL ? 0 : $rowFeeCents);
+        }
     }
+    $verifiedTotal = simp_money_from_cents($verifiedTotalCents);
 }
-$verifiedTotal = simp_money_from_cents($verifiedTotalCents);
+
+$expensePageUrl = function ($page) use ($filters) {
+    $query = array();
+    if ($filters['q'] !== '') $query['q'] = $filters['q'];
+    if ((int)$filters['category_id'] > 0) $query['category_id'] = (int)$filters['category_id'];
+    if ((int)$page > 1) $query['page'] = (int)$page;
+    return site_url('pengeluaran') . ($query ? '?' . http_build_query($query) : '');
+};
 
 $methodLabels = array(
     'cash' => 'Tunai',
@@ -91,16 +109,44 @@ $canVerify = !empty($canVerify);
         <div class="content mb-3">
             <div class="d-flex align-items-center">
                 <div class="min-width-zero pe-3">
-                    <p class="font-600 color-highlight mb-n1">Dana Keluar Event Aktif</p>
                     <h2 class="mb-0">Daftar Pengeluaran</h2>
                 </div>
-                <span class="badge bg-blue-dark color-white ms-auto flex-shrink-0"><?= number_format(count($rows)) ?> data</span>
+                <span class="badge bg-blue-dark color-white ms-auto flex-shrink-0"><?= number_format($totalRows) ?> data</span>
             </div>
             <div class="divider mt-3 mb-3"></div>
             <div class="expense-summary-total">
                 <p class="font-11 opacity-60 mb-n1">Total pengeluaran terverifikasi</p>
                 <h3 class="color-green-dark mb-0"><?= rupiah($verifiedTotal) ?></h3>
             </div>
+        </div>
+    </div>
+
+    <div id="expense-filters" class="card card-style">
+        <div class="content mb-1">
+            <p class="font-600 color-highlight mb-n1">Temukan transaksi</p>
+            <h3 class="font-20 mb-3">Cari dan Filter</h3>
+            <form id="expense-filter-form" method="get" action="<?= site_url('pengeluaran') ?>" data-expense-filter-form>
+                <div class="input-style input-style-always-active has-borders has-icon mb-3">
+                    <i class="fa fa-search color-highlight"></i>
+                    <input class="form-control" type="search" id="expense-search" name="q" maxlength="120" value="<?= e($filters['q']) ?>" placeholder="Nomor, uraian, event, atau akun" autocomplete="off">
+                    <label for="expense-search" class="color-highlight font-12 font-500">Cari pengeluaran</label>
+                    <i class="fa fa-times disabled invalid color-red-dark"></i><i class="fa fa-check disabled valid color-green-dark"></i><em></em>
+                </div>
+                <div class="input-style input-style-always-active has-borders no-icon mb-3">
+                    <label for="expense-category-filter" class="color-highlight font-12 font-500">Kategori</label>
+                    <select id="expense-category-filter" name="category_id" aria-label="Filter kategori pengeluaran">
+                        <option value="">Semua kategori</option>
+                        <?php foreach ($filterCategories as $filterCategory): ?>
+                            <option value="<?= (int)$filterCategory['id'] ?>" <?= (int)$filters['category_id'] === (int)$filterCategory['id'] ? 'selected' : '' ?>><?= e($filterCategory['name']) ?> (<?= number_format((int)$filterCategory['expense_count']) ?>)</option>
+                        <?php endforeach; ?>
+                    </select>
+                    <span><i class="fa fa-chevron-down"></i></span>
+                    <i class="fa fa-check disabled valid color-green-dark"></i><i class="fa fa-times disabled invalid color-red-dark"></i><em></em>
+                </div>
+                <div class="d-flex justify-content-end mb-2">
+                    <a class="btn btn-s bg-theme color-highlight border-highlight rounded-s" href="<?= site_url('pengeluaran') ?>" data-expense-filter-reset><i class="fa fa-redo me-1"></i>Reset</a>
+                </div>
+            </form>
         </div>
     </div>
 
@@ -229,6 +275,25 @@ $canVerify = !empty($canVerify);
             </div>
         </div>
     <?php endforeach; ?>
+    </div>
+
+    <div id="expense-pagination" class="card card-style" data-expense-pagination>
+        <div class="content py-2 mb-0">
+            <div class="d-flex align-items-center justify-content-between gap-2">
+                <?php if ($filters['page'] > 1): ?>
+                    <a class="btn btn-s bg-theme color-highlight border-highlight rounded-s" href="<?= e($expensePageUrl($filters['page'] - 1)) ?>" data-expense-page-link><i class="fa fa-chevron-left me-1"></i>Sebelumnya</a>
+                <?php else: ?>
+                    <button type="button" class="btn btn-s bg-gray-light color-gray-dark rounded-s" disabled><i class="fa fa-chevron-left me-1"></i>Sebelumnya</button>
+                <?php endif; ?>
+                <span class="font-12 font-600 text-center opacity-70">Halaman <?= number_format($filters['page']) ?> dari <?= number_format($totalPages) ?></span>
+                <?php if ($filters['page'] < $totalPages): ?>
+                    <a class="btn btn-s gradient-highlight rounded-s" href="<?= e($expensePageUrl($filters['page'] + 1)) ?>" data-expense-page-link>Berikutnya<i class="fa fa-chevron-right ms-1"></i></a>
+                <?php else: ?>
+                    <button type="button" class="btn btn-s bg-gray-light color-gray-dark rounded-s" disabled>Berikutnya<i class="fa fa-chevron-right ms-1"></i></button>
+                <?php endif; ?>
+            </div>
+            <p class="font-11 opacity-60 text-center mb-0 mt-2">Menampilkan <?= $totalRows ? number_format((($filters['page'] - 1) * $perPage) + 1) : 0 ?>–<?= number_format(min($filters['page'] * $perPage, $totalRows)) ?> dari <?= number_format($totalRows) ?> data · maksimal <?= number_format($perPage) ?> per halaman</p>
+        </div>
     </div>
 <?php endif; ?>
 

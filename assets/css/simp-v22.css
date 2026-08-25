@@ -1247,6 +1247,24 @@ body {
   }
 }
 
+/* Keep the AJAX pager comfortable on narrow phones without creating a
+ * horizontal scroll area. */
+#expense-pagination .content > .d-flex {
+  flex-wrap: wrap;
+}
+
+#expense-pagination .btn {
+  min-width: 108px;
+}
+
+@media (max-width: 359.98px) {
+  #expense-pagination .btn {
+    min-width: 96px;
+    padding-right: 8px;
+    padding-left: 8px;
+  }
+}
+
 @media print {
   #preloader, .header, #footer-bar, .page-title, #menu-main, .menu-hider,
   .simp-no-print, .back-to-top, .simp-pwa-install { display: none !important; }
