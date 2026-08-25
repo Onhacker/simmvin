@@ -22,7 +22,19 @@ Antarmuka menggunakan aset dan pola komponen AppKit yang sudah tersedia di folde
    mysql -u root -p simp < database/seed.sql
    ```
 
-5. Pastikan koneksi `REGIONAL_DB_*` menunjuk database master wilayah (default lokal `rab_new`). Host, port, pengguna, dan nama database boleh berbeda sepenuhnya dari `DB_*`; aplikasi hanya membaca tabel `data_provinsi`, `data_kota`, `data_kecamatan`, dan `data_desa` melalui koneksi terpisah tersebut.
+5. Buat database lokasi MVIN yang terpisah dari database transaksi dan RAB, lalu impor empat tabel master lokasi:
+
+   ```bash
+   mysql -u root -p -e "CREATE DATABASE simp_wilayah CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci"
+   mysql -u root -p simp_wilayah < database/wilayah_schema.sql
+   mysqldump -u root -p --single-transaction --quick --skip-lock-tables --no-create-info --skip-triggers \
+     rab_new data_provinsi data_kota data_kecamatan data_desa > /tmp/mvin_wilayah_data.sql
+   mysql -u root -p simp_wilayah < /tmp/mvin_wilayah_data.sql
+   ```
+
+   Masukkan kata sandi sumber saat `mysqldump` dan kata sandi tujuan saat `mysql` diminta, lalu hapus berkas sementara setelah verifikasi (`rm /tmp/mvin_wilayah_data.sql`). Untuk server, ganti `rab_new` pada perintah ekspor dengan sumber lama yang tersedia dan ganti `simp_wilayah` dengan nama database yang diizinkan hosting (misalnya `u680017518_simvin_wilayah`). Setelah impor selesai, MVIN tidak lagi membaca RAB saat runtime; yang dibaca hanya tabel `data_provinsi`, `data_kota`, `data_kecamatan`, dan `data_desa` pada koneksi lokasi.
+
+   Isi `.env` server dengan `REGIONAL_DB_HOST`, `REGIONAL_DB_PORT`, `REGIONAL_DB_USER`, `REGIONAL_DB_PASS`, dan `REGIONAL_DB_NAME` milik database lokasi baru. Nama database lokasi harus berbeda dari `DB_NAME`; aplikasi sengaja berhenti jika keduanya sama.
 6. Buka `http://localhost/simp/`.
 
 Pada server Linux, pastikan proses PHP dapat menulis ke `application/cache`. Generator PDF otomatis memakai direktori sementara sistem sebagai cadangan apabila cache aplikasi tidak dapat ditulis.
@@ -77,7 +89,7 @@ Untuk instalasi lama yang sudah memiliki tabel `training_events`, jalankan `data
 
 - Ganti `APP_KEY` dan kata sandi admin.
 - Login dibatasi maksimal 10 kegagalan dalam jendela 10 menit berdasarkan identitas atau alamat IP.
-- Pakai akun DB berbeda untuk MVIN dan akun **read-only** untuk `REGIONAL_DB_*`.
+- Pakai akun DB berbeda untuk MVIN dan akun **read-only** untuk database lokasi pada `REGIONAL_DB_*`. Akun lokasi cukup diberi hak `SELECT` pada empat tabel master lokasi.
 - Set `APP_ENV=production`, `APP_URL` HTTPS yang tepat, dan pastikan folder `uploads` tidak mengeksekusi PHP.
 - Bukti pembayaran/pengeluaran/hutang/transfer tidak dapat dibuka langsung dari folder upload; file disajikan melalui controller yang memeriksa sesi dan hak akses.
 - Folder `output` (PDF/XLSX hasil generate) dan `vendor` diblokir dari akses HTTP langsung. Dokumen hanya boleh diunduh melalui endpoint controller yang memeriksa sesi dan hak akses.

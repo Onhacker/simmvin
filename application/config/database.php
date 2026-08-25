@@ -7,7 +7,7 @@ $query_builder = TRUE;
 if (!function_exists('simp_require_db_connection_env')) {
     /**
      * Production must name both databases explicitly. This prevents the
-     * regional connection from silently falling back to localhost/rab_new
+     * location connection from silently falling back to a local database
      * when it is meant to live on another server.
      */
     function simp_require_db_connection_env($prefix, $label)
@@ -52,8 +52,25 @@ if (!function_exists('simp_db_config')) {
     }
 }
 
+if (!function_exists('simp_assert_separate_location_database')) {
+    /**
+     * Location master data must not silently live in the transaction schema.
+     * A hard failure is safer than allowing the application to reintroduce a
+     * dependency on the old RAB database through an incomplete .env file.
+     */
+    function simp_assert_separate_location_database()
+    {
+        $mainName = strtolower(trim((string) (getenv('DB_NAME') ?: 'simp')));
+        $locationName = strtolower(trim((string) (getenv('REGIONAL_DB_NAME') ?: 'simp_wilayah')));
+        if ($mainName !== '' && $mainName === $locationName) {
+            throw new RuntimeException('DB_NAME dan REGIONAL_DB_NAME harus menunjuk database yang berbeda.');
+        }
+    }
+}
+
 simp_require_db_connection_env('', 'utama');
 simp_require_db_connection_env('REGIONAL_', 'wilayah');
+simp_assert_separate_location_database();
 
 $db['default'] = simp_db_config('', 'simp');
-$db['wilayah'] = simp_db_config('REGIONAL_', 'rab_new');
+$db['wilayah'] = simp_db_config('REGIONAL_', 'simp_wilayah');
