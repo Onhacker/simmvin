@@ -176,6 +176,92 @@
       .toLocaleLowerCase();
   }
 
+  function normalizeParticipantName(value) {
+    var normalized = String(value === null || typeof value === 'undefined' ? '' : value);
+    if (typeof normalized.normalize === 'function') normalized = normalized.normalize('NFKC');
+    return normalized.trim().replace(/\s+/g, ' ');
+  }
+
+  function participantNameKey(value) {
+    return normalizeParticipantName(value).toLocaleLowerCase();
+  }
+
+  function activeParticipantNames(excludedParticipantId) {
+    var excluded = String(excludedParticipantId || '');
+    return Array.prototype.map.call(document.querySelectorAll('#registration-detail-content [data-active-participant]'), function (participant) {
+      if (excluded && String(participant.dataset.participantId || '') === excluded) return null;
+      return participant.dataset.participantName || '';
+    }).filter(function (name) { return participantNameKey(name) !== ''; });
+  }
+
+  /*
+   * Frontend validation keeps repeated names from being sent accidentally.
+   * The model performs the same check under the registration lock, so direct
+   * or concurrent requests cannot bypass this convenience validation.
+   */
+  function validateUniqueParticipantNames(scope, existingNames) {
+    var fields = scope ? scope.querySelectorAll('input[name$="[full_name]"], input[name="full_name"]') : [];
+    var seen = {};
+    var firstDuplicate = null;
+
+    Array.prototype.forEach.call(fields, function (field) {
+      if (field.dataset.duplicateNameError === '1') {
+        field.setCustomValidity('');
+        delete field.dataset.duplicateNameError;
+      }
+    });
+
+    (existingNames || []).forEach(function (name) {
+      var key = participantNameKey(name);
+      if (key) seen[key] = {field: null};
+    });
+
+    Array.prototype.forEach.call(fields, function (field) {
+      var displayName = normalizeParticipantName(field.value);
+      var key = participantNameKey(displayName);
+      if (!key) return;
+      if (seen[key]) {
+        var message = 'Nama peserta "' + displayName + '" sudah digunakan pada desa ini.';
+        if (seen[key].field) {
+          seen[key].field.setCustomValidity(message);
+          seen[key].field.dataset.duplicateNameError = '1';
+        }
+        field.setCustomValidity(message);
+        field.dataset.duplicateNameError = '1';
+        if (!firstDuplicate) firstDuplicate = {field: field, message: message};
+        return;
+      }
+      seen[key] = {field: field};
+    });
+
+    return firstDuplicate;
+  }
+
+  document.addEventListener('input', function (event) {
+    var field = event.target;
+    if (!field || !field.matches('input[name$="[full_name]"], input[name="full_name"]')) return;
+    var villageCard = field.closest('[data-village]');
+    if (villageCard) {
+      validateUniqueParticipantNames(villageCard, []);
+      return;
+    }
+    var addRows = field.closest('#registration-add-participants');
+    if (addRows) {
+      validateUniqueParticipantNames(addRows, []);
+      return;
+    }
+    var detailRows = field.closest('#registration-participant-rows');
+    if (detailRows) {
+      validateUniqueParticipantNames(detailRows, activeParticipantNames(''));
+      return;
+    }
+    var mutationForm = field.closest('#registration-participant-mutation-form');
+    if (mutationForm) {
+      var currentId = mutationForm.querySelector('input[name="participant_id"]');
+      validateUniqueParticipantNames(mutationForm, activeParticipantNames(currentId ? currentId.value : ''));
+    }
+  });
+
   function positionPickerMarkup(positionList, selectedId, inputId, fieldName) {
     var pickerId = inputId + '-picker';
     var valueId = inputId + '-value';
@@ -1246,6 +1332,17 @@
         alertUser('Maksimal ' + maxParticipants + ' peserta untuk setiap desa.', {title: 'Batas Peserta', tone: 'warning'});
         return;
       }
+      var duplicateParticipant = null;
+      Array.prototype.some.call(preparedCards, function (card) {
+        duplicateParticipant = validateUniqueParticipantNames(card, []);
+        return !!duplicateParticipant;
+      });
+      if (duplicateParticipant) {
+        event.preventDefault();
+        alertUser(duplicateParticipant.message, {title: 'Nama Peserta Ganda', tone: 'warning'});
+        duplicateParticipant.field.focus();
+        return;
+      }
       syncPositionPickers(form);
       updateAllVillageBilling();
       refreshMoney(form);
@@ -1468,6 +1565,8 @@
       event.preventDefault();
       if (!addEvent.value || !addVillage.value || !addParticipants.querySelector('[data-add-participant-row]')) { modalAlert('registration-add-modal', 'Pilih event, kecamatan, desa, dan isi minimal satu peserta.', {title: 'Data Belum Lengkap', tone: 'warning'}); return; }
       if (addParticipants.querySelectorAll('[data-add-participant-row]').length > modalParticipantLimit) { modalAlert('registration-add-modal', 'Maksimal ' + modalParticipantLimit + ' peserta dapat ditambahkan sekaligus.', {title: 'Batas Peserta', tone: 'warning'}); return; }
+      var duplicateParticipant = validateUniqueParticipantNames(addParticipants, []);
+      if (duplicateParticipant) { modalAlert('registration-add-modal', duplicateParticipant.message, {title: 'Nama Peserta Ganda', tone: 'warning'}); return; }
       syncPositionPickers(registrationAddForm);
       if (!registrationAddForm.checkValidity()) { registrationAddForm.reportValidity(); return; }
       var submit = registrationAddForm.querySelector('[data-registration-add-submit]'); if (submit) { submit.disabled = true; submit.dataset.originalText = submit.innerHTML; submit.innerHTML = '<i class="fa fa-spinner fa-spin me-1"></i>Menyimpan...'; }
@@ -1505,6 +1604,8 @@
     participantForm.addEventListener('submit', function (event) {
       event.preventDefault();
       if (detailRows.querySelectorAll('[data-detail-participant-row]').length > modalParticipantLimit) { modalAlert('registration-participant-modal', 'Maksimal ' + modalParticipantLimit + ' peserta dapat ditambahkan sekaligus.', {title: 'Batas Peserta', tone: 'warning'}); return; }
+      var duplicateParticipant = validateUniqueParticipantNames(detailRows, activeParticipantNames(''));
+      if (duplicateParticipant) { modalAlert('registration-participant-modal', duplicateParticipant.message, {title: 'Nama Peserta Ganda', tone: 'warning'}); return; }
       syncPositionPickers(participantForm);
       if (!participantForm.checkValidity()) { participantForm.reportValidity(); return; }
       var submit = participantForm.querySelector('[data-detail-add-submit]');
@@ -1709,6 +1810,15 @@
 
     participantMutationForm.addEventListener('submit', function (event) {
       event.preventDefault();
+      var participantId = participantMutationForm.querySelector('input[name="participant_id"]');
+      var duplicateParticipant = validateUniqueParticipantNames(
+        participantMutationForm,
+        activeParticipantNames(participantId ? participantId.value : '')
+      );
+      if (duplicateParticipant) {
+        modalAlert('registration-participant-mutation-modal', duplicateParticipant.message, {title: 'Nama Peserta Ganda', tone: 'warning'});
+        return;
+      }
       var mode = participantMutationForm.dataset.mutationMode === 'ganti' ? 'ganti' : 'ubah';
       submitRegistrationMutation(
         participantMutationForm,

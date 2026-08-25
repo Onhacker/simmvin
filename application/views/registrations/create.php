@@ -76,18 +76,18 @@ $oldPaymentGroups = isset($oldPaymentGroups) ? $oldPaymentGroups : array();
                     </div>
                 </div>
                 <div class="col-lg-3 col-md-6">
-                    <div class="input-style has-borders no-icon input-style-always-active mb-4">
+                    <div class="input-style has-borders no-icon input-style-always-active registration-region-list-wrap mb-4">
                         <label for="registration-districts" class="color-highlight">Kecamatan (bisa banyak)</label>
-                        <select id="registration-districts" class="form-select" multiple size="6" disabled style="height:190px;padding-top:24px;"></select>
+                        <select id="registration-districts" class="form-select registration-region-list" multiple size="6" disabled></select>
                         <i class="fa fa-check d-none disabled valid color-green-dark"></i>
                         <i class="fa fa-times d-none disabled invalid color-red-dark"></i>
                         <em></em>
                     </div>
                 </div>
                 <div class="col-lg-4 col-md-6">
-                    <div class="input-style has-borders no-icon input-style-always-active mb-4">
+                    <div class="input-style has-borders no-icon input-style-always-active registration-region-list-wrap mb-4">
                         <label for="registration-villages" class="color-highlight">Desa (bisa banyak)</label>
-                        <select id="registration-villages" class="form-select" multiple size="6" disabled style="height:190px;padding-top:24px;"></select>
+                        <select id="registration-villages" class="form-select registration-region-list" multiple size="6" disabled></select>
                         <i class="fa fa-check d-none disabled valid color-green-dark"></i>
                         <i class="fa fa-times d-none disabled invalid color-red-dark"></i>
                         <em></em>

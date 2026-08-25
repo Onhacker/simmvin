@@ -397,6 +397,7 @@ class Registration_model extends CI_Model
             $positionMap = $this->active_position_map(TRUE);
             if (!$positionMap) throw new InvalidArgumentException('Belum ada jabatan aktif. Tambahkan jabatan pada menu Master Jabatan terlebih dahulu.');
             $items=$this->normalize_participants(array($participant), $positionMap); if(!$items) throw new InvalidArgumentException('Nama peserta wajib diisi.');
+            $this->assert_unique_active_participant_names((int)$lockedRegistration['id'], $items);
             $data=$items[0]; $data['registration_id']=(int)$registration['id']; $data['is_active']=1;
             $data['created_by']=(int)$actorId; $data['updated_by']=(int)$actorId;
             $data['created_at']=date('Y-m-d H:i:s'); $data['updated_at']=$data['created_at'];
@@ -430,6 +431,7 @@ class Registration_model extends CI_Model
             $items = $this->normalize_participants($participants, $positionMap);
             if (!$items) throw new InvalidArgumentException('Isi minimal satu peserta.');
             if (count($items) > 20) throw new InvalidArgumentException('Maksimal 20 peserta dapat ditambahkan sekaligus.');
+            $this->assert_unique_active_participant_names((int)$locked['id'], $items);
             $count = (int)$this->db->where(array('registration_id'=>$locked['id'],'is_active'=>1))->where('deleted_at IS NULL',NULL,FALSE)->count_all_results('participants');
             if ($count + count($items) > 20) throw new InvalidArgumentException('Maksimal 20 peserta untuk satu desa.');
             $now=date('Y-m-d H:i:s'); $ids=array();
@@ -493,6 +495,7 @@ class Registration_model extends CI_Model
             $items = $this->normalize_participants(array('edit' => $participant), $positionMap);
             if (!$items) throw new InvalidArgumentException('Isi data peserta terlebih dahulu.');
             $data = $items['edit'];
+            $this->assert_unique_active_participant_names($registrationId, $items, array($participantId));
 
             $now = date('Y-m-d H:i:s');
             if (!$this->db->where(array('id' => $participantId, 'registration_id' => $registrationId))->update('participants', array(
@@ -558,6 +561,7 @@ class Registration_model extends CI_Model
                 array($participantId, $registrationId)
             )->row_array();
             if (!$old) throw new InvalidArgumentException('Peserta aktif tidak ditemukan.');
+            $this->assert_unique_active_participant_names($registrationId, $items, array($participantId));
             $participantCommittedCents = simp_money_cents($this->committed_participant_amount($participantId));
             if ($participantCommittedCents === NULL) throw new RuntimeException('Nominal pembayaran peserta tidak valid.');
             if ($participantCommittedCents > 0) {
@@ -1178,6 +1182,7 @@ class Registration_model extends CI_Model
     private function normalize_participants($rows, array $positionMap)
     {
         $out = array();
+        $seenNames = array();
         foreach ((array) $rows as $key => $row) {
             if(!is_array($row))throw new InvalidArgumentException('Data peserta tidak valid.');
             $key=(string)$key;
@@ -1185,7 +1190,7 @@ class Registration_model extends CI_Model
             foreach(array('full_name','position_id','phone') as $field){
                 if(isset($row[$field])&&!is_scalar($row[$field]))throw new InvalidArgumentException('Data peserta tidak valid.');
             }
-            $name = trim((string) (isset($row['full_name']) ? $row['full_name'] : ''));
+            $name = $this->normalize_participant_name(isset($row['full_name']) ? $row['full_name'] : '');
             $rawPosition=isset($row['position_id'])?trim((string)$row['position_id']):'';
             $rawPhone=isset($row['phone'])?trim((string)$row['phone']):'';
             if ($name === '') {
@@ -1193,6 +1198,11 @@ class Registration_model extends CI_Model
                 continue;
             }
             if (strlen($name) > 160) throw new InvalidArgumentException('Nama peserta terlalu panjang.');
+            $nameKey = $this->participant_name_key($name);
+            if (isset($seenNames[$nameKey])) {
+                throw new InvalidArgumentException('Nama peserta "'.$name.'" diinput lebih dari satu kali.');
+            }
+            $seenNames[$nameKey] = TRUE;
 
             if($rawPosition===''||!ctype_digit($rawPosition)||(int)$rawPosition<1)throw new InvalidArgumentException('Pilih jabatan untuk setiap peserta.');
             $positionId = (int)$rawPosition;
@@ -1211,6 +1221,70 @@ class Registration_model extends CI_Model
             );
         }
         return $out;
+    }
+
+    /** Normalize display names before storage and duplicate comparison. */
+    private function normalize_participant_name($value)
+    {
+        $name = (string)$value;
+        if (class_exists('Normalizer')) {
+            $normalized = Normalizer::normalize($name, Normalizer::FORM_KC);
+            if ($normalized === FALSE) throw new InvalidArgumentException('Nama peserta tidak valid.');
+            $name = $normalized;
+        }
+        $name = preg_replace('/[\p{Z}\s]+/u', ' ', $name);
+        if ($name === NULL) throw new InvalidArgumentException('Nama peserta tidak valid.');
+        return trim($name);
+    }
+
+    /** Case-insensitive key shared by submitted and persisted participant names. */
+    private function participant_name_key($value)
+    {
+        return mb_strtolower($this->normalize_participant_name($value), 'UTF-8');
+    }
+
+    /**
+     * Prevent two active participants with the same normalized name inside one
+     * registration. Registrations are unique per event/village, so this keeps
+     * the rule local to that event and village while allowing archived names
+     * and matching names in other registrations.
+     */
+    private function assert_unique_active_participant_names($registrationId, array $participants, array $excludedParticipantIds = array())
+    {
+        $registrationId = (int)$registrationId;
+        if ($registrationId < 1) throw new InvalidArgumentException('Registrasi peserta tidak valid.');
+
+        $submittedNames = array();
+        foreach ($participants as $participant) {
+            if (!is_array($participant) || !isset($participant['full_name'])) {
+                throw new InvalidArgumentException('Data peserta tidak valid.');
+            }
+            $name = $this->normalize_participant_name($participant['full_name']);
+            if ($name !== '') $submittedNames[$this->participant_name_key($name)] = $name;
+        }
+        if (!$submittedNames) return;
+
+        $excludedIds = array();
+        foreach ($excludedParticipantIds as $participantId) {
+            $participantId = (int)$participantId;
+            if ($participantId > 0) $excludedIds[$participantId] = $participantId;
+        }
+
+        $this->db->select('id,full_name')
+            ->where('registration_id', $registrationId)
+            ->where('is_active', 1)
+            ->where('deleted_at IS NULL', NULL, FALSE);
+        if ($excludedIds) $this->db->where_not_in('id', array_values($excludedIds));
+        $activeParticipants = $this->db->get('participants')->result_array();
+
+        foreach ($activeParticipants as $activeParticipant) {
+            $nameKey = $this->participant_name_key($activeParticipant['full_name']);
+            if (isset($submittedNames[$nameKey])) {
+                throw new InvalidArgumentException(
+                    'Nama peserta "'.$submittedNames[$nameKey].'" sudah terdaftar aktif pada desa ini untuk event tersebut.'
+                );
+            }
+        }
     }
 
     private function expected_amount(array $event, $participantCount)

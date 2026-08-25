@@ -147,6 +147,49 @@
 select[multiple].form-control,
 select[multiple].form-select { height: auto !important; min-height: 150px; padding-top: 10px; padding-bottom: 10px; }
 
+/* Wilayah registrasi ditampilkan sebagai listbox di dalam halaman/modal.
+ * Ini menghindari popup <select> mobile yang tidak konsisten dan memulihkan
+ * gesture gulir yang hilang karena AppKit memaksa appearance:none. */
+.input-style.registration-region-list-wrap {
+  height: auto !important;
+  overflow: visible !important;
+}
+
+#page .input-style select.registration-region-list {
+  -webkit-appearance: auto !important;
+  -moz-appearance: auto !important;
+  appearance: auto !important;
+  display: block;
+  height: 190px !important;
+  min-height: 190px !important;
+  line-height: normal !important;
+  padding: 0 !important;
+  overflow-x: hidden !important;
+  overflow-y: scroll !important;
+  overscroll-behavior: contain;
+  touch-action: pan-y;
+  -webkit-overflow-scrolling: touch;
+  background-image: none !important;
+  scrollbar-width: thin;
+}
+
+#page .input-style select.registration-region-list option {
+  -webkit-appearance: auto !important;
+  -moz-appearance: auto !important;
+  appearance: auto !important;
+  min-height: 32px;
+  line-height: 1.45;
+  white-space: normal;
+}
+
+.registration-region-list-wrap > label { z-index: 2; }
+.registration-region-list-wrap > em {
+  top: 7px !important;
+  right: 9px !important;
+  margin-top: 0 !important;
+  z-index: 3;
+}
+
 .simp-balance-value { font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
 .min-width-zero { min-width: 0; }
 
