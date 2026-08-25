@@ -207,6 +207,18 @@ select[multiple].form-select { height: auto !important; min-height: 150px; paddi
   right: 28px !important;
 }
 
+.registration-index-actions {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(145px, 1fr));
+  gap: 10px;
+}
+
+.registration-index-actions > .btn {
+  width: 100%;
+  margin: 0 !important;
+  white-space: nowrap;
+}
+
 .simp-balance-value { font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
 .min-width-zero { min-width: 0; }
 

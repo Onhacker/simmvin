@@ -19,35 +19,28 @@ foreach ($positions as $position) {
 ?>
 
 <div id="registration-index-content">
+<?php if ($activeEvents): ?>
 <div class="card card-style">
     <div class="content mb-3">
-        <div class="d-flex align-items-start">
-            <div class="min-width-zero pe-3">
-                <p class="font-600 color-highlight mb-n1">Event aktif</p>
-                <h2 class="font-22 mb-1">Registrasi</h2>
-            </div>
-            <div class="ms-auto d-flex flex-wrap justify-content-end gap-2">
-                <?php if ($canPrint): ?>
-                    <a href="<?= site_url('event') ?>" class="btn btn-s bg-theme color-theme border rounded-s font-600 font-12 flex-shrink-0"><i class="fa fa-archive me-1 color-highlight"></i> Arsip Event</a>
-                <?php endif; ?>
-                <?php if ($canPrint && $activeEvents): ?>
-                    <a href="<?= site_url('registrasi/cetak') ?>" class="btn btn-s bg-theme color-theme border rounded-s font-600 font-12 flex-shrink-0" data-report-preview-open="registration-print-modal"><i class="fa fa-print me-1 color-highlight"></i> Cetak Peserta</a>
-                <?php endif; ?>
-                <?php if ($canCreate && $activeEvents): ?>
-                    <button type="button" class="btn btn-s gradient-highlight rounded-s font-600 font-12 shadow-s flex-shrink-0" data-registration-add-open><i class="fa fa-plus me-1"></i> Tambah</button>
-                <?php endif; ?>
-            </div>
+        <div class="d-flex align-items-center">
+            <span class="icon icon-s rounded-xl bg-blue-light color-blue-dark me-3 flex-shrink-0"><i class="fa fa-calendar-check"></i></span>
+            <div class="min-width-zero"><p class="font-11 opacity-60 mb-n1">Registrasi otomatis mengikuti</p><strong class="font-13"><?= number_format(count($activeEvents)) ?> event aktif</strong></div>
+            <span class="badge bg-blue-dark color-white ms-auto"><?= number_format($totalVillages) ?> desa</span>
         </div>
-        <?php if ($activeEvents): ?>
+        <?php if (($canPrint || $canCreate) && $activeEvents): ?>
             <div class="divider mt-3 mb-3"></div>
-            <div class="d-flex align-items-center">
-                <span class="icon icon-s rounded-xl bg-blue-light color-blue-dark me-3 flex-shrink-0"><i class="fa fa-calendar-check"></i></span>
-                <div class="min-width-zero"><p class="font-11 opacity-60 mb-n1">Registrasi otomatis mengikuti</p><strong class="font-13"><?= number_format(count($activeEvents)) ?> event aktif</strong></div>
-                <span class="badge bg-blue-dark color-white ms-auto"><?= number_format($totalVillages) ?> desa</span>
+            <div class="registration-index-actions">
+                <?php if ($canPrint): ?>
+                    <a href="<?= site_url('registrasi/cetak') ?>" class="btn btn-m btn-full bg-theme color-theme border rounded-s font-600 shadow-0" data-report-preview-open="registration-print-modal"><i class="fa fa-print me-1 color-highlight"></i> Cetak Peserta</a>
+                <?php endif; ?>
+                <?php if ($canCreate): ?>
+                    <button type="button" class="btn btn-m btn-full gradient-highlight rounded-s font-600 shadow-s" data-registration-add-open><i class="fa fa-plus me-1"></i> Tambah Peserta</button>
+                <?php endif; ?>
             </div>
         <?php endif; ?>
     </div>
 </div>
+<?php endif; ?>
 
 <?php if (!$activeEvents): ?>
     <div class="card card-style"><div class="content text-center py-5"><span class="icon icon-l rounded-xl bg-blue-light color-blue-dark mb-3"><i class="fa fa-calendar-times"></i></span><h3 class="font-20">Belum Ada Event Aktif</h3><p class="font-12 opacity-60 mb-0">Aktifkan event terlebih dahulu untuk menambahkan registrasi peserta.</p></div></div>
