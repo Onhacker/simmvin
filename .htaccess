@@ -18,7 +18,7 @@ DirectoryIndex index.php
     RewriteRule ^(.*)$ index.php/$1 [L,QSA]
 </IfModule>
 
-<FilesMatch "(^\.env|\.sql$|\.log$|\.md$|^README|composer\.(json|lock)$)">
+<FilesMatch "(^\.git|^\.env|\.sql$|\.log$|\.md$|^README|composer\.(json|lock)$)">
     Require all denied
 </FilesMatch>
 
