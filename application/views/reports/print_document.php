@@ -35,6 +35,7 @@ $expenseSummary = array(
     'verified_total' => 0, 'pending_total' => 0, 'rejected_total' => 0,
     'cash_total' => 0, 'transfer_total' => 0, 'qris_total' => 0
 );
+$expenseGroups = array();
 if ($reportKind === 'expense') {
     foreach ($rows as $expenseRow) {
         $status = isset($expenseRow['status']) ? $expenseRow['status'] : 'pending';
@@ -46,7 +47,29 @@ if ($reportKind === 'expense') {
         if ($status === 'verified' && isset($expenseSummary[$expenseRow['method'] . '_total'])) {
             $expenseSummary[$expenseRow['method'] . '_total'] += $total;
         }
+
+        // Keep the printout in the same order as the master category list,
+        // with uncategorised transactions collected at the end.
+        $categoryId = isset($expenseRow['category_id']) ? (int) $expenseRow['category_id'] : 0;
+        $categoryName = trim((string) (isset($expenseRow['category_name']) ? $expenseRow['category_name'] : ''));
+        if ($categoryName === '') {
+            $categoryName = 'Tanpa Kategori';
+        }
+        $groupKey = $categoryId > 0
+            ? sprintf('%010d', $categoryId)
+            : '9999999999-' . strtolower($categoryName);
+        if (!isset($expenseGroups[$groupKey])) {
+            $expenseGroups[$groupKey] = array(
+                'category_id' => $categoryId,
+                'name' => $categoryName,
+                'rows' => array(),
+                'total_cents' => 0
+            );
+        }
+        $expenseGroups[$groupKey]['rows'][] = $expenseRow;
+        $expenseGroups[$groupKey]['total_cents'] += $total;
     }
+    ksort($expenseGroups, SORT_STRING);
     foreach (array('verified_total','pending_total','rejected_total','cash_total','transfer_total','qris_total') as $moneyKey) {
         $expenseSummary[$moneyKey] = simp_money_from_signed_cents($expenseSummary[$moneyKey]);
     }
@@ -105,6 +128,15 @@ $accountSummary = array_merge(array(
         .report-table .primary { display: block; font-weight: 700; }
         .report-table .secondary { display: block; margin-top: 1px; color: #5f6b7a; font-size: 7.2px; line-height: 1.3; }
         .report-note { margin: -1px 0 6px; padding: 5px 7px; border-left: 3px solid #1f5fab; background: #f3f7fc; color: #4b5563; font-size: 7.8px; }
+        .expense-category-heading { margin: 12px 0 4px; padding: 6px 8px; border-left: 4px solid #1f5fab; background: #eaf2fc; color: #174b8b; page-break-after: avoid; break-after: avoid; }
+        .expense-category-heading span { display: block; color: #6b7280; font-size: 7px; font-weight: 700; letter-spacing: .25px; line-height: 1.1; text-transform: uppercase; }
+        .expense-category-heading strong { display: block; margin-top: 2px; color: #174b8b; font-size: 12px; line-height: 1.2; }
+        .expense-category-table { margin-bottom: 7px; }
+        .expense-category-table .category-total-row td { background: #eef5ff !important; border-top: 2px solid #1f5fab; color: #174b8b; font-weight: 800; }
+        .expense-category-table .category-total-row .money-label,
+        .expense-grand-total .money-label { text-align: right; }
+        .expense-grand-total { margin-top: 12px; }
+        .expense-grand-total td { background: #dcecff !important; border-top: 2px solid #174b8b; color: #111827; font-size: 10px; font-weight: 800; }
         .status { display: inline-block; padding: 2px 4px; border-radius: 3px; color: #fff; font-size: 6.8px; font-weight: 700; line-height: 1.25; text-align: center; }
         .status.green { background: #1f7a45; }
         .status.yellow { background: #a76608; }
@@ -302,33 +334,57 @@ $accountSummary = array_merge(array(
             </tbody>
         </table>
     <?php elseif ($reportKind === 'expense'): ?>
-        <table class="report-table">
-            <colgroup><col style="width:4%"><col style="width:14%"><col style="width:31%"><col style="width:17%"><col style="width:10%"><col style="width:12%"><col style="width:12%"></colgroup>
-            <thead><tr><th>No.</th><th>Tanggal / Nomor</th><th>Kategori / Tujuan / Event</th><th>Akun / Metode</th><th>Status</th><th class="money">Nilai</th><th class="money">Total</th></tr></thead>
-            <tbody>
-            <?php if (!$rows): ?><tr class="empty-row"><td colspan="7">Belum ada transaksi pengeluaran pada event aktif.</td></tr><?php endif; ?>
-            <?php foreach ($rows as $index => $row): ?>
+        <?php if (!$expenseGroups): ?>
+            <table class="report-table">
+                <colgroup><col style="width:4%"><col style="width:14%"><col style="width:31%"><col style="width:17%"><col style="width:10%"><col style="width:12%"><col style="width:12%"></colgroup>
+                <thead><tr><th>No.</th><th>Tanggal / Nomor</th><th>Tujuan / Event</th><th>Akun / Metode</th><th>Status</th><th class="money">Nilai</th><th class="money">Total</th></tr></thead>
+                <tbody><tr class="empty-row"><td colspan="7">Belum ada transaksi pengeluaran pada event aktif.</td></tr></tbody>
+            </table>
+        <?php else: ?>
+            <?php $expenseNo = 0; $grandExpenseCents = 0; ?>
+            <?php foreach ($expenseGroups as $expenseGroup): ?>
                 <?php
-                $amountCents = $moneyCents($row['amount']);
-                $adminFeeCents = $moneyCents($row['admin_fee']);
-                $amount = simp_money_from_cents($amountCents);
-                $adminFee = simp_money_from_cents($adminFeeCents);
-                $total = simp_money_from_cents($amountCents + $adminFeeCents);
-                $status = isset($row['status']) ? $row['status'] : 'pending';
-                $statusClass = $status === 'verified' ? 'green' : ($status === 'rejected' ? 'red' : 'yellow');
+                $categoryTotalCents = (int) $expenseGroup['total_cents'];
+                $grandExpenseCents += $categoryTotalCents;
+                $categoryTotal = simp_money_from_cents($categoryTotalCents);
                 ?>
-                <tr>
-                    <td class="number"><?= number_format($index + 1) ?></td>
-                    <td><span class="primary"><?= e(tanggal_id($row['expense_date'])) ?></span><span class="secondary"><?= e($row['expense_no']) ?></span></td>
-                    <td><span class="primary"><?= e($row['category_name']) ?></span><span><?= e($row['description']) ?></span><span class="secondary"><?= e($row['event_name'] ?: 'Pengeluaran umum') ?><?php if (!empty($row['debt_id'])): ?> · Pembayaran <?= e($row['debt_no']) ?> (<?= e($row['debt_creditor']) ?>)<?php endif; ?></span></td>
-                    <td><span class="primary"><?= e($row['account_name']) ?></span><span class="secondary"><?= e(isset($methodLabels[$row['method']]) ? $methodLabels[$row['method']] : ucfirst((string) $row['method'])) ?></span></td>
-                    <td><span class="status <?= $statusClass ?>"><?= e(isset($expenseStatusLabels[$status]) ? $expenseStatusLabels[$status] : ucwords(str_replace('_', ' ', $status))) ?></span></td>
-                    <td class="money"><?= e($printRupiah($amount)) ?></td>
-                    <td class="money"><span class="primary"><?= e($printRupiah($total)) ?></span><?php if ($adminFeeCents > 0): ?><span class="secondary">Admin <?= e($printRupiah($adminFee, FALSE)) ?></span><?php endif; ?></td>
-                </tr>
+                <div class="expense-category-heading"><span>Kategori</span><strong><?= e($expenseGroup['name']) ?></strong></div>
+                <table class="report-table expense-category-table">
+                    <colgroup><col style="width:4%"><col style="width:14%"><col style="width:34%"><col style="width:17%"><col style="width:10%"><col style="width:10%"><col style="width:11%"></colgroup>
+                    <thead><tr><th>No.</th><th>Tanggal / Nomor</th><th>Tujuan / Event</th><th>Akun / Metode</th><th>Status</th><th class="money">Nilai</th><th class="money">Total</th></tr></thead>
+                    <tbody>
+                    <?php foreach ($expenseGroup['rows'] as $row): ?>
+                        <?php
+                        $expenseNo++;
+                        $amountCents = $moneyCents($row['amount']);
+                        $adminFeeCents = $moneyCents($row['admin_fee']);
+                        $amount = simp_money_from_cents($amountCents);
+                        $adminFee = simp_money_from_cents($adminFeeCents);
+                        $total = simp_money_from_cents($amountCents + $adminFeeCents);
+                        $status = isset($row['status']) ? $row['status'] : 'pending';
+                        $statusClass = $status === 'verified' ? 'green' : ($status === 'rejected' ? 'red' : 'yellow');
+                        $eventName = !empty($row['event_name']) ? $row['event_name'] : 'Pengeluaran umum';
+                        ?>
+                        <tr>
+                            <td class="number"><?= number_format($expenseNo) ?></td>
+                            <td><span class="primary"><?= e(tanggal_id($row['expense_date'])) ?></span><span class="secondary"><?= e($row['expense_no']) ?></span></td>
+                            <td><span class="primary"><?= e($row['description']) ?></span><span class="secondary"><?= e($eventName) ?><?php if (!empty($row['debt_id'])): ?> · Pembayaran <?= e($row['debt_no']) ?> (<?= e($row['debt_creditor']) ?>)<?php endif; ?></span></td>
+                            <td><span class="primary"><?= e($row['account_name']) ?></span><span class="secondary"><?= e(isset($methodLabels[$row['method']]) ? $methodLabels[$row['method']] : ucfirst((string) $row['method'])) ?></span></td>
+                            <td><span class="status <?= $statusClass ?>"><?= e(isset($expenseStatusLabels[$status]) ? $expenseStatusLabels[$status] : ucwords(str_replace('_', ' ', $status))) ?></span></td>
+                            <td class="money"><?= e($printRupiah($amount)) ?></td>
+                            <td class="money"><span class="primary"><?= e($printRupiah($total)) ?></span><?php if ($adminFeeCents > 0): ?><span class="secondary">Admin <?= e($printRupiah($adminFee, FALSE)) ?></span><?php endif; ?></td>
+                        </tr>
+                    <?php endforeach; ?>
+                    </tbody>
+                    <tfoot><tr class="category-total-row"><td colspan="6" class="money-label">Total <?= e($expenseGroup['name']) ?></td><td class="money"><?= e($printRupiah($categoryTotal)) ?></td></tr></tfoot>
+                </table>
             <?php endforeach; ?>
-            </tbody>
-        </table>
+            <?php $grandExpense = simp_money_from_cents($grandExpenseCents); ?>
+            <table class="report-table expense-grand-total">
+                <colgroup><col style="width:4%"><col style="width:14%"><col style="width:34%"><col style="width:17%"><col style="width:10%"><col style="width:10%"><col style="width:11%"></colgroup>
+                <tfoot><tr><td colspan="6" class="money-label">TOTAL SELURUH PENGELUARAN</td><td class="money"><?= e($printRupiah($grandExpense)) ?></td></tr></tfoot>
+            </table>
+        <?php endif; ?>
     <?php elseif ($reportKind === 'debt'): ?>
         <p class="report-note">Pembayaran terverifikasi mengurangi saldo hutang. Pembayaran yang masih menunggu verifikasi tetap tercantum sebagai komitmen.</p>
         <table class="report-table">
