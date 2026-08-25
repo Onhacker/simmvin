@@ -761,6 +761,167 @@ class Finance_model extends CI_Model
         return ($negative ? '-' : '') . intdiv($cents, 100) . '.' . str_pad((string) ($cents % 100), 2, '0', STR_PAD_LEFT);
     }
 
+    /**
+     * Return the district/village choices that actually have an active
+     * registration on one of the supplied open events.  Region names are read
+     * from the registration snapshot, so the report remains independent from
+     * the master-region database connection.
+     */
+    public function payment_data_filter_options(array $eventIds)
+    {
+        $eventIds = array_values(array_unique(array_filter(array_map('intval', $eventIds), function ($id) {
+            return $id > 0;
+        })));
+        if (!$eventIds) return array('districts' => array(), 'villages' => array());
+
+        $rows = $this->db
+            ->distinct()
+            ->select('r.district_id,r.district_name,r.village_id,r.village_name,r.regency_name')
+            ->from('registrations r')
+            ->join('training_events e', 'e.id=r.event_id')
+            ->where_in('r.event_id', $eventIds)
+            ->where('r.status', 'active')
+            ->where('e.status', 'open')
+            ->order_by('r.district_name', 'ASC')
+            ->order_by('r.village_name', 'ASC')
+            ->get()->result_array();
+
+        $districts = array();
+        $villages = array();
+        foreach ($rows as $row) {
+            $districtId = trim((string) $row['district_id']);
+            $villageId = trim((string) $row['village_id']);
+            if ($districtId !== '' && !isset($districts[$districtId])) {
+                $districts[$districtId] = array(
+                    'id' => $districtId,
+                    'name' => (string) $row['district_name'],
+                    'regency_name' => (string) $row['regency_name']
+                );
+            }
+            if ($districtId !== '' && $villageId !== '' && !isset($villages[$villageId])) {
+                $villages[$villageId] = array(
+                    'id' => $villageId,
+                    'name' => (string) $row['village_name'],
+                    'district_id' => $districtId,
+                    'district_name' => (string) $row['district_name'],
+                    'regency_name' => (string) $row['regency_name']
+                );
+            }
+        }
+
+        return array('districts' => array_values($districts), 'villages' => array_values($villages));
+    }
+
+    /**
+     * Payment-status report, one row per active village registration.
+     * Verified and pending funds are kept separate: only verified payments
+     * reduce the outstanding invoice, while pending payments remain visible
+     * for follow-up and verification.
+     */
+    public function payment_data_report(array $filters)
+    {
+        $eventIds = isset($filters['event_ids']) && is_array($filters['event_ids'])
+            ? array_values(array_unique(array_filter(array_map('intval', $filters['event_ids']), function ($id) { return $id > 0; })))
+            : array();
+        $districtId = isset($filters['district_id']) && is_scalar($filters['district_id'])
+            ? trim((string) $filters['district_id']) : '';
+        $villageId = isset($filters['village_id']) && is_scalar($filters['village_id'])
+            ? trim((string) $filters['village_id']) : '';
+
+        $select = "r.id AS registration_id,r.event_id,r.province_id,r.province_name,r.regency_id,r.regency_name,
+            r.district_id,r.district_name,r.village_id,r.village_name,r.expected_amount AS due_amount,
+            e.code AS event_code,e.name AS event_name,e.start_date,e.end_date,e.location,e.billing_mode,
+            (SELECT COUNT(*) FROM participants pt WHERE pt.registration_id=r.id AND pt.is_active=1 AND pt.deleted_at IS NULL) AS participant_count,
+            (SELECT COUNT(*) FROM payments py WHERE py.registration_id=r.id AND py.status='verified') AS verified_payment_count,
+            (SELECT COUNT(*) FROM payments py WHERE py.registration_id=r.id AND py.status='pending') AS pending_payment_count,
+            (SELECT COALESCE(SUM(py.amount),0) FROM payments py WHERE py.registration_id=r.id AND py.status='verified') AS verified_amount,
+            (SELECT COALESCE(SUM(py.amount),0) FROM payments py WHERE py.registration_id=r.id AND py.status='pending') AS pending_amount,
+            (SELECT COALESCE(SUM(py.amount),0) FROM payments py WHERE py.registration_id=r.id AND py.status='verified' AND py.method='cash') AS cash_total,
+            (SELECT COALESCE(SUM(py.amount),0) FROM payments py WHERE py.registration_id=r.id AND py.status='verified' AND py.method='transfer') AS transfer_total,
+            (SELECT COALESCE(SUM(py.amount),0) FROM payments py WHERE py.registration_id=r.id AND py.status='verified' AND py.method='qris') AS qris_total";
+
+        $this->db->select($select, FALSE)
+            ->from('registrations r')
+            ->join('training_events e', 'e.id=r.event_id')
+            ->where('r.status', 'active')
+            ->where('e.status', 'open');
+        $this->apply_event_scope('r.event_id', $eventIds, TRUE);
+        if ($districtId !== '') $this->db->where('r.district_id', $districtId);
+        if ($villageId !== '') $this->db->where('r.village_id', $villageId);
+
+        $rows = $this->db
+            ->order_by('r.district_name', 'ASC')
+            ->order_by('r.village_name', 'ASC')
+            ->order_by('e.start_date', 'DESC')
+            ->order_by('e.id', 'DESC')
+            ->get()->result_array();
+
+        $summaryCents = array(
+            'total_due' => 0, 'verified' => 0, 'pending' => 0, 'outstanding' => 0,
+            'cash_total' => 0, 'transfer_total' => 0, 'qris_total' => 0
+        );
+        $statusCounts = array('paid' => 0, 'overpaid' => 0, 'partial_pending' => 0, 'partial' => 0, 'pending' => 0, 'unpaid' => 0, 'no_charge' => 0);
+        $participantCount = 0;
+        $villageKeys = array();
+
+        foreach ($rows as &$row) {
+            $dueCents = $this->money_cents(isset($row['due_amount']) ? $row['due_amount'] : '0');
+            $verifiedCents = $this->money_cents(isset($row['verified_amount']) ? $row['verified_amount'] : '0');
+            $pendingCents = $this->money_cents(isset($row['pending_amount']) ? $row['pending_amount'] : '0');
+            $cashCents = $this->money_cents(isset($row['cash_total']) ? $row['cash_total'] : '0');
+            $transferCents = $this->money_cents(isset($row['transfer_total']) ? $row['transfer_total'] : '0');
+            $qrisCents = $this->money_cents(isset($row['qris_total']) ? $row['qris_total'] : '0');
+            $dueCents = $dueCents === NULL ? 0 : $dueCents;
+            $verifiedCents = $verifiedCents === NULL ? 0 : $verifiedCents;
+            $pendingCents = $pendingCents === NULL ? 0 : $pendingCents;
+            $cashCents = $cashCents === NULL ? 0 : $cashCents;
+            $transferCents = $transferCents === NULL ? 0 : $transferCents;
+            $qrisCents = $qrisCents === NULL ? 0 : $qrisCents;
+            $outstandingCents = max(0, $dueCents - $verifiedCents);
+
+            if ($dueCents <= 0) $state = 'no_charge';
+            elseif ($verifiedCents > $dueCents) $state = 'overpaid';
+            elseif ($verifiedCents === $dueCents) $state = 'paid';
+            elseif ($verifiedCents > 0 && $pendingCents > 0) $state = 'partial_pending';
+            elseif ($verifiedCents > 0) $state = 'partial';
+            elseif ($pendingCents > 0) $state = 'pending';
+            else $state = 'unpaid';
+
+            $row['outstanding_amount'] = $this->cents_to_decimal($outstandingCents);
+            $row['payment_state'] = $state;
+            $statusCounts[$state]++;
+            $participantCount += (int) $row['participant_count'];
+            $villageKey = trim((string) $row['village_id']);
+            if ($villageKey !== '') $villageKeys[$villageKey] = TRUE;
+            $summaryCents['total_due'] += $dueCents;
+            $summaryCents['verified'] += $verifiedCents;
+            $summaryCents['pending'] += $pendingCents;
+            $summaryCents['outstanding'] += $outstandingCents;
+            $summaryCents['cash_total'] += $cashCents;
+            $summaryCents['transfer_total'] += $transferCents;
+            $summaryCents['qris_total'] += $qrisCents;
+        }
+        unset($row);
+
+        $summary = array(
+            'registrations' => count($rows),
+            'villages' => count($villageKeys),
+            'participants' => $participantCount,
+            'total_due' => $this->cents_to_decimal($summaryCents['total_due']),
+            'verified' => $this->cents_to_decimal($summaryCents['verified']),
+            'pending' => $this->cents_to_decimal($summaryCents['pending']),
+            // Sum each registration's remaining balance. An overpayment on one
+            // village must never hide an unpaid balance on another village.
+            'outstanding' => $this->cents_to_decimal($summaryCents['outstanding']),
+            'cash_total' => $this->cents_to_decimal($summaryCents['cash_total']),
+            'transfer_total' => $this->cents_to_decimal($summaryCents['transfer_total']),
+            'qris_total' => $this->cents_to_decimal($summaryCents['qris_total']),
+            'status_counts' => $statusCounts
+        );
+
+        return array('summary' => $summary, 'rows' => $rows);
+    }
+
     public function income_report(array $filters)
     {
         $view = isset($filters['view']) && $filters['view'] === 'participant' ? 'participant' : 'village';

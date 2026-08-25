@@ -33,6 +33,9 @@
 <h6 class="menu-divider mt-4">Keuangan</h6>
 <div class="list-group list-custom-small list-menu">
     <?php if ($this->Auth_model->can('reports.income')): ?>
+        <a class="<?= nav_is('payment_data') ? 'active-nav' : '' ?>" href="<?= site_url('data-bayar') ?>">
+            <i class="fa fa-money-check-alt gradient-blue color-white"></i><span>Data Bayar</span><i class="fa fa-angle-right"></i>
+        </a>
         <a class="<?= nav_is('reports') && $this->router->fetch_method() === 'income' ? 'active-nav' : '' ?>" href="<?= site_url('laporan/pemasukan') ?>">
             <i class="fa fa-chart-line gradient-green color-white"></i><span>Laporan Pemasukan</span><i class="fa fa-angle-right"></i>
         </a>

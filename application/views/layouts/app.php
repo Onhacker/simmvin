@@ -31,7 +31,7 @@
     </div>
 
     <div id="footer-bar" class="footer-bar-6">
-        <?php $menuNavActive = nav_is(array('events', 'reports', 'debts', 'transfers', 'positions', 'users', 'roles', 'audit')); ?>
+        <?php $menuNavActive = nav_is(array('events', 'reports', 'payment_data', 'debts', 'transfers', 'positions', 'users', 'roles', 'audit')); ?>
         <a class="<?= nav_is('dashboard') ? 'active-nav' : '' ?>" href="<?= site_url('dashboard') ?>"><i class="fa fa-chart-pie"></i><span>Beranda</span></a>
         <?php if ($this->Auth_model->can('expenses.view')): ?>
             <a class="<?= nav_is('expenses') ? 'active-nav' : '' ?>" href="<?= site_url('pengeluaran') ?>"><i class="fa fa-receipt"></i><span>Pengeluaran</span></a>
