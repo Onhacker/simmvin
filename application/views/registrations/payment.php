@@ -116,7 +116,7 @@ $isVillageExtra = $billingMode === 'per_village_extra';
                                 <label for="payment-amount" class="color-highlight">Nominal pembayaran</label>
                                 <i class="fa fa-times disabled invalid color-red-dark"></i>
                                 <i class="fa fa-check disabled valid color-green-dark"></i>
-                                <em>(wajib)</em>
+                                <em>*</em>
                             </div>
                             <p id="payment-remaining-label" class="font-10 opacity-60 mb-4 ps-2"></p>
                         </div>
@@ -128,13 +128,13 @@ $isVillageExtra = $billingMode === 'per_village_extra';
                                 <i class="fa fa-check disabled valid color-green-dark"></i>
                                 <em id="proof-required-label"></em>
                             </div>
-                            <p class="font-10 opacity-60 mb-4 ps-2">JPG, PNG, atau PDF maksimal 5 MB. Wajib untuk transfer/QRIS.</p>
+                            <p class="font-10 opacity-60 mb-4 ps-2">JPG, PNG, atau PDF maksimal 5 MB. Bukti diperlukan untuk transfer/QRIS.</p>
                         </div>
                         <div class="col-12">
                             <div class="input-style has-borders no-icon input-style-always-active mb-4">
-                                <textarea name="note" id="payment-note" class="form-control" rows="3" placeholder="Catatan pembayaran (opsional)"><?= e(old('note')) ?></textarea>
+                                <textarea name="note" id="payment-note" class="form-control" rows="3" placeholder="Catatan pembayaran"><?= e(old('note')) ?></textarea>
                                 <label for="payment-note" class="color-highlight">Catatan</label>
-                                <em class="mt-n3">(opsional)</em>
+                                <em class="mt-n3"></em>
                             </div>
                         </div>
                     </div>

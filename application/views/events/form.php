@@ -64,28 +64,28 @@ foreach ((array) (isset($selectedRegions) ? $selectedRegions : array()) as $sele
                             <div class="input-style input-style-always-active has-borders no-icon validate-field mb-4">
                                 <input class="form-control" id="event-code" name="code" required maxlength="40" value="<?= e(old('code', $editing ? $event['code'] : ('EVT-' . date('Ymd')))) ?>" placeholder="EVT-2026">
                                 <label for="event-code" class="color-highlight font-12 font-500">Kode Event</label>
-                                <i class="fa fa-times disabled invalid color-red-dark"></i><i class="fa fa-check disabled valid color-green-dark"></i><em>(wajib)</em>
+                                <i class="fa fa-times disabled invalid color-red-dark"></i><i class="fa fa-check disabled valid color-green-dark"></i><em>*</em>
                             </div>
                         </div>
                         <div class="col-md-8">
                             <div class="input-style input-style-always-active has-borders no-icon validate-field mb-4">
                                 <input class="form-control" id="event-name" name="name" required maxlength="180" value="<?= e(old('name', $editing ? $event['name'] : '')) ?>" placeholder="Nama pelatihan">
                                 <label for="event-name" class="color-highlight font-12 font-500">Nama Event</label>
-                                <i class="fa fa-times disabled invalid color-red-dark"></i><i class="fa fa-check disabled valid color-green-dark"></i><em>(wajib)</em>
+                                <i class="fa fa-times disabled invalid color-red-dark"></i><i class="fa fa-check disabled valid color-green-dark"></i><em>*</em>
                             </div>
                         </div>
                         <div class="col-md-6">
                             <div class="input-style input-style-always-active has-borders no-icon mb-4">
                                 <input type="date" class="form-control" id="event-start-date" name="start_date" required value="<?= e(old('start_date', $editing ? $event['start_date'] : date('Y-m-d'))) ?>">
                                 <label for="event-start-date" class="color-highlight font-12 font-500">Tanggal Mulai</label>
-                                <i class="fa fa-times disabled invalid color-red-dark"></i><i class="fa fa-check disabled valid color-green-dark"></i><em>(wajib)</em>
+                                <i class="fa fa-times disabled invalid color-red-dark"></i><i class="fa fa-check disabled valid color-green-dark"></i><em>*</em>
                             </div>
                         </div>
                         <div class="col-md-6">
                             <div class="input-style input-style-always-active has-borders no-icon mb-4">
                                 <input type="date" class="form-control" id="event-end-date" name="end_date" required value="<?= e(old('end_date', $editing ? $event['end_date'] : date('Y-m-d'))) ?>">
                                 <label for="event-end-date" class="color-highlight font-12 font-500">Tanggal Selesai</label>
-                                <i class="fa fa-times disabled invalid color-red-dark"></i><i class="fa fa-check disabled valid color-green-dark"></i><em>(wajib)</em>
+                                <i class="fa fa-times disabled invalid color-red-dark"></i><i class="fa fa-check disabled valid color-green-dark"></i><em>*</em>
                             </div>
                         </div>
                     </div>
@@ -147,7 +147,7 @@ foreach ((array) (isset($selectedRegions) ? $selectedRegions : array()) as $sele
                             <div class="input-style input-style-always-active has-borders no-icon validate-field mb-4">
                                 <input class="form-control" id="event-location" name="location" maxlength="180" required value="<?= e(old('location', $editing ? $event['location'] : '')) ?>" placeholder="Nama gedung atau hotel">
                                 <label for="event-location" class="color-highlight font-12 font-500">Lokasi / Gedung</label>
-                                <i class="fa fa-times disabled invalid color-red-dark"></i><i class="fa fa-check disabled valid color-green-dark"></i><em>(wajib)</em>
+                                <i class="fa fa-times disabled invalid color-red-dark"></i><i class="fa fa-check disabled valid color-green-dark"></i><em>*</em>
                             </div>
                         </div>
                         <div class="col-12">

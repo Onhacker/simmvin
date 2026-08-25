@@ -41,13 +41,13 @@ $isActive = $isPost ? $this->input->post('is_active') !== NULL : (!$editing || (
                         <i class="fa fa-user color-highlight"></i>
                         <input class="form-control" id="name" name="name" maxlength="120" required value="<?= e(old('name', $editing ? $user['name'] : '')) ?>" placeholder="Nama lengkap">
                         <label for="name" class="color-highlight font-12 font-500">Nama Lengkap</label>
-                        <i class="fa fa-times disabled invalid color-red-dark"></i><i class="fa fa-check disabled valid color-green-dark"></i><em>(wajib)</em>
+                        <i class="fa fa-times disabled invalid color-red-dark"></i><i class="fa fa-check disabled valid color-green-dark"></i><em>*</em>
                     </div>
                     <div class="input-style input-style-always-active has-borders has-icon validate-field mb-4">
                         <i class="fa fa-at color-highlight"></i>
                         <input class="form-control" id="username" name="username" maxlength="80" required autocomplete="off" value="<?= e(old('username', $editing ? $user['username'] : '')) ?>" placeholder="username">
                         <label for="username" class="color-highlight font-12 font-500">Username</label>
-                        <i class="fa fa-times disabled invalid color-red-dark"></i><i class="fa fa-check disabled valid color-green-dark"></i><em>(wajib)</em>
+                        <i class="fa fa-times disabled invalid color-red-dark"></i><i class="fa fa-check disabled valid color-green-dark"></i><em>*</em>
                     </div>
                     <p class="font-10 opacity-50 mt-n3 mb-4">Gunakan huruf, angka, garis bawah, atau tanda hubung.</p>
 
@@ -77,7 +77,7 @@ $isActive = $isPost ? $this->input->post('is_active') !== NULL : (!$editing || (
                         </select>
                         <span><i class="fa fa-chevron-down"></i></span>
                         <i class="fa fa-check disabled valid color-green-dark"></i>
-                        <i class="fa fa-times disabled invalid color-red-dark"></i><em>(wajib)</em>
+                        <i class="fa fa-times disabled invalid color-red-dark"></i><em>*</em>
                     </div>
                     <p class="font-10 opacity-50 mt-n3 mb-4">Mengganti peran akan menawarkan pilihan izin bawaan peran tersebut.</p>
 
@@ -86,14 +86,14 @@ $isActive = $isPost ? $this->input->post('is_active') !== NULL : (!$editing || (
                             <div class="input-style input-style-always-active has-borders no-icon validate-field mb-4">
                                 <input type="password" class="form-control" id="password" name="password" minlength="8" maxlength="200" autocomplete="new-password" <?= $editing ? '' : 'required' ?> placeholder="Minimal 8 karakter">
                                 <label for="password" class="color-highlight font-12 font-500">Kata Sandi</label>
-                                <i class="fa fa-times disabled invalid color-red-dark"></i><i class="fa fa-check disabled valid color-green-dark"></i><em><?= $editing ? '(opsional)' : '(wajib)' ?></em>
+                                <i class="fa fa-times disabled invalid color-red-dark"></i><i class="fa fa-check disabled valid color-green-dark"></i><em><?= $editing ? '' : '*' ?></em>
                             </div>
                         </div>
                         <div class="col-md-6">
                             <div class="input-style input-style-always-active has-borders no-icon validate-field mb-4">
                                 <input type="password" class="form-control" id="password_confirmation" name="password_confirmation" minlength="8" maxlength="200" autocomplete="new-password" <?= $editing ? '' : 'required' ?> placeholder="Ulangi kata sandi">
                                 <label for="password_confirmation" class="color-highlight font-12 font-500">Konfirmasi</label>
-                                <i class="fa fa-times disabled invalid color-red-dark"></i><i class="fa fa-check disabled valid color-green-dark"></i><em><?= $editing ? '(opsional)' : '(wajib)' ?></em>
+                                <i class="fa fa-times disabled invalid color-red-dark"></i><i class="fa fa-check disabled valid color-green-dark"></i><em><?= $editing ? '' : '*' ?></em>
                             </div>
                         </div>
                     </div>

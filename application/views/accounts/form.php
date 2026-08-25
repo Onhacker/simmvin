@@ -34,7 +34,7 @@ $type = old('type', isset($accountData['type']) ? $accountData['type'] : 'bank')
                         <label for="account-name" class="color-highlight font-12 font-500">Nama Akun</label>
                         <i class="fa fa-times disabled invalid color-red-dark"></i>
                         <i class="fa fa-check disabled valid color-green-dark"></i>
-                        <em>(wajib)</em>
+                        <em>*</em>
                     </div>
                 </div>
                 <div class="col-md-5">
@@ -48,7 +48,7 @@ $type = old('type', isset($accountData['type']) ? $accountData['type'] : 'bank')
                         <span><i class="fa fa-chevron-down"></i></span>
                         <i class="fa fa-check disabled valid color-green-dark"></i>
                         <i class="fa fa-times disabled invalid color-red-dark"></i>
-                        <em>(wajib)</em>
+                        <em>*</em>
                     </div>
                 </div>
 
@@ -60,7 +60,7 @@ $type = old('type', isset($accountData['type']) ? $accountData['type'] : 'bank')
                         <label for="account-bank" class="color-highlight font-12 font-500">Nama Bank / Penyedia</label>
                         <i class="fa fa-times disabled invalid color-red-dark"></i>
                         <i class="fa fa-check disabled valid color-green-dark"></i>
-                        <em>(opsional)</em>
+                        <em></em>
                     </div>
                 </div>
                 <div class="col-md-4 js-bank-field">
@@ -71,7 +71,7 @@ $type = old('type', isset($accountData['type']) ? $accountData['type'] : 'bank')
                         <label for="account-number" class="color-highlight font-12 font-500">Nomor Rekening / Merchant</label>
                         <i class="fa fa-times disabled invalid color-red-dark"></i>
                         <i class="fa fa-check disabled valid color-green-dark"></i>
-                        <em>(opsional)</em>
+                        <em></em>
                     </div>
                 </div>
                 <div class="col-md-4 js-bank-field">
@@ -82,7 +82,7 @@ $type = old('type', isset($accountData['type']) ? $accountData['type'] : 'bank')
                         <label for="account-holder" class="color-highlight font-12 font-500">Atas Nama</label>
                         <i class="fa fa-times disabled invalid color-red-dark"></i>
                         <i class="fa fa-check disabled valid color-green-dark"></i>
-                        <em>(opsional)</em>
+                        <em></em>
                     </div>
                 </div>
 
@@ -95,7 +95,7 @@ $type = old('type', isset($accountData['type']) ? $accountData['type'] : 'bank')
                         <label for="account-opening-balance" class="color-highlight font-12 font-500">Saldo Awal</label>
                         <i class="fa fa-times disabled invalid color-red-dark"></i>
                         <i class="fa fa-check disabled valid color-green-dark"></i>
-                        <em>(wajib)</em>
+                        <em>*</em>
                     </div>
                     <p class="font-11 opacity-60 mb-4">Perubahan saldo awal akan mengubah saldo akhir akun.</p>
                 </div>
@@ -107,7 +107,7 @@ $type = old('type', isset($accountData['type']) ? $accountData['type'] : 'bank')
                         <label for="account-sort" class="color-highlight font-12 font-500">Urutan</label>
                         <i class="fa fa-times disabled invalid color-red-dark"></i>
                         <i class="fa fa-check disabled valid color-green-dark"></i>
-                        <em>(wajib)</em>
+                        <em>*</em>
                     </div>
                 </div>
                 <div class="col-md-3">

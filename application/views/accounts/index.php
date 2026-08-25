@@ -141,29 +141,29 @@ $canManage = isset($canManage) ? (bool)$canManage : $this->Auth_model->can('acco
                 <div class="input-style input-style-always-active has-borders no-icon mb-3">
                     <input class="form-control" id="account-modal-name" name="name" maxlength="120" required placeholder="Contoh: Rekening Perusahaan">
                     <label for="account-modal-name" class="color-highlight">Nama Akun</label>
-                    <i class="fa fa-times disabled invalid color-red-dark"></i><i class="fa fa-check disabled valid color-green-dark"></i><em>(wajib)</em>
+                    <i class="fa fa-times disabled invalid color-red-dark"></i><i class="fa fa-check disabled valid color-green-dark"></i><em>*</em>
                 </div>
                 <div class="input-style input-style-always-active has-borders no-icon mb-3">
                     <label for="account-modal-type" class="color-highlight">Jenis Akun</label>
                     <select id="account-modal-type" name="type" required>
                         <option value="cash">Tunai</option><option value="bank" selected>Bank</option><option value="qris">QRIS</option><option value="personal">Rekening Pribadi / Titipan</option>
                     </select>
-                    <span><i class="fa fa-chevron-down"></i></span><i class="fa fa-check disabled valid color-green-dark"></i><i class="fa fa-times disabled invalid color-red-dark"></i><em>(wajib)</em>
+                    <span><i class="fa fa-chevron-down"></i></span><i class="fa fa-check disabled valid color-green-dark"></i><i class="fa fa-times disabled invalid color-red-dark"></i><em>*</em>
                 </div>
                 <div class="account-modal-bank-field">
                     <div class="input-style input-style-always-active has-borders no-icon mb-3">
                         <input class="form-control" id="account-modal-bank" name="bank_name" maxlength="120" placeholder="Bank / penyedia layanan">
                         <label for="account-modal-bank" class="color-highlight">Nama Bank / Penyedia</label>
-                        <i class="fa fa-times disabled invalid color-red-dark"></i><i class="fa fa-check disabled valid color-green-dark"></i><em>(opsional)</em>
+                        <i class="fa fa-times disabled invalid color-red-dark"></i><i class="fa fa-check disabled valid color-green-dark"></i><em></em>
                     </div>
                 </div>
                 <div class="row mb-0 account-modal-bank-field">
-                    <div class="col-12"><div class="input-style input-style-always-active has-borders no-icon mb-3"><input class="form-control" id="account-modal-number" name="account_number" maxlength="120" placeholder="Nomor rekening"><label for="account-modal-number" class="color-highlight">Nomor Rekening</label><i class="fa fa-times disabled invalid color-red-dark"></i><i class="fa fa-check disabled valid color-green-dark"></i><em>(opsional)</em></div></div>
-                    <div class="col-12"><div class="input-style input-style-always-active has-borders no-icon mb-3"><input class="form-control" id="account-modal-holder" name="account_holder" maxlength="120" placeholder="Nama pemilik"><label for="account-modal-holder" class="color-highlight">Atas Nama</label><i class="fa fa-times disabled invalid color-red-dark"></i><i class="fa fa-check disabled valid color-green-dark"></i><em>(opsional)</em></div></div>
+                    <div class="col-12"><div class="input-style input-style-always-active has-borders no-icon mb-3"><input class="form-control" id="account-modal-number" name="account_number" maxlength="120" placeholder="Nomor rekening"><label for="account-modal-number" class="color-highlight">Nomor Rekening</label><i class="fa fa-times disabled invalid color-red-dark"></i><i class="fa fa-check disabled valid color-green-dark"></i><em></em></div></div>
+                    <div class="col-12"><div class="input-style input-style-always-active has-borders no-icon mb-3"><input class="form-control" id="account-modal-holder" name="account_holder" maxlength="120" placeholder="Nama pemilik"><label for="account-modal-holder" class="color-highlight">Atas Nama</label><i class="fa fa-times disabled invalid color-red-dark"></i><i class="fa fa-check disabled valid color-green-dark"></i><em></em></div></div>
                 </div>
                 <div class="row mb-0">
-                    <div class="col-12"><div class="input-style input-style-always-active has-borders no-icon mb-2"><input class="form-control" id="account-modal-opening" type="number" min="0" step="0.01" name="opening_balance" value="0" required><label for="account-modal-opening" class="color-highlight">Saldo Awal</label><i class="fa fa-times disabled invalid color-red-dark"></i><i class="fa fa-check disabled valid color-green-dark"></i><em>(wajib)</em></div><p class="font-10 opacity-60 mt-n1 mb-3">Perubahan saldo awal memengaruhi saldo akhir.</p></div>
-                    <div class="col-12"><div class="input-style input-style-always-active has-borders no-icon mb-3"><input class="form-control" id="account-modal-sort" type="number" name="sort_order" value="0" required><label for="account-modal-sort" class="color-highlight">Urutan</label><i class="fa fa-times disabled invalid color-red-dark"></i><i class="fa fa-check disabled valid color-green-dark"></i><em>(wajib)</em></div></div>
+                    <div class="col-12"><div class="input-style input-style-always-active has-borders no-icon mb-2"><input class="form-control" id="account-modal-opening" type="number" min="0" step="0.01" name="opening_balance" value="0" required><label for="account-modal-opening" class="color-highlight">Saldo Awal</label><i class="fa fa-times disabled invalid color-red-dark"></i><i class="fa fa-check disabled valid color-green-dark"></i><em>*</em></div><p class="font-10 opacity-60 mt-n1 mb-3">Perubahan saldo awal memengaruhi saldo akhir.</p></div>
+                    <div class="col-12"><div class="input-style input-style-always-active has-borders no-icon mb-3"><input class="form-control" id="account-modal-sort" type="number" name="sort_order" value="0" required><label for="account-modal-sort" class="color-highlight">Urutan</label><i class="fa fa-times disabled invalid color-red-dark"></i><i class="fa fa-check disabled valid color-green-dark"></i><em>*</em></div></div>
                 </div>
                 <div class="card bg-theme border rounded-s shadow-0 mb-3"><div class="content my-3">
                     <div class="form-check icon-check mb-3"><input class="form-check-input" type="checkbox" name="include_in_total" value="1" id="account-modal-included" checked><label class="form-check-label" for="account-modal-included">Hitung dalam total saldo</label><i class="icon-check-1 far fa-square color-gray-dark"></i><i class="icon-check-2 far fa-check-square color-highlight"></i></div>

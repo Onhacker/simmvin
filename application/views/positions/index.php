@@ -228,7 +228,7 @@ $hasFilters = $filters['q'] !== '' || $filters['category'] !== '' || $filters['s
                     <i class="fa fa-id-badge color-highlight"></i>
                     <input class="form-control" id="position-modal-name" name="name" maxlength="120" required placeholder="Contoh: Kepala">
                     <label for="position-modal-name" class="color-highlight">Nama Jabatan</label>
-                    <i class="fa fa-times disabled invalid color-red-dark"></i><i class="fa fa-check disabled valid color-green-dark"></i><em>(wajib)</em>
+                    <i class="fa fa-times disabled invalid color-red-dark"></i><i class="fa fa-check disabled valid color-green-dark"></i><em>*</em>
                 </div>
                 <p class="font-10 opacity-60 mt-n2 mb-3">Kata “Desa” akan ditambahkan oleh template mailing bila diperlukan.</p>
                 <div class="input-style input-style-always-active has-borders no-icon mb-3">
@@ -236,16 +236,16 @@ $hasFilters = $filters['q'] !== '' || $filters['category'] !== '' || $filters['s
                     <select id="position-modal-category" name="category" required>
                         <?php foreach ($categories as $key => $label): ?><option value="<?= e($key) ?>"><?= e($label) ?></option><?php endforeach; ?>
                     </select>
-                    <span><i class="fa fa-chevron-down"></i></span><i class="fa fa-check disabled valid color-green-dark"></i><i class="fa fa-times disabled invalid color-red-dark"></i><em>(wajib)</em>
+                    <span><i class="fa fa-chevron-down"></i></span><i class="fa fa-check disabled valid color-green-dark"></i><i class="fa fa-times disabled invalid color-red-dark"></i><em>*</em>
                 </div>
                 <div class="row mb-0">
-                    <div class="col-12"><div class="input-style input-style-always-active has-borders has-icon mb-2"><i class="fa fa-code color-highlight"></i><input class="form-control" id="position-modal-code" name="code" maxlength="80" placeholder="Dibuat otomatis"><label for="position-modal-code" class="color-highlight">Kode Jabatan</label><i class="fa fa-times disabled invalid color-red-dark"></i><i class="fa fa-check disabled valid color-green-dark"></i><em>(opsional)</em></div><p class="font-10 opacity-60 mt-n1 mb-3">Kosongkan untuk membuat kode otomatis.</p></div>
-                    <div class="col-12"><div class="input-style input-style-always-active has-borders no-icon mb-3"><input class="form-control" type="number" id="position-modal-sort" name="sort_order" min="0" step="1" value="0" required><label for="position-modal-sort" class="color-highlight">Urutan</label><i class="fa fa-check disabled valid color-green-dark"></i><i class="fa fa-times disabled invalid color-red-dark"></i><em>(wajib)</em></div></div>
+                    <div class="col-12"><div class="input-style input-style-always-active has-borders has-icon mb-2"><i class="fa fa-code color-highlight"></i><input class="form-control" id="position-modal-code" name="code" maxlength="80" placeholder="Dibuat otomatis"><label for="position-modal-code" class="color-highlight">Kode Jabatan</label><i class="fa fa-times disabled invalid color-red-dark"></i><i class="fa fa-check disabled valid color-green-dark"></i><em></em></div><p class="font-10 opacity-60 mt-n1 mb-3">Kosongkan untuk membuat kode otomatis.</p></div>
+                    <div class="col-12"><div class="input-style input-style-always-active has-borders no-icon mb-3"><input class="form-control" type="number" id="position-modal-sort" name="sort_order" min="0" step="1" value="0" required><label for="position-modal-sort" class="color-highlight">Urutan</label><i class="fa fa-check disabled valid color-green-dark"></i><i class="fa fa-times disabled invalid color-red-dark"></i><em>*</em></div></div>
                 </div>
                 <div class="input-style input-style-always-active has-borders no-icon mb-3">
-                    <textarea class="form-control" id="position-modal-description" name="description" rows="3" maxlength="255" placeholder="Keterangan singkat (opsional)"></textarea>
+                    <textarea class="form-control" id="position-modal-description" name="description" rows="3" maxlength="255" placeholder="Keterangan singkat"></textarea>
                     <label for="position-modal-description" class="color-highlight">Deskripsi</label>
-                    <i class="fa fa-times disabled invalid color-red-dark"></i><i class="fa fa-check disabled valid color-green-dark"></i><em class="mt-n3">(opsional)</em>
+                    <i class="fa fa-times disabled invalid color-red-dark"></i><i class="fa fa-check disabled valid color-green-dark"></i><em class="mt-n3"></em>
                 </div>
                 <div class="d-flex align-items-center rounded-s bg-green-light px-3 py-3 mb-3">
                     <span class="icon icon-s rounded-xl bg-green-dark color-white me-3"><i class="fa fa-toggle-on"></i></span>

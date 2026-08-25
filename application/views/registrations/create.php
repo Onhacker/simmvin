@@ -67,7 +67,7 @@ $oldPaymentGroups = isset($oldPaymentGroups) ? $oldPaymentGroups : array();
                             <span><i class="fa fa-chevron-down"></i></span>
                             <i class="fa fa-check disabled valid color-green-dark"></i>
                             <i class="fa fa-times disabled invalid color-red-dark"></i>
-                            <em>(wajib)</em>
+                            <em>*</em>
                         </div>
                     <?php endif; ?>
                     <div class="d-flex align-items-center rounded-s bg-blue-light px-3 py-2 mb-4">

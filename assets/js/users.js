@@ -103,7 +103,7 @@
     var passwordRequired = !editing;
     form.elements.password.required = passwordRequired;
     form.elements.password_confirmation.required = passwordRequired;
-    document.querySelectorAll('[data-user-password-required]').forEach(function (label) { label.textContent = passwordRequired ? '(wajib)' : '(opsional)'; });
+    document.querySelectorAll('[data-user-password-required]').forEach(function (label) { label.textContent = passwordRequired ? '*' : ''; });
     applyPermissions(editing ? user.permission_ids : defaultsForRole());
     openModal();
     window.setTimeout(function () { var input = document.getElementById('user-modal-name'); if (input) input.focus(); }, 80);

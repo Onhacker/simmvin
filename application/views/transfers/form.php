@@ -42,7 +42,7 @@
                         <span><i class="fa fa-chevron-down"></i></span>
                         <i class="fa fa-check disabled valid color-green-dark"></i>
                         <i class="fa fa-times disabled invalid color-red-dark"></i>
-                        <em>(wajib)</em>
+                        <em>*</em>
                     </div>
                 </div>
                 <div class="col-lg-4">
@@ -57,7 +57,7 @@
                         <span><i class="fa fa-chevron-down"></i></span>
                         <i class="fa fa-check disabled valid color-green-dark"></i>
                         <i class="fa fa-times disabled invalid color-red-dark"></i>
-                        <em>(wajib)</em>
+                        <em>*</em>
                     </div>
                 </div>
 
@@ -67,7 +67,7 @@
                         <label for="transfer-amount" class="color-highlight font-12 font-500">Jumlah Transfer</label>
                         <i class="fa fa-times disabled invalid color-red-dark"></i>
                         <i class="fa fa-check disabled valid color-green-dark"></i>
-                        <em>(wajib)</em>
+                        <em>*</em>
                     </div>
                 </div>
                 <div class="col-lg-4">
@@ -76,7 +76,7 @@
                         <label for="transfer-admin-fee" class="color-highlight font-12 font-500">Biaya Transfer</label>
                         <i class="fa fa-times disabled invalid color-red-dark"></i>
                         <i class="fa fa-check disabled valid color-green-dark"></i>
-                        <em>(opsional)</em>
+                        <em></em>
                     </div>
                     <p class="font-11 opacity-60 mb-4">Biaya hanya mengurangi akun sumber.</p>
                 </div>
@@ -102,14 +102,14 @@
                 <div class="col-md-6">
                     <label for="transfer-proof" class="font-12 font-600 color-highlight mb-2">Bukti Transfer</label>
                     <input class="form-control mb-1" id="transfer-proof" type="file" name="proof" accept=".jpg,.jpeg,.png,.pdf" required>
-                    <p class="font-11 opacity-60 mb-4">JPG, PNG, atau PDF; maksimal 5 MB (wajib).</p>
+                    <p class="font-11 opacity-60 mb-4">JPG, PNG, atau PDF; maksimal 5 MB *.</p>
                 </div>
                 <div class="col-md-6">
                     <div class="input-style input-style-always-active has-borders no-icon mb-4">
                         <textarea id="transfer-note" name="note" rows="2" placeholder="Catatan tambahan"><?= e(old('note')) ?></textarea>
                         <label for="transfer-note" class="color-highlight font-12 font-500">Catatan</label>
                         <i class="fa fa-times disabled invalid color-red-dark"></i><i class="fa fa-check disabled valid color-green-dark"></i>
-                        <em class="mt-n3">(opsional)</em>
+                        <em class="mt-n3"></em>
                     </div>
                 </div>
             </div>

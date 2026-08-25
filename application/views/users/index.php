@@ -89,36 +89,36 @@ foreach ($permissions as $permission) $permissionGroups[$permission['module']][]
                 <?= csrf_field() ?>
                 <div class="input-style input-style-always-active has-borders has-icon mb-3">
                     <i class="fa fa-user color-highlight"></i><input class="form-control" id="user-modal-name" name="name" maxlength="120" required placeholder="Nama lengkap">
-                    <label for="user-modal-name" class="color-highlight">Nama Lengkap</label><i class="fa fa-times disabled invalid color-red-dark"></i><i class="fa fa-check disabled valid color-green-dark"></i><em>(wajib)</em>
+                    <label for="user-modal-name" class="color-highlight">Nama Lengkap</label><i class="fa fa-times disabled invalid color-red-dark"></i><i class="fa fa-check disabled valid color-green-dark"></i><em>*</em>
                 </div>
                 <div class="row mb-0">
                     <div class="col-12"><div class="input-style input-style-always-active has-borders has-icon mb-3">
                         <i class="fa fa-at color-highlight"></i><input class="form-control" id="user-modal-username" name="username" maxlength="80" required placeholder="username">
-                        <label for="user-modal-username" class="color-highlight">Username</label><i class="fa fa-times disabled invalid color-red-dark"></i><i class="fa fa-check disabled valid color-green-dark"></i><em>(wajib)</em>
+                        <label for="user-modal-username" class="color-highlight">Username</label><i class="fa fa-times disabled invalid color-red-dark"></i><i class="fa fa-check disabled valid color-green-dark"></i><em>*</em>
                     </div></div>
                     <div class="col-12"><div class="input-style input-style-always-active has-borders no-icon mb-3">
                         <input class="form-control" id="user-modal-phone" name="phone" maxlength="30" inputmode="tel" placeholder="08xxxxxxxxxx">
-                        <label for="user-modal-phone" class="color-highlight">No. HP</label><i class="fa fa-times disabled invalid color-red-dark"></i><i class="fa fa-check disabled valid color-green-dark"></i><em>(opsional)</em>
+                        <label for="user-modal-phone" class="color-highlight">No. HP</label><i class="fa fa-times disabled invalid color-red-dark"></i><i class="fa fa-check disabled valid color-green-dark"></i><em></em>
                     </div></div>
                 </div>
                 <div class="input-style input-style-always-active has-borders no-icon mb-3">
                     <label for="user-modal-email" class="color-highlight">Email</label><input type="email" class="form-control" id="user-modal-email" name="email" maxlength="160" placeholder="nama@email.com">
-                    <i class="fa fa-times disabled invalid color-red-dark"></i><i class="fa fa-check disabled valid color-green-dark"></i><em>(opsional)</em>
+                    <i class="fa fa-times disabled invalid color-red-dark"></i><i class="fa fa-check disabled valid color-green-dark"></i><em></em>
                 </div>
                 <div class="input-style input-style-always-active has-borders no-icon mb-3">
                     <label for="user-modal-role" class="color-highlight">Peran</label>
                     <select class="form-select" id="user-modal-role" name="role_id" required>
                         <?php foreach ($roles as $role): ?><option value="<?= (int) $role['id'] ?>" data-role-slug="<?= e($role['slug']) ?>"><?= e($role['name']) ?></option><?php endforeach; ?>
-                    </select><span><i class="fa fa-chevron-down"></i></span><i class="fa fa-times disabled invalid color-red-dark"></i><i class="fa fa-check disabled valid color-green-dark"></i><em>(wajib)</em>
+                    </select><span><i class="fa fa-chevron-down"></i></span><i class="fa fa-times disabled invalid color-red-dark"></i><i class="fa fa-check disabled valid color-green-dark"></i><em>*</em>
                 </div>
                 <div class="row mb-0">
                     <div class="col-12"><div class="input-style input-style-always-active has-borders no-icon mb-3">
                         <input type="password" class="form-control" id="user-modal-password" name="password" minlength="8" maxlength="200" autocomplete="new-password" placeholder="Minimal 8 karakter">
-                        <label for="user-modal-password" class="color-highlight">Kata Sandi</label><i class="fa fa-times disabled invalid color-red-dark"></i><i class="fa fa-check disabled valid color-green-dark"></i><em data-user-password-required>(wajib)</em>
+                        <label for="user-modal-password" class="color-highlight">Kata Sandi</label><i class="fa fa-times disabled invalid color-red-dark"></i><i class="fa fa-check disabled valid color-green-dark"></i><em data-user-password-required>*</em>
                     </div></div>
                     <div class="col-12"><div class="input-style input-style-always-active has-borders no-icon mb-3">
                         <input type="password" class="form-control" id="user-modal-confirmation" name="password_confirmation" minlength="8" maxlength="200" autocomplete="new-password" placeholder="Ulangi kata sandi">
-                        <label for="user-modal-confirmation" class="color-highlight">Konfirmasi</label><i class="fa fa-times disabled invalid color-red-dark"></i><i class="fa fa-check disabled valid color-green-dark"></i><em data-user-password-required>(wajib)</em>
+                        <label for="user-modal-confirmation" class="color-highlight">Konfirmasi</label><i class="fa fa-times disabled invalid color-red-dark"></i><i class="fa fa-check disabled valid color-green-dark"></i><em data-user-password-required>*</em>
                     </div></div>
                 </div>
                 <div class="d-flex align-items-center rounded-s bg-blue-light px-3 py-2 mb-3">

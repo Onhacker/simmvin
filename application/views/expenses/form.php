@@ -42,7 +42,7 @@ $selectedEventId = (int) old('event_id', $selectedEventId);
                                 <span><i class="fa fa-chevron-down"></i></span>
                                 <i class="fa fa-check disabled valid color-green-dark"></i>
                                 <i class="fa fa-times disabled invalid color-red-dark"></i>
-                                <em>(wajib)</em>
+                                <em>*</em>
                             </div>
                         </div>
                         <div class="col-md-6">
@@ -73,7 +73,7 @@ $selectedEventId = (int) old('event_id', $selectedEventId);
                                     <span><i class="fa fa-chevron-down"></i></span>
                                     <i class="fa fa-check disabled valid color-green-dark"></i>
                                     <i class="fa fa-times disabled invalid color-red-dark"></i>
-                                    <em>(wajib)</em>
+                                    <em>*</em>
                                 </div>
                             <?php endif; ?>
                         </div>
@@ -88,11 +88,11 @@ $selectedEventId = (int) old('event_id', $selectedEventId);
                         </div>
                         <div class="col-12">
                             <div class="input-style input-style-always-active has-borders no-icon mb-4">
-                                <textarea id="expense-description" name="description" rows="3" maxlength="3000" placeholder="Tujuan pengeluaran (opsional)"><?= e(old('description')) ?></textarea>
+                                <textarea id="expense-description" name="description" rows="3" maxlength="3000" placeholder="Tujuan pengeluaran"><?= e(old('description')) ?></textarea>
                                 <label for="expense-description" class="color-highlight font-12 font-500">Tujuan Pengeluaran</label>
                                 <i class="fa fa-check disabled valid color-green-dark"></i>
                                 <i class="fa fa-times disabled invalid color-red-dark"></i>
-                                <em class="mt-n3">(opsional)</em>
+                                <em class="mt-n3"></em>
                             </div>
                         </div>
 
@@ -102,7 +102,7 @@ $selectedEventId = (int) old('event_id', $selectedEventId);
                                 <label for="expense-amount" class="color-highlight font-12 font-500">Jumlah</label>
                                 <i class="fa fa-times disabled invalid color-red-dark"></i>
                                 <i class="fa fa-check disabled valid color-green-dark"></i>
-                                <em>(wajib)</em>
+                                <em>*</em>
                             </div>
                         </div>
                         <div class="col-md-3">
@@ -116,7 +116,7 @@ $selectedEventId = (int) old('event_id', $selectedEventId);
                                 <span><i class="fa fa-chevron-down"></i></span>
                                 <i class="fa fa-check disabled valid color-green-dark"></i>
                                 <i class="fa fa-times disabled invalid color-red-dark"></i>
-                                <em>(wajib)</em>
+                                <em>*</em>
                             </div>
                         </div>
                         <div class="col-md-3 js-admin-fee">
@@ -125,7 +125,7 @@ $selectedEventId = (int) old('event_id', $selectedEventId);
                                 <label for="expense-admin-fee" class="color-highlight font-12 font-500">Biaya Admin</label>
                                 <i class="fa fa-times disabled invalid color-red-dark"></i>
                                 <i class="fa fa-check disabled valid color-green-dark"></i>
-                                <em>(opsional)</em>
+                                <em></em>
                             </div>
                         </div>
 
@@ -141,7 +141,7 @@ $selectedEventId = (int) old('event_id', $selectedEventId);
                                 <span><i class="fa fa-chevron-down"></i></span>
                                 <i class="fa fa-check disabled valid color-green-dark"></i>
                                 <i class="fa fa-times disabled invalid color-red-dark"></i>
-                                <em>(wajib)</em>
+                                <em>*</em>
                             </div>
                         </div>
                         <div class="col-md-6">
@@ -166,7 +166,7 @@ $selectedEventId = (int) old('event_id', $selectedEventId);
                         <div class="col-md-6">
                             <label for="expense-proof" class="font-12 font-600 color-highlight mb-2">Bukti Bayar</label>
                             <input class="form-control mb-1 js-expense-proof" id="expense-proof" type="file" name="proof" accept=".jpg,.jpeg,.png,.pdf">
-                            <p class="font-11 opacity-60 mb-4" id="expense-proof-help">Bukti wajib untuk Transfer/QRIS; opsional untuk Tunai. JPG, PNG, atau PDF; maksimal 5 MB.</p>
+                            <p class="font-11 opacity-60 mb-4" id="expense-proof-help">Bukti diperlukan untuk Transfer/QRIS; untuk Tunai dapat dilampirkan. JPG, PNG, atau PDF; maksimal 5 MB.</p>
                         </div>
                         <div class="col-md-6">
                             <div class="input-style input-style-always-active has-borders no-icon mb-4">
@@ -174,7 +174,7 @@ $selectedEventId = (int) old('event_id', $selectedEventId);
                                 <label for="expense-note" class="color-highlight font-12 font-500">Catatan</label>
                                 <i class="fa fa-check disabled valid color-green-dark"></i>
                                 <i class="fa fa-times disabled invalid color-red-dark"></i>
-                                <em class="mt-n3">(opsional)</em>
+                                <em class="mt-n3"></em>
                             </div>
                         </div>
                     </div>
@@ -200,7 +200,7 @@ $selectedEventId = (int) old('event_id', $selectedEventId);
                         <label for="expense-category-name" class="color-highlight font-12 font-500">Nama Kategori</label>
                         <i class="fa fa-times disabled invalid color-red-dark"></i>
                         <i class="fa fa-check disabled valid color-green-dark"></i>
-                        <em>(wajib)</em>
+                        <em>*</em>
                     </div>
                     <button class="btn btn-full btn-m font-13 font-600 bg-theme color-theme border rounded-s mb-3" type="submit">
                         <i class="fas fa-plus me-1 color-highlight"></i> Tambahkan Kategori

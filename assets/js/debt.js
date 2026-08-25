@@ -261,7 +261,7 @@
     proof.required = required;
     wrap.classList.toggle('border-red-dark', required);
     var marker = wrap.querySelector('em');
-    if (marker) marker.textContent = required ? '(wajib untuk transfer/QRIS)' : '(opsional untuk tunai)';
+    if (marker) marker.textContent = required ? '*' : '';
   }
 
   function updateDebtFeeRule() {

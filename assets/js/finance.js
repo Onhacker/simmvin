@@ -42,8 +42,8 @@
     legacyExpenseProof.required = required;
     if (legacyExpenseProofHelp) {
       legacyExpenseProofHelp.textContent = required
-        ? 'Bukti wajib untuk metode Transfer/QRIS. JPG, PNG, atau PDF; maksimal 5 MB.'
-        : 'Bukti opsional untuk metode Tunai. JPG, PNG, atau PDF; maksimal 5 MB.';
+        ? 'Bukti diperlukan untuk metode Transfer/QRIS. JPG, PNG, atau PDF; maksimal 5 MB.'
+        : 'Bukti dapat dilampirkan untuk metode Tunai. JPG, PNG, atau PDF; maksimal 5 MB.';
     }
   }
   if (method) { method.addEventListener('change', toggleLegacyExpenseProof); toggleLegacyExpenseProof(); }
@@ -146,7 +146,7 @@
       if (!expenseMethod || !expenseProof) return;
       var required = expenseMethod.value !== 'cash';
       expenseProof.required = required;
-      if (expenseProofLabel) expenseProofLabel.textContent = required ? '(wajib untuk transfer/QRIS)' : '(opsional untuk tunai)';
+      if (expenseProofLabel) expenseProofLabel.textContent = required ? '*' : '';
     }
 
     function updateExpenseFeeRule() {

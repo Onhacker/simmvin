@@ -14,7 +14,7 @@
                         <label for="audit-filter-action" class="color-highlight font-12 font-500">Aksi</label>
                         <i class="fa fa-times disabled invalid color-red-dark"></i>
                         <i class="fa fa-check disabled valid color-green-dark"></i>
-                        <em>(opsional)</em>
+                        <em></em>
                     </div>
                 </div>
                 <div class="col-lg-3 col-md-6">

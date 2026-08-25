@@ -325,6 +325,7 @@ button.btn-full { width: 100%; }
   right: 72px !important;
   opacity: .65;
 }
+.input-style em:empty { display: none !important; }
 .position-picker [data-position-search] { padding-right: 96px !important; }
 
 .position-picker-toggle {
@@ -403,7 +404,20 @@ button.btn-full { width: 100%; }
   color: #174f99;
 }
 
-.position-picker-option > span {
+.position-picker-option > span,
+.position-picker-option > strong,
+.position-picker-option > small {
+  position: static !important;
+  inset: auto !important;
+  display: block;
+  width: 100%;
+  margin: 0 !important;
+  opacity: 1 !important;
+  pointer-events: auto !important;
+  transform: none !important;
+}
+
+.position-picker-option > strong {
   color: inherit !important;
   font-size: 15px;
   font-weight: 650;

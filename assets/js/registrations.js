@@ -112,7 +112,7 @@
         '<button type="button" id="', esc(optionId), '" class="position-picker-option" role="option" tabindex="-1" aria-selected="false"',
           ' data-position-option data-position-id="', esc(id), '" data-position-name="', esc(name), '"',
           ' data-position-filter="', esc(normalizePositionName(name + ' ' + category)), '">',
-          '<span>', esc(name), '</span><small>', esc(category), '</small>',
+          '<strong class="position-picker-name">', esc(name), '</strong><small>', esc(category), '</small>',
         '</button>'
       ].join(''));
     });
@@ -126,7 +126,7 @@
       '<div id="', esc(pickerId), '" class="input-style has-borders no-icon input-style-always-active mb-4 position-picker" data-position-picker data-position-value-id="', esc(valueId), '">',
         '<input class="form-control" type="search" id="', esc(inputId), '" value="', esc(selectedName), '" autocomplete="off" spellcheck="false" required data-position-search role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="', esc(listId), '" placeholder="', esc(placeholder), '">',
         '<label class="color-highlight" for="', esc(inputId), '">Jabatan</label>',
-        '<i class="fa fa-times disabled ', invalidClass, '"></i><i class="fa fa-check ', validClass, '"></i><em>(wajib)</em>',
+        '<i class="fa fa-times disabled ', invalidClass, '"></i><i class="fa fa-check ', validClass, '"></i><em>*</em>',
         '<button type="button" class="position-picker-toggle" data-position-toggle tabindex="-1" aria-label="Buka daftar jabatan"><i class="fa fa-chevron-down"></i></button>',
         '<div id="', esc(listId), '" class="position-picker-menu" role="listbox" data-position-options hidden>',
           options.join(''),
@@ -551,7 +551,7 @@
                 '<div class="input-style has-borders no-icon input-style-always-active mb-4">',
                   '<input type="date" class="form-control" id="', dateId, '" name="', prefix, '[payment_date]" value="', esc(paymentDate), '" data-payment-input data-payment-required>',
                   '<label for="', dateId, '" class="color-highlight">Tanggal pembayaran</label>',
-                  '<i class="fa fa-check disabled valid color-green-dark"></i><i class="fa fa-times disabled invalid color-red-dark"></i><em>(wajib)</em>',
+                  '<i class="fa fa-check disabled valid color-green-dark"></i><i class="fa fa-times disabled invalid color-red-dark"></i><em>*</em>',
                 '</div>',
               '</div>',
               '<div class="col-12 col-md-6">',
@@ -578,7 +578,7 @@
                 '<div class="input-style has-borders no-icon input-style-always-active mb-1">',
                   '<input type="number" min="1" step="1" class="form-control" id="', amountId, '" name="', prefix, '[amount]" value="', esc(amount), '" placeholder="0" data-payment-input data-payment-required data-payment-amount>',
                   '<label for="', amountId, '" class="color-highlight">Nominal pembayaran</label>',
-                  '<i class="fa fa-check disabled valid color-green-dark"></i><i class="fa fa-times disabled invalid color-red-dark"></i><em>(wajib)</em>',
+                  '<i class="fa fa-check disabled valid color-green-dark"></i><i class="fa fa-times disabled invalid color-red-dark"></i><em>*</em>',
                 '</div>',
                 '<div class="text-end mb-3"><button type="button" class="btn btn-xxs border-green-dark color-green-dark rounded-s font-600" data-fill-payment><i class="fa fa-check-circle me-1"></i>Isi Lunas</button></div>',
               '</div>',
@@ -586,14 +586,14 @@
                 '<div class="input-style has-borders no-icon input-style-always-active mb-1">',
                   '<input type="file" class="form-control" id="', proofId, '" name="payment_proof_', esc(token), '" accept="image/jpeg,image/png,application/pdf" style="padding-top:13px;" data-payment-input data-payment-proof>',
                   '<label for="', proofId, '" class="color-highlight">Bukti pembayaran</label>',
-                  '<i class="fa fa-check disabled valid color-green-dark"></i><i class="fa fa-times disabled invalid color-red-dark"></i><em data-proof-required-label>(opsional)</em>',
+                  '<i class="fa fa-check disabled valid color-green-dark"></i><i class="fa fa-times disabled invalid color-red-dark"></i><em data-proof-required-label></em>',
                 '</div>',
-                '<p class="font-10 opacity-60 mb-4 ps-2">JPG, PNG, atau PDF maksimal 5 MB. Wajib untuk Transfer/QRIS.</p>',
+                '<p class="font-10 opacity-60 mb-4 ps-2">JPG, PNG, atau PDF maksimal 5 MB. Bukti diperlukan untuk Transfer/QRIS.</p>',
               '</div>',
               '<div class="col-12">',
                 '<div class="input-style has-borders no-icon input-style-always-active mb-1">',
-                  '<textarea class="form-control" id="', noteId, '" name="', prefix, '[note]" rows="2" maxlength="2000" placeholder="Catatan pembayaran (opsional)" data-payment-input>', esc(state.note || ''), '</textarea>',
-                  '<label for="', noteId, '" class="color-highlight">Catatan pembayaran</label><em class="mt-n3">(opsional)</em>',
+                  '<textarea class="form-control" id="', noteId, '" name="', prefix, '[note]" rows="2" maxlength="2000" placeholder="Catatan pembayaran" data-payment-input>', esc(state.note || ''), '</textarea>',
+                  '<label for="', noteId, '" class="color-highlight">Catatan pembayaran</label><em class="mt-n3"></em>',
                 '</div>',
               '</div>',
             '</div>',
@@ -633,7 +633,7 @@
             '<div class="col-12 col-md-4">',
               '<div class="input-style has-borders no-icon input-style-always-active mb-4">',
                 '<input class="form-control" id="', nameId, '" required maxlength="160" name="participants[', esc(villageId), '][', esc(key), '][full_name]" value="', esc(participantState.full_name || ''), '" placeholder="Nama lengkap">',
-                '<label class="color-highlight" for="', nameId, '">Nama lengkap</label><i class="fa fa-times disabled invalid color-red-dark"></i><i class="fa fa-check disabled valid color-green-dark"></i><em>(wajib)</em>',
+                '<label class="color-highlight" for="', nameId, '">Nama lengkap</label><i class="fa fa-times disabled invalid color-red-dark"></i><i class="fa fa-check disabled valid color-green-dark"></i><em>*</em>',
               '</div>',
             '</div>',
             '<div class="col-12 col-md-4">',
@@ -642,7 +642,7 @@
             '<div class="col-12 col-md-4">',
               '<div class="input-style has-borders no-icon input-style-always-active mb-4">',
                 '<input class="form-control" type="tel" id="', phoneId, '" maxlength="30" name="participants[', esc(villageId), '][', esc(key), '][phone]" value="', esc(participantState.phone || ''), '" placeholder="Nomor HP">',
-                '<label class="color-highlight" for="', phoneId, '">Nomor HP</label><i class="fa fa-times disabled invalid color-red-dark"></i><i class="fa fa-check disabled valid color-green-dark"></i><em>(opsional)</em>',
+                '<label class="color-highlight" for="', phoneId, '">Nomor HP</label><i class="fa fa-times disabled invalid color-red-dark"></i><i class="fa fa-check disabled valid color-green-dark"></i><em></em>',
               '</div>',
             '</div>',
           '</div>',
@@ -710,8 +710,8 @@
             '<div data-participants>', participantMarkup, '</div>',
             billingBreakdown(),
             '<div class="input-style has-borders no-icon input-style-always-active mb-3">',
-              '<textarea class="form-control" id="', noteId, '" name="notes[', esc(villageId), ']" rows="2" maxlength="2000" placeholder="Catatan desa (opsional)">', esc(note), '</textarea>',
-              '<label class="color-highlight" for="', noteId, '">Catatan desa</label><i class="fa fa-times disabled invalid color-red-dark"></i><i class="fa fa-check disabled valid color-green-dark"></i><em class="mt-n3">(opsional)</em>',
+              '<textarea class="form-control" id="', noteId, '" name="notes[', esc(villageId), ']" rows="2" maxlength="2000" placeholder="Catatan desa">', esc(note), '</textarea>',
+              '<label class="color-highlight" for="', noteId, '">Catatan desa</label><i class="fa fa-times disabled invalid color-red-dark"></i><i class="fa fa-check disabled valid color-green-dark"></i><em class="mt-n3"></em>',
             '</div>',
             villagePayment,
           '</div>',
@@ -767,7 +767,7 @@
       if (!toggle || !method || !proof) return;
       var required = toggle.checked && method.value !== 'cash';
       proof.required = required;
-      if (label) label.textContent = required ? '(wajib)' : '(opsional)';
+      if (label) label.textContent = required ? '*' : '';
     }
 
     function updatePaymentAmount(block, targetAmount, fillWhenFull) {
@@ -1076,7 +1076,7 @@
       if (removeButton) {
         var participantRows = villageCard.querySelectorAll('[data-participant-row]');
         if (participantRows.length <= 1) {
-          alertUser('Minimal satu peserta per desa.', {title: 'Peserta Wajib Ada', tone: 'warning'});
+          alertUser('Minimal satu peserta per desa.', {title: 'Peserta Belum Diisi', tone: 'warning'});
           return;
         }
         var row = removeButton.closest('[data-participant-row]');
@@ -1178,7 +1178,7 @@
     function updateStandaloneProofRequirement() {
       var isRequired = paymentMethod.value !== 'cash';
       paymentProof.required = isRequired;
-      requiredLabel.textContent = isRequired ? '(wajib)' : '(opsional)';
+      requiredLabel.textContent = isRequired ? '*' : '';
     }
 
     function updateStandaloneRemainingAmount() {
@@ -1307,7 +1307,7 @@
    * both the index modal and the detail modal. */
   function modalInput(label, id, name, type, required, placeholder) {
     var maxLength = type === 'tel' ? 30 : 160;
-    return '<div class="input-style has-borders no-icon input-style-always-active mb-3"><input class="form-control" type="' + type + '" id="' + id + '" name="' + name + '" ' + (required ? 'required ' : '') + 'maxlength="' + maxLength + '" placeholder="' + (placeholder || '') + '"><label for="' + id + '" class="color-highlight">' + label + '</label><i class="fa fa-times disabled invalid color-red-dark"></i><i class="fa fa-check disabled valid color-green-dark"></i><em>' + (required ? '(wajib)' : '(opsional)') + '</em></div>';
+    return '<div class="input-style has-borders no-icon input-style-always-active mb-3"><input class="form-control" type="' + type + '" id="' + id + '" name="' + name + '" ' + (required ? 'required ' : '') + 'maxlength="' + maxLength + '" placeholder="' + (placeholder || '') + '"><label for="' + id + '" class="color-highlight">' + label + '</label><i class="fa fa-times disabled invalid color-red-dark"></i><i class="fa fa-check disabled valid color-green-dark"></i><em>' + (required ? '*' : '') + '</em></div>';
   }
 
   var modalParticipantLimit = 20;
@@ -1419,7 +1419,7 @@
   var paymentModalForm = document.getElementById('registration-payment-form');
   if (paymentModalForm) {
     var paymentMethodModal = document.getElementById('registration-payment-method'), paymentAccountModal = document.getElementById('registration-payment-account'), paymentProofModal = document.getElementById('registration-payment-proof'), paymentAmountModal = document.getElementById('registration-payment-amount'), paymentDateModal = document.getElementById('registration-payment-date'), paymentNoteModal = document.getElementById('registration-payment-note'), paymentTargetLabel = paymentModalForm.parentElement.querySelector('[data-payment-target-label]'), paymentTargetRemaining = paymentModalForm.parentElement.querySelector('[data-payment-target-remaining-text]'), paymentMaxLabel = paymentModalForm.querySelector('[data-payment-max-label]'), paymentProofLabel = document.getElementById('registration-payment-proof-label'), paymentAccountsModal = modalJson(paymentModalForm.dataset.accounts, []);
-    function filterModalAccounts() { var typeMap = {cash:['cash'], transfer:['bank','personal'], qris:['qris']}, allowed = typeMap[paymentMethodModal.value] || [], current = paymentAccountModal.value; paymentAccountModal.innerHTML = '<option value="">Pilih akun</option>' + paymentAccountsModal.filter(function (account) { return allowed.indexOf(account.type) !== -1; }).map(function (account) { return '<option value="' + esc(account.id) + '">' + esc(account.name) + '</option>'; }).join(''); if (paymentAccountModal.querySelector('option[value="' + current + '"]')) paymentAccountModal.value = current; var proofRequired = paymentMethodModal.value !== 'cash'; paymentProofModal.required = proofRequired; paymentProofLabel.textContent = proofRequired ? '(wajib)' : '(opsional)'; }
+    function filterModalAccounts() { var typeMap = {cash:['cash'], transfer:['bank','personal'], qris:['qris']}, allowed = typeMap[paymentMethodModal.value] || [], current = paymentAccountModal.value; paymentAccountModal.innerHTML = '<option value="">Pilih akun</option>' + paymentAccountsModal.filter(function (account) { return allowed.indexOf(account.type) !== -1; }).map(function (account) { return '<option value="' + esc(account.id) + '">' + esc(account.name) + '</option>'; }).join(''); if (paymentAccountModal.querySelector('option[value="' + current + '"]')) paymentAccountModal.value = current; var proofRequired = paymentMethodModal.value !== 'cash'; paymentProofModal.required = proofRequired; paymentProofLabel.textContent = proofRequired ? '*' : ''; }
     paymentMethodModal.addEventListener('change', filterModalAccounts); filterModalAccounts();
     document.addEventListener('click', function (event) {
       var trigger = event.target.closest('[data-payment-open]');
@@ -1596,7 +1596,7 @@
         reason.required = mode === 'ganti';
         reason.value = '';
       }
-      if (reasonLabel) reasonLabel.textContent = mode === 'ganti' ? '(wajib)' : '(opsional)';
+      if (reasonLabel) reasonLabel.textContent = mode === 'ganti' ? '*' : '';
       modalOpen('registration-participant-mutation-modal');
     });
 

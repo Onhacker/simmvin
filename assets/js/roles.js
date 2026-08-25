@@ -65,7 +65,7 @@
     document.getElementById('role-modal-title').textContent = 'Atur Hak Akses: ' + (role.name || 'Peran');
     document.getElementById('role-modal-name').readOnly = protectedIdentity;
     document.getElementById('role-modal-slug').readOnly = protectedIdentity;
-    document.querySelectorAll('[data-role-identity-note]').forEach(function (note) { note.textContent = protectedIdentity ? '(dilindungi)' : '(wajib)'; });
+    document.querySelectorAll('[data-role-identity-note]').forEach(function (note) { note.textContent = protectedIdentity ? '(dilindungi)' : '*'; });
     var note = document.getElementById('role-modal-system-note');
     if (note) note.textContent = superAdmin ? 'Super Admin selalu memiliki seluruh izin.' : 'Izin akan menjadi bawaan bagi semua pengguna dengan peran ini.';
     setPermissions(superAdmin ? (config.allPermissionIds || []) : role.permission_ids, superAdmin);

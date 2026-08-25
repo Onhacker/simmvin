@@ -58,7 +58,7 @@ $isActive = $isPost
                                 <label for="position-name" class="color-highlight">Nama Jabatan</label>
                                 <i class="fa fa-times disabled invalid color-red-dark"></i>
                                 <i class="fa fa-check disabled valid color-green-dark"></i>
-                                <em>(wajib)</em>
+                                <em>*</em>
                             </div>
                         </div>
                         <div class="col-md-5">
@@ -87,7 +87,7 @@ $isActive = $isPost
                                 <label for="position-code" class="color-highlight">Kode Jabatan</label>
                                 <i class="fa fa-times disabled invalid color-red-dark"></i>
                                 <i class="fa fa-check disabled valid color-green-dark"></i>
-                                <em>(opsional)</em>
+                                <em></em>
                             </div>
                             <p class="font-10 opacity-50 mt-n1 mb-4">Kata “Desa” ditambahkan oleh template mailing. Kosongkan agar kode dibuat otomatis.</p>
                         </div>
@@ -99,18 +99,18 @@ $isActive = $isPost
                                 <label for="position-sort" class="color-highlight">Urutan Tampil</label>
                                 <i class="fa fa-check disabled valid color-green-dark"></i>
                                 <i class="fa fa-times disabled invalid color-red-dark"></i>
-                                <em>(wajib)</em>
+                                <em>*</em>
                             </div>
                         </div>
                     </div>
 
                     <div class="input-style input-style-always-active has-borders no-icon mb-4">
                         <textarea class="form-control" id="position-description" name="description" rows="4" maxlength="255"
-                                  placeholder="Keterangan singkat mengenai jabatan (opsional)"><?= e(old('description', isset($positionData['description']) ? $positionData['description'] : '')) ?></textarea>
+                                  placeholder="Keterangan singkat mengenai jabatan"><?= e(old('description', isset($positionData['description']) ? $positionData['description'] : '')) ?></textarea>
                         <label for="position-description" class="color-highlight">Deskripsi</label>
                         <i class="fa fa-times disabled invalid color-red-dark"></i>
                         <i class="fa fa-check disabled valid color-green-dark"></i>
-                        <em>(opsional)</em>
+                        <em></em>
                     </div>
                 </div>
             </div>

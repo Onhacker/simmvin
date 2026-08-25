@@ -42,13 +42,13 @@ $isSuperAdmin = $role['slug'] === 'super-admin';
                         <i class="fa fa-user-tag color-highlight"></i>
                         <input class="form-control" id="name" name="name" maxlength="80" required value="<?= e(old('name', $role['name'])) ?>" <?= $protectedIdentity ? 'readonly' : '' ?> placeholder="Nama peran">
                         <label for="name" class="color-highlight font-12 font-500">Nama Peran</label>
-                        <i class="fa fa-times disabled invalid color-red-dark"></i><i class="fa fa-check disabled valid color-green-dark"></i><em><?= $protectedIdentity ? '(dilindungi)' : '(wajib)' ?></em>
+                        <i class="fa fa-times disabled invalid color-red-dark"></i><i class="fa fa-check disabled valid color-green-dark"></i><em><?= $protectedIdentity ? '(dilindungi)' : '*' ?></em>
                     </div>
                     <div class="input-style input-style-always-active has-borders has-icon validate-field mb-4">
                         <i class="fa fa-code color-highlight"></i>
                         <input class="form-control" id="slug" name="slug" maxlength="80" required value="<?= e(old('slug', $role['slug'])) ?>" <?= $protectedIdentity ? 'readonly' : '' ?> placeholder="kode-peran">
                         <label for="slug" class="color-highlight font-12 font-500">Kode Peran</label>
-                        <i class="fa fa-times disabled invalid color-red-dark"></i><i class="fa fa-check disabled valid color-green-dark"></i><em><?= $protectedIdentity ? '(dilindungi)' : '(wajib)' ?></em>
+                        <i class="fa fa-times disabled invalid color-red-dark"></i><i class="fa fa-check disabled valid color-green-dark"></i><em><?= $protectedIdentity ? '(dilindungi)' : '*' ?></em>
                     </div>
                     <p class="font-10 opacity-50 mt-n3 mb-4">Kode dipakai sistem untuk mengenali peran.</p>
                     <div class="input-style input-style-always-active has-borders no-icon mb-4">
