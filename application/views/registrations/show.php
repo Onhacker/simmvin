@@ -82,7 +82,20 @@ foreach ($accounts as $account) $accountPayload[] = array('id'=>(int)$account['i
     <div class="content mb-2">
         <p class="font-600 color-highlight mb-n1">Wilayah peserta</p>
         <h2 class="font-22 mb-3"><?= e($registration['village_name']) ?></h2>
-        <div class="d-flex align-items-start"><span class="icon icon-m rounded-xl gradient-blue color-white shadow-s me-3 flex-shrink-0"><i class="fa fa-map-marker-alt"></i></span><div class="min-width-zero"><p class="font-11 opacity-60 mb-n1">Kecamatan · Kabupaten · Provinsi</p><h5 class="mb-0 text-break"><?= e($registration['district_name'].' · '.$registration['regency_name']) ?></h5><p class="font-11 opacity-60 mb-0 text-break"><?= e($registration['province_name']) ?></p></div></div>
+        <div class="registration-region-details">
+            <div class="registration-region-detail-row">
+                <span class="registration-region-detail-label">Kecamatan</span>
+                <strong class="registration-region-detail-value"><?= e(!empty($registration['district_name']) ? $registration['district_name'] : '-') ?></strong>
+            </div>
+            <div class="registration-region-detail-row">
+                <span class="registration-region-detail-label">Kabupaten/Kota</span>
+                <strong class="registration-region-detail-value"><?= e(!empty($registration['regency_name']) ? $registration['regency_name'] : '-') ?></strong>
+            </div>
+            <div class="registration-region-detail-row">
+                <span class="registration-region-detail-label">Provinsi</span>
+                <strong class="registration-region-detail-value"><?= e(!empty($registration['province_name']) ? $registration['province_name'] : '-') ?></strong>
+            </div>
+        </div>
     </div>
 </div>
 

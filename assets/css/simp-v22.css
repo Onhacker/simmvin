@@ -190,6 +190,58 @@ select[multiple].form-select { height: auto !important; min-height: 150px; paddi
   z-index: 3;
 }
 
+.registration-region-details {
+  border-top: 1px solid #e2e6ea;
+}
+
+.registration-region-detail-row {
+  display: grid;
+  grid-template-columns: minmax(112px, .7fr) minmax(0, 1.3fr);
+  gap: 14px;
+  align-items: start;
+  padding: 11px 0;
+  border-bottom: 1px solid #e2e6ea;
+}
+
+.registration-region-detail-row:last-child {
+  border-bottom: 0;
+  padding-bottom: 2px;
+}
+
+.registration-region-detail-label {
+  color: #4b5563;
+}
+
+.registration-region-detail-value {
+  color: #111827;
+  text-align: right;
+  overflow-wrap: anywhere;
+}
+
+.theme-dark .registration-region-details,
+.theme-dark .registration-region-detail-row {
+  border-color: rgba(255, 255, 255, .12);
+}
+
+.theme-dark .registration-region-detail-label {
+  color: #cbd5e1;
+}
+
+.theme-dark .registration-region-detail-value {
+  color: #f8fafc;
+}
+
+@media (max-width: 359.98px) {
+  .registration-region-detail-row {
+    grid-template-columns: 1fr;
+    gap: 2px;
+  }
+
+  .registration-region-detail-value {
+    text-align: left;
+  }
+}
+
 /* Modal tambah peserta memakai dropdown bertingkat biasa: kecamatan dipilih
  * dahulu, kemudian desa dimuat oleh JavaScript. Appearance native sengaja
  * dipulihkan supaya daftar panjang tetap dapat digulir oleh Android/iOS. */
