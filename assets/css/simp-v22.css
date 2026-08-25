@@ -231,6 +231,27 @@ select[multiple].form-select { height: auto !important; min-height: 150px; paddi
   color: #f8fafc;
 }
 
+.registration-participant-section-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.registration-participant-section-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 6px;
+  margin-left: auto;
+}
+
+.registration-participant-section-actions .btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0;
+}
+
 @media (max-width: 359.98px) {
   .registration-region-detail-row {
     grid-template-columns: 1fr;
@@ -239,6 +260,20 @@ select[multiple].form-select { height: auto !important; min-height: 150px; paddi
 
   .registration-region-detail-value {
     text-align: left;
+  }
+
+  .registration-participant-section-head {
+    align-items: flex-start;
+    flex-wrap: wrap;
+  }
+
+  .registration-participant-section-actions {
+    width: 100%;
+    margin-left: 0;
+  }
+
+  .registration-participant-section-actions .btn {
+    flex: 1 1 0;
   }
 }
 
@@ -714,12 +749,20 @@ body {
 
 /* Large document preview. The report itself lives in a same-origin iframe so
  * AppKit's modal/theme CSS cannot change the F4 paper layout. */
-.menu.menu-box-modal.simp-print-modal {
+.menu.menu-box-modal.simp-print-modal,
+.menu.menu-box-modal.simp-full-form-modal {
   width: min(1080px, calc(100vw - 24px)) !important;
   height: calc(100vh - 24px) !important;
   max-width: 1080px !important;
   max-height: calc(100vh - 24px) !important;
   padding: 0 !important;
+}
+
+.menu.menu-box-modal.simp-full-form-modal > .content {
+  margin-top: 0 !important;
+  margin-bottom: 0 !important;
+  padding-top: 12px;
+  padding-bottom: 16px;
 }
 
 .menu.menu-box-modal.simp-print-modal > .content {
@@ -962,14 +1005,16 @@ body {
 }
 
 @media (max-width: 575.98px) {
-  .menu.menu-box-modal.simp-print-modal {
+  .menu.menu-box-modal.simp-print-modal,
+  .menu.menu-box-modal.simp-full-form-modal {
     width: calc(100vw - 12px) !important;
     height: calc(100vh - 12px) !important;
     max-width: calc(100vw - 12px) !important;
     max-height: calc(100vh - 12px) !important;
   }
 
-  .menu.menu-box-modal.simp-print-modal > .content {
+  .menu.menu-box-modal.simp-print-modal > .content,
+  .menu.menu-box-modal.simp-full-form-modal > .content {
     margin-left: 10px !important;
     margin-right: 10px !important;
   }

@@ -239,7 +239,7 @@ class Registrations extends App_Controller
             'accounts'=>$canRecordPayment ? $this->registration->accounts() : array(),
             'canRecordPayment'=>$canRecordPayment,
             'isReadOnly'=>$row['event_status'] !== 'open' || $row['status'] !== 'active',
-            'pageScript'=>'registrations.js'
+            'pageScripts'=>array('registrations.js', 'finance.js')
         ));
     }
 

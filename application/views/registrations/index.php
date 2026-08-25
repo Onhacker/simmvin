@@ -104,9 +104,9 @@ foreach ($positions as $position) {
     }
     ?>
     <a id="registration-add-opener" href="#" class="d-none" data-menu="registration-add-modal" aria-hidden="true" tabindex="-1"></a>
-    <div id="registration-add-modal" class="menu menu-box-modal rounded-m" data-menu-width="370" data-menu-height="600" role="dialog" aria-modal="true" aria-labelledby="registration-add-title">
+    <div id="registration-add-modal" class="menu menu-box-modal rounded-m simp-full-form-modal" data-menu-width="980" data-menu-height="820" role="dialog" aria-modal="true" aria-labelledby="registration-add-title">
         <div class="content mb-0">
-            <div class="d-flex align-items-start mb-3"><div class="min-width-zero pe-3"><p class="font-600 color-highlight mb-n1">Registrasi baru</p><h3 id="registration-add-title" class="font-20 mb-0">Tambah Peserta</h3></div><button type="button" class="close-menu btn btn-xxs bg-theme color-theme border rounded-s ms-auto" aria-label="Tutup"><i class="fa fa-times"></i></button></div>
+            <div class="d-flex align-items-start mb-3"><div class="min-width-zero pe-3"><p class="font-600 color-highlight mb-n1">Registrasi baru</p><h3 id="registration-add-title" class="font-20 mb-0">Tambah Peserta</h3></div><button type="button" class="close-menu btn btn-xxs bg-theme color-theme border rounded-s ms-auto flex-shrink-0" aria-label="Tutup"><i class="fa fa-times"></i></button></div>
             <form id="registration-add-form" method="post" action="<?= site_url('registrasi/ajax/tambah') ?>" data-events="<?= e(json_encode($eventPayload, JSON_HEX_TAG|JSON_HEX_APOS|JSON_HEX_AMP|JSON_HEX_QUOT)) ?>" data-positions="<?= e(json_encode($positionPayload, JSON_HEX_TAG|JSON_HEX_APOS|JSON_HEX_AMP|JSON_HEX_QUOT)) ?>" data-districts-url="<?= site_url('wilayah/kecamatan') ?>" data-villages-url="<?= site_url('wilayah/desa') ?>">
                 <?= csrf_field() ?>
                 <?php if (count($activeEvents) === 1): $onlyEvent = $activeEvents[0]; ?>
