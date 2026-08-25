@@ -7,7 +7,6 @@ DirectoryIndex index.php
 
 <IfModule mod_rewrite.c>
     RewriteEngine On
-    RewriteBase /simp/
 
     # Generated documents and Composer dependencies are never public assets.
     # Keep this rule before the front-controller fall-through so an existing
