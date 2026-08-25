@@ -127,80 +127,86 @@ $canVerify = !empty($canVerify);
         ?>
         <div class="card card-style expense-card">
             <div class="content">
-                <div class="expense-card-header">
-                    <div class="expense-card-title min-width-zero">
-                        <p class="font-11 color-highlight font-600 mb-1"><?= e($row['expense_no']) ?></p>
-                        <h4 class="mb-1"><?= e($row['category_name']) ?></h4>
-                        <p class="font-11 opacity-60 mb-0"><?= tanggal_id($row['expense_date']) ?></p>
+                <div class="expense-card-details" aria-label="Rincian pengeluaran">
+                    <div class="expense-card-detail-row">
+                        <span class="expense-card-label">Nomor</span><span class="expense-card-separator" aria-hidden="true">|</span>
+                        <strong class="expense-card-value color-highlight"><?= e($row['expense_no']) ?></strong>
                     </div>
-                    <div class="expense-card-status mt-3">
-                        <?= status_badge($row['status']) ?>
+                    <div class="expense-card-detail-row">
+                        <span class="expense-card-label">Tanggal</span><span class="expense-card-separator" aria-hidden="true">|</span>
+                        <span class="expense-card-value"><?= tanggal_id($row['expense_date']) ?></span>
                     </div>
-                </div>
-
-                <div class="divider mt-3 mb-3"></div>
-
-                <p class="font-11 opacity-60 mb-n1">Event</p>
-                <h5 class="font-14 mb-3"><?= e($row['event_name'] ?: 'Pengeluaran umum') ?></h5>
-
-                <?php if (!empty($row['debt_id'])): ?>
-                    <p class="font-11 opacity-60 mb-n1">Sumber transaksi</p>
-                    <h5 class="font-14 color-red-dark mb-3">Pembayaran <?= e($row['debt_no']) ?> · <?= e($row['debt_creditor']) ?></h5>
-                <?php endif; ?>
-
-                <p class="font-11 opacity-60 mb-n1">Kategori</p>
-                <h5 class="font-14 mb-3"><?= e($row['category_name']) ?></h5>
-
-                <p class="font-11 opacity-60 mb-n1">Uraian</p>
-                <p class="mb-3"><?= nl2br(e($row['description'])) ?></p>
-
-                <div class="expense-card-field mb-3">
-                    <p class="font-11 opacity-60 mb-n1">Akun Dana</p>
-                    <h5 class="font-14 mb-n1"><?= e($row['account_name']) ?></h5>
-                    <p class="font-11 color-highlight mb-0"><?= e($method) ?></p>
-                </div>
-
-                <div class="divider mb-3"></div>
-
-                <div class="expense-card-money-row d-flex mb-2">
-                    <span class="opacity-60 pe-3">Nilai pengeluaran</span>
-                    <strong class="ms-auto text-end"><?= rupiah($amount) ?></strong>
-                </div>
-                <div class="expense-card-money-row d-flex mb-3">
-                    <span class="opacity-60 pe-3">Biaya admin</span>
-                    <strong class="ms-auto text-end"><?= rupiah($adminFee) ?></strong>
-                </div>
-                <div class="d-flex align-items-end">
-                    <div>
-                        <p class="font-11 color-highlight font-600 mb-n1">Total Dana Keluar</p>
-                        <h2 class="color-red-dark mb-0"><?= rupiah($total) ?></h2>
+                    <div class="expense-card-detail-row">
+                        <span class="expense-card-label">Status</span><span class="expense-card-separator" aria-hidden="true">|</span>
+                        <span class="expense-card-value"><?= status_badge($row['status']) ?></span>
                     </div>
+                    <div class="expense-card-detail-row">
+                        <span class="expense-card-label">Kategori</span><span class="expense-card-separator" aria-hidden="true">|</span>
+                        <strong class="expense-card-value"><?= e($row['category_name']) ?></strong>
+                    </div>
+                    <div class="expense-card-detail-row">
+                        <span class="expense-card-label">Uraian</span><span class="expense-card-separator" aria-hidden="true">|</span>
+                        <span class="expense-card-value"><?= nl2br(e($row['description'])) ?></span>
+                    </div>
+                    <div class="expense-card-detail-row">
+                        <span class="expense-card-label">Event</span><span class="expense-card-separator" aria-hidden="true">|</span>
+                        <strong class="expense-card-value"><?= e($row['event_name'] ?: 'Pengeluaran umum') ?></strong>
+                    </div>
+
+                    <?php if (!empty($row['debt_id'])): ?>
+                        <div class="expense-card-detail-row">
+                            <span class="expense-card-label">Sumber transaksi</span><span class="expense-card-separator" aria-hidden="true">|</span>
+                            <strong class="expense-card-value color-red-dark">Pembayaran <?= e($row['debt_no']) ?> · <?= e($row['debt_creditor']) ?></strong>
+                        </div>
+                    <?php endif; ?>
+
+                    <div class="expense-card-detail-row">
+                        <span class="expense-card-label">Akun Dana</span><span class="expense-card-separator" aria-hidden="true">|</span>
+                        <span class="expense-card-value"><strong><?= e($row['account_name']) ?></strong><small class="expense-card-subvalue color-highlight"><?= e($method) ?></small></span>
+                    </div>
+                    <div class="expense-card-detail-row expense-card-money-row">
+                        <span class="expense-card-label">Nilai pengeluaran</span><span class="expense-card-separator" aria-hidden="true">|</span>
+                        <strong class="expense-card-value"><?= rupiah($amount) ?></strong>
+                    </div>
+                    <div class="expense-card-detail-row expense-card-money-row">
+                        <span class="expense-card-label">Biaya admin</span><span class="expense-card-separator" aria-hidden="true">|</span>
+                        <strong class="expense-card-value"><?= rupiah($adminFee) ?></strong>
+                    </div>
+                    <div class="expense-card-detail-row expense-card-total-row">
+                        <span class="expense-card-label">Total Dana Keluar</span><span class="expense-card-separator" aria-hidden="true">|</span>
+                        <strong class="expense-card-value color-red-dark"><?= rupiah($total) ?></strong>
+                    </div>
+
+                    <?php if (!empty($row['note'])): ?>
+                        <div class="expense-card-detail-row expense-card-note-row">
+                            <span class="expense-card-label">Catatan</span><span class="expense-card-separator" aria-hidden="true">|</span>
+                            <span class="expense-card-value"><?= nl2br(e($row['note'])) ?></span>
+                        </div>
+                    <?php endif; ?>
                 </div>
 
-                <?php if (!empty($row['note'])): ?>
-                    <div class="divider mt-3 mb-3"></div>
-                    <p class="font-11 opacity-60 mb-n1">Catatan</p>
-                    <p class="mb-0"><?= nl2br(e($row['note'])) ?></p>
-                <?php endif; ?>
+                <div class="divider mt-2 mb-2"></div>
 
-                <div class="divider mt-3 mb-3"></div>
-
-                <p class="font-11 opacity-60 mb-2">Bukti Pembayaran</p>
-                <?php if ($row['proof_path']): ?>
-                    <a class="btn btn-s font-12 font-600 bg-fade-blue-light color-blue-dark rounded-s"
-                       target="_blank" rel="noopener"
-                       href="<?= site_url('dokumen/pengeluaran/' . $row['id']) ?>">
-                        Buka Bukti
-                    </a>
-                <?php else: ?>
-                    <p class="font-12 opacity-50 mb-0">Belum ada bukti pembayaran.</p>
-                <?php endif; ?>
+                <div class="expense-card-proof-row">
+                    <span class="expense-card-label">Bukti Pembayaran</span><span class="expense-card-separator" aria-hidden="true">|</span>
+                    <span class="expense-card-value">
+                        <?php if ($row['proof_path']): ?>
+                            <a class="btn btn-s font-12 font-600 bg-fade-blue-light color-blue-dark rounded-s"
+                               target="_blank" rel="noopener"
+                               href="<?= site_url('dokumen/pengeluaran/' . $row['id']) ?>">
+                                Buka Bukti
+                            </a>
+                        <?php else: ?>
+                            <span class="opacity-50">Belum ada bukti pembayaran.</span>
+                        <?php endif; ?>
+                    </span>
+                </div>
 
                 <?php if ($row['status'] !== 'rejected' && $this->Auth_model->can('expenses.verify') && (empty($row['debt_id']) || $this->Auth_model->can('debts.verify'))): ?>
-                    <div class="divider mt-3 mb-3"></div>
+                    <div class="divider mt-2 mb-2"></div>
                     <form method="post" action="<?= site_url('pengeluaran/' . $row['id'] . '/status') ?>" data-expense-status-form>
                         <?= csrf_field() ?>
-                        <p class="font-11 color-highlight font-600 mb-2">Verifikasi Pengeluaran</p>
+                        <p class="font-11 color-highlight font-600 mb-1">Verifikasi Pengeluaran</p>
                         <div class="d-flex flex-column flex-md-row align-items-stretch">
                             <div class="input-style input-style-always-active has-borders no-icon mb-3 mb-md-0 flex-grow-1">
                                 <label for="expense-status-<?= (int) $row['id'] ?>" class="color-highlight font-12 font-500">Status</label>

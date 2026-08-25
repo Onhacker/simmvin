@@ -651,7 +651,48 @@ body {
 
 #page .btn-m,
 #page .btn-l {
-  font-size: 14px !important;
+  font-size: 13px !important;
+}
+
+/* Keep ordinary actions compact and consistent across the application.  The
+ * supplied AppKit scale uses generous vertical padding for demo CTAs; on the
+ * MVIN screens that makes common actions such as Cetak, Ubah, Simpan, and
+ * Terapkan dominate the content, especially on a phone.  A 42px minimum
+ * height still leaves a comfortable touch target while reducing the visual
+ * weight.  Decorative/structural controls (FAB, footer navigation, modal
+ * close, and the print zoom toolbar) use their own component rules below and
+ * are intentionally not affected by this rule.
+ */
+#page .btn-m:not(.btn-icon),
+#page .btn-l:not(.btn-icon) {
+  padding: 10px 16px !important;
+  line-height: 1.35 !important;
+  min-height: 42px;
+}
+
+#page .btn-s:not(.btn-icon) {
+  padding: 7px 14px !important;
+  line-height: 1.35 !important;
+  min-height: 36px;
+}
+
+/* Keep tiny utility controls genuinely tiny; their existing AppKit sizing is
+ * already appropriate for close, filter, and compact header actions. */
+#page .btn-xxs:not(.btn-icon),
+#page .btn-xs:not(.btn-icon) {
+  line-height: 1.3 !important;
+}
+
+/* The print toolbar and icon-only print actions define fixed dimensions for
+ * their controls.  Do not let the general action scale override them. */
+#page .simp-print-zoom-toolbar .btn,
+#page .simp-print-modal-actions.is-icon-only > .btn {
+  min-height: 0;
+}
+
+#page .simp-print-modal-actions.is-icon-only > .btn {
+  height: 42px;
+  padding: 0 !important;
 }
 
 #page :where(.page-content, .menu.menu-box-modal) .badge {
@@ -659,16 +700,24 @@ body {
   line-height: 1.3 !important;
 }
 
-#page :where(.page-content, .menu.menu-box-modal) .font-8:not(i):not(h1):not(h2):not(h3):not(h4):not(h5):not(h6) { font-size: 11px !important; }
-#page :where(.page-content, .menu.menu-box-modal) .font-9:not(i):not(h1):not(h2):not(h3):not(h4):not(h5):not(h6) { font-size: 12px !important; }
-#page :where(.page-content, .menu.menu-box-modal) .font-10:not(i):not(h1):not(h2):not(h3):not(h4):not(h5):not(h6) { font-size: 13px !important; }
-#page :where(.page-content, .menu.menu-box-modal) .font-11:not(i):not(h1):not(h2):not(h3):not(h4):not(h5):not(h6) { font-size: 14px !important; }
-#page :where(.page-content, .menu.menu-box-modal) .font-12:not(i):not(h1):not(h2):not(h3):not(h4):not(h5):not(h6) { font-size: 15px !important; }
-#page :where(.page-content, .menu.menu-box-modal) .font-13:not(i):not(h1):not(h2):not(h3):not(h4):not(h5):not(h6) { font-size: 16px !important; }
-#page :where(.page-content, .menu.menu-box-modal) .font-14:not(i):not(h1):not(h2):not(h3):not(h4):not(h5):not(h6) { font-size: 17px !important; }
-#page :where(.page-content, .menu.menu-box-modal) .font-15:not(i):not(h1):not(h2):not(h3):not(h4):not(h5):not(h6) { font-size: 18px !important; }
-#page :where(.page-content, .menu.menu-box-modal) .font-16:not(i):not(h1):not(h2):not(h3):not(h4):not(h5):not(h6) { font-size: 19px !important; }
-#page :where(.page-content, .menu.menu-box-modal) .font-17:not(i):not(h1):not(h2):not(h3):not(h4):not(h5):not(h6) { font-size: 20px !important; }
+#page :where(.page-content, .menu.menu-box-modal) .font-8:not(i):not(h1):not(h2):not(h3):not(h4):not(h5):not(h6):not(.btn) { font-size: 11px !important; }
+#page :where(.page-content, .menu.menu-box-modal) .font-9:not(i):not(h1):not(h2):not(h3):not(h4):not(h5):not(h6):not(.btn) { font-size: 12px !important; }
+#page :where(.page-content, .menu.menu-box-modal) .font-10:not(i):not(h1):not(h2):not(h3):not(h4):not(h5):not(h6):not(.btn) { font-size: 13px !important; }
+#page :where(.page-content, .menu.menu-box-modal) .font-11:not(i):not(h1):not(h2):not(h3):not(h4):not(h5):not(h6):not(.btn) { font-size: 14px !important; }
+#page :where(.page-content, .menu.menu-box-modal) .font-12:not(i):not(h1):not(h2):not(h3):not(h4):not(h5):not(h6):not(.btn) { font-size: 15px !important; }
+#page :where(.page-content, .menu.menu-box-modal) .font-13:not(i):not(h1):not(h2):not(h3):not(h4):not(h5):not(h6):not(.btn) { font-size: 16px !important; }
+#page :where(.page-content, .menu.menu-box-modal) .font-14:not(i):not(h1):not(h2):not(h3):not(h4):not(h5):not(h6):not(.btn) { font-size: 17px !important; }
+#page :where(.page-content, .menu.menu-box-modal) .font-15:not(i):not(h1):not(h2):not(h3):not(h4):not(h5):not(h6):not(.btn) { font-size: 18px !important; }
+#page :where(.page-content, .menu.menu-box-modal) .font-16:not(i):not(h1):not(h2):not(h3):not(h4):not(h5):not(h6):not(.btn) { font-size: 19px !important; }
+#page :where(.page-content, .menu.menu-box-modal) .font-17:not(i):not(h1):not(h2):not(h3):not(h4):not(h5):not(h6):not(.btn) { font-size: 20px !important; }
+
+/* Utility font classes are intentionally larger for reading text, but they
+ * must not enlarge action controls along with the surrounding copy. */
+#page :where(.page-content, .menu.menu-box-modal) .btn-m,
+#page :where(.page-content, .menu.menu-box-modal) .btn-l,
+#page :where(.page-content, .menu.menu-box-modal) .btn-s {
+  font-size: 13px !important;
+}
 
 /* AppKit uses muted gray for nearly every paragraph. Application content
  * needs black body copy in light mode, while explicit semantic colours
@@ -1058,48 +1107,143 @@ body {
   display: none !important;
 }
 
-/* Expense cards are intentionally text-first.  Keeping each record in one
- * vertical flow makes long descriptions and category names readable on a
- * phone, without relying on decorative icons to convey the field meaning. */
-#expense-list .expense-card-header {
-  display: block;
+/* Expense cards use compact, explicit label | value rows.  The layout keeps
+ * all of the context visible without the large vertical gaps that made a
+ * single transaction unnecessarily long on a phone. */
+#expense-list .expense-card {
+  margin-bottom: 12px;
 }
 
-#expense-list .expense-card-title h4 {
+#expense-list .expense-card > .content {
+  padding: 14px 16px 15px;
+}
+
+#expense-list .expense-card-details {
+  width: 100%;
+}
+
+#expense-list .expense-card-detail-row,
+#expense-list .expense-card-proof-row {
+  display: grid;
+  grid-template-columns: 140px 12px minmax(0, 1fr);
+  column-gap: 6px;
+  align-items: start;
+  min-width: 0;
+  padding: 4px 0;
+  border-bottom: 1px solid rgba(33, 37, 41, .10);
+}
+
+#expense-list .expense-card-detail-row:last-child {
+  border-bottom: 0;
+}
+
+#expense-list .expense-card-label,
+#expense-list .expense-card-separator,
+#expense-list .expense-card-value {
+  min-width: 0;
+  line-height: 1.35;
+}
+
+#expense-list .expense-card-label {
+  color: #4b5563;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+#expense-list .expense-card-separator {
+  color: #8a929b;
+  font-size: 12px;
+  font-weight: 700;
+  text-align: center;
+}
+
+#expense-list .expense-card-value {
+  display: block;
+  color: #202124;
+  font-size: 13px;
+  font-weight: 500;
   overflow-wrap: anywhere;
 }
 
-#expense-list .expense-card-status {
-  min-height: 28px;
+#expense-list .expense-card-value > strong {
+  display: inline;
+  color: inherit;
+  font-weight: 700;
 }
 
-#expense-list .expense-card-field,
-#expense-list .expense-card-money-row {
-  min-width: 0;
+#expense-list .expense-card-subvalue {
+  display: inline;
+  margin-left: 4px;
+  font-size: 11px;
+  font-weight: 600;
 }
 
-#expense-list .expense-card-money-row {
-  align-items: baseline;
-  gap: 12px;
-}
-
-#expense-list .expense-card-money-row > strong {
+#expense-list .expense-card-money-row .expense-card-value {
+  font-weight: 700;
   white-space: nowrap;
 }
 
+#expense-list .expense-card-total-row {
+  margin-top: 2px;
+  padding: 8px 8px;
+  border: 0;
+  border-radius: 6px;
+  background: rgba(194, 31, 51, .06);
+}
+
+#expense-list .expense-card-total-row .expense-card-label,
+#expense-list .expense-card-total-row .expense-card-value {
+  font-weight: 700;
+}
+
+#expense-list .expense-card-note-row {
+  padding-bottom: 2px;
+  border-bottom: 0;
+}
+
+#expense-list .expense-card-proof-row {
+  border-bottom: 0;
+  padding: 4px 0 0;
+}
+
+#expense-list .expense-card-proof-row .btn {
+  width: auto;
+  max-width: 100%;
+  min-height: 32px;
+  padding: 6px 10px;
+  font-size: 12px;
+}
+
+#expense-list [data-expense-status-submit] {
+  align-self: center;
+}
+
 @media (max-width: 575.98px) {
-  #expense-list .expense-card-money-row {
-    display: block !important;
+  #expense-list .expense-card > .content {
+    padding-right: 12px;
+    padding-left: 12px;
   }
 
-  #expense-list .expense-card-money-row > span,
-  #expense-list .expense-card-money-row > strong {
-    display: block;
+  #expense-list .expense-card-detail-row,
+  #expense-list .expense-card-proof-row {
+    grid-template-columns: 112px 10px minmax(0, 1fr);
+    column-gap: 4px;
   }
 
-  #expense-list .expense-card-money-row > strong {
-    margin-top: 3px;
-    text-align: left !important;
+  #expense-list .expense-card-label,
+  #expense-list .expense-card-separator {
+    font-size: 11px;
+  }
+
+  #expense-list .expense-card-value {
+    font-size: 12px;
+  }
+}
+
+@media (max-width: 359.98px) {
+  #expense-list .expense-card-detail-row,
+  #expense-list .expense-card-proof-row {
+    grid-template-columns: 98px 8px minmax(0, 1fr);
   }
 }
 
