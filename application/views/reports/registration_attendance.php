@@ -122,7 +122,6 @@ if (!$pages) {
         * { box-sizing: border-box; }
         html, body { margin: 0; padding: 0; color: #000; font-family: "DejaVu Sans", Arial, sans-serif; font-size: 9px; line-height: 1.3; }
         body { background: #e9eef5; }
-        .screen-note { width: 330mm; max-width: calc(100% - 24px); margin: 14px auto 0; padding: 9px 12px; border: 1px solid #bfd2ee; border-radius: 8px; background: #eef5ff; color: #174b8b; font-size: 12px; text-align: center; }
         .sheet-stage { width: 330mm; min-height: 210mm; margin: 14px auto 24px; }
         .sheet { width: 330mm; margin: 0; transform-origin: top left; }
         .print-page { width: 330mm; margin: 0 0 8mm; padding: 5mm 7mm 6mm; background: #fff; box-shadow: 0 10px 34px rgba(15, 23, 42, .14); page-break-after: always; break-after: page; }
@@ -163,7 +162,6 @@ if (!$pages) {
         .document-foot td:last-child { width: 34%; padding-right: 1mm; text-align: right; white-space: nowrap; }
         @media print {
             html, body { background: #fff; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-            .screen-note { display: none !important; }
             .sheet-stage { width: auto !important; height: auto !important; min-height: 0 !important; margin: 0 !important; }
             .sheet { width: auto; margin: 0; transform: none !important; }
             .print-page { width: auto; margin: 0; box-shadow: none; }
@@ -172,12 +170,11 @@ if (!$pages) {
             .print-page { height: 210mm; overflow: hidden; }
         }
         @media screen and (max-width: 1100px) {
-            .sheet-stage, .sheet, .screen-note { width: 330mm; }
+            .sheet-stage, .sheet { width: 330mm; }
         }
     </style>
 </head>
 <body>
-<?php if (!$isPdf): ?><div class="screen-note">Pratinjau daftar hadir · Landscape F4/Folio 330 × 210 mm · Maksimal 10 peserta per halaman dan dipisahkan per kecamatan.</div><?php endif; ?>
 <div class="sheet-stage" data-sheet-stage>
     <article class="sheet" data-print-sheet>
         <?php foreach ($pages as $pageIndex => $page):

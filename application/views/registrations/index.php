@@ -90,8 +90,9 @@ foreach ($positions as $position) {
         'printPdfUrl' => site_url('registrasi/pdf'),
         'printExcelUrl' => site_url('registrasi/excel'),
         'printExcelLabel' => 'Excel Mailing',
-        'printFormatLabel' => 'Landscape F4',
-        'printPaperNote' => 'Landscape F4/Folio 330 × 210 mm · Daftar ini dapat digunakan sebagai absensi.'
+        'printFormatLabel' => '',
+        'printPaperNote' => '',
+        'printIconOnly' => TRUE
     )); ?>
 <?php endif; ?>
 

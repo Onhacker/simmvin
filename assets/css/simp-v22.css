@@ -779,6 +779,20 @@ body {
   margin: 0 !important;
 }
 
+.simp-print-modal-actions.is-icon-only > .btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 0;
+  height: 54px;
+  padding: 0 !important;
+}
+
+.simp-print-modal-actions.is-icon-only > .btn > i {
+  margin: 0 !important;
+  font-size: 21px;
+}
+
 .simp-print-paper-note {
   flex: 0 0 auto;
   padding-top: 5px;

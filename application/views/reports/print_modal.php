@@ -8,6 +8,7 @@ $printExcelUrl = isset($printExcelUrl) ? trim((string) $printExcelUrl) : '';
 $printExcelLabel = isset($printExcelLabel) && trim((string) $printExcelLabel) !== '' ? (string) $printExcelLabel : 'Excel';
 $printPaperNote = isset($printPaperNote) ? (string) $printPaperNote : 'Gunakan ukuran kertas F4/Folio 210 × 330 mm pada pengaturan printer.';
 $printFormatLabel = isset($printFormatLabel) ? (string) $printFormatLabel : 'Dokumen F4';
+$printIconOnly = !empty($printIconOnly);
 $printFrameId = $printModalId . '-frame';
 ?>
 <a id="<?= e($printModalId) ?>-opener" href="#" class="d-none" data-menu="<?= e($printModalId) ?>" aria-hidden="true" tabindex="-1"></a>
@@ -15,7 +16,7 @@ $printFrameId = $printModalId . '-frame';
     <div class="content mb-0">
         <div class="d-flex align-items-start simp-print-modal-header">
             <div class="min-width-zero pe-3">
-                <p class="font-600 color-highlight mb-n1"><?= e($printFormatLabel) ?></p>
+                <?php if (trim($printFormatLabel) !== ''): ?><p class="font-600 color-highlight mb-n1"><?= e($printFormatLabel) ?></p><?php endif; ?>
                 <h3 id="<?= e($printModalId) ?>-title" class="font-20 mb-0"><?= e($printModalTitle) ?></h3>
             </div>
             <button type="button" class="close-menu btn btn-xxs bg-theme color-theme border rounded-s ms-auto flex-shrink-0" aria-label="Tutup pratinjau"><i class="fa fa-times"></i></button>
@@ -37,19 +38,19 @@ $printFrameId = $printModalId . '-frame';
             </div>
             <iframe id="<?= e($printFrameId) ?>" class="simp-print-frame" title="<?= e($printModalTitle) ?>" data-src="<?= e($printPreviewUrl) ?>" data-report-preview-frame></iframe>
         </div>
-        <div class="simp-print-modal-actions">
+        <div class="simp-print-modal-actions<?= $printIconOnly ? ' is-icon-only' : '' ?>">
             <?php if ($printExcelUrl !== ''): ?>
-                <a href="<?= e($printExcelUrl) ?>" class="btn btn-m rounded-s font-600 border-green-dark color-green-dark" data-report-file-download data-report-file-label="<?= e($printExcelLabel) ?>">
-                    <i class="fa fa-file-excel me-1"></i> <?= e($printExcelLabel) ?>
+                <a href="<?= e($printExcelUrl) ?>" class="btn btn-m rounded-s font-600 border-green-dark color-green-dark" data-report-file-download data-report-file-label="<?= e($printExcelLabel) ?>" aria-label="Unduh <?= e($printExcelLabel) ?>" title="Unduh <?= e($printExcelLabel) ?>">
+                    <i class="fa fa-file-excel<?= $printIconOnly ? '' : ' me-1' ?>"></i><?php if ($printIconOnly): ?><span class="visually-hidden">Unduh <?= e($printExcelLabel) ?></span><?php else: ?> <?= e($printExcelLabel) ?><?php endif; ?>
                 </a>
             <?php endif; ?>
-            <a href="<?= e($printPdfUrl) ?>" class="btn btn-m rounded-s font-600 border-blue-dark color-blue-dark" target="_blank" rel="noopener" data-report-file-download data-report-file-label="PDF">
-                <i class="fa fa-file-pdf me-1"></i> PDF
+            <a href="<?= e($printPdfUrl) ?>" class="btn btn-m rounded-s font-600 border-blue-dark color-blue-dark" target="_blank" rel="noopener" data-report-file-download data-report-file-label="PDF" aria-label="Unduh PDF" title="Unduh PDF">
+                <i class="fa fa-file-pdf<?= $printIconOnly ? '' : ' me-1' ?>"></i><?php if ($printIconOnly): ?><span class="visually-hidden">Unduh PDF</span><?php else: ?> PDF<?php endif; ?>
             </a>
-            <button type="button" class="btn btn-m rounded-s font-600 gradient-highlight" data-report-print="<?= e($printFrameId) ?>">
-                <i class="fa fa-print me-1"></i> Cetak
+            <button type="button" class="btn btn-m rounded-s font-600 gradient-highlight" data-report-print="<?= e($printFrameId) ?>" aria-label="Cetak dokumen" title="Cetak dokumen">
+                <i class="fa fa-print<?= $printIconOnly ? '' : ' me-1' ?>"></i><?php if ($printIconOnly): ?><span class="visually-hidden">Cetak dokumen</span><?php else: ?> Cetak<?php endif; ?>
             </button>
         </div>
-        <p class="simp-print-paper-note mb-0"><?= e($printPaperNote) ?></p>
+        <?php if (trim($printPaperNote) !== ''): ?><p class="simp-print-paper-note mb-0"><?= e($printPaperNote) ?></p><?php endif; ?>
     </div>
 </div>
