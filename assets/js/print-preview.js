@@ -17,7 +17,7 @@
   if (surface) surface.setAttribute('data-simp-pinch-zoom', 'true');
 
   // Allow the document to pan with one finger. Two fingers are handled below
-  // and mapped to the report's 50–400% zoom range.
+  // and mapped to the report's 50–1000% zoom range.
   if (surface) surface.style.touchAction = 'pan-x pan-y';
   if (document.body) document.body.style.touchAction = 'pan-x pan-y';
   stage.style.touchAction = 'pan-x pan-y';

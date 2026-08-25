@@ -8,7 +8,7 @@
     <meta name="apple-mobile-web-app-title" content="MVIN">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="application-name" content="MVIN">
-    <meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1, maximum-scale=5, user-scalable=yes, viewport-fit=cover">
+    <meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1, maximum-scale=10, user-scalable=yes, viewport-fit=cover">
     <meta name="theme-color" content="#4A89DC">
     <title><?= e($pageTitle) ?> | MVIN</title>
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@100;200;300;400;500;600;700;800;900&amp;display=swap">
@@ -116,7 +116,7 @@ if (!empty($pageScripts) && is_array($pageScripts)) $resolvedPageScripts = array
 $resolvedPageScripts = array_values(array_unique(array_filter($resolvedPageScripts)));
 ?>
 <?php foreach ($resolvedPageScripts as $resolvedPageScript): ?>
-    <script src="<?= base_url('assets/js/' . basename($resolvedPageScript)) ?>?v=30"></script>
+    <script src="<?= base_url('assets/js/' . basename($resolvedPageScript)) ?>?v=31"></script>
 <?php endforeach; ?>
 </body>
 </html>

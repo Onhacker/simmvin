@@ -62,7 +62,7 @@ $accountSummary = array_merge(array(
 <html lang="id">
 <head>
     <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=5, user-scalable=yes">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=10, user-scalable=yes">
     <title><?= e($documentTitle) ?> | MVIN</title>
     <style>
         @page { size: 210mm 330mm; margin: 12mm 10mm 14mm; }
@@ -475,7 +475,7 @@ $accountSummary = array_merge(array(
         stage.style.minHeight = '0';
     }
     function setZoom(percent) {
-        userZoom = Math.max(50, Math.min(400, Math.round(Number(percent) || 100)));
+        userZoom = Math.max(50, Math.min(1000, Math.round(Number(percent) || 100)));
         fitSheet();
         return userZoom;
     }
@@ -488,7 +488,7 @@ $accountSummary = array_merge(array(
     window.addEventListener('resize', fitSheet);
 }());
 </script>
-<script src="<?= e(base_url('assets/js/print-preview.js')) ?>?v=2"></script>
+<script src="<?= e(base_url('assets/js/print-preview.js')) ?>?v=3"></script>
 <?php endif; ?>
 </body>
 </html>

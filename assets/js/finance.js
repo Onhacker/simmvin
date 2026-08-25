@@ -275,12 +275,12 @@
   function updateReportZoomControls(frame, percent, ready) {
     var modal = frame ? frame.closest('.simp-print-modal') : null;
     if (!modal) return;
-    var normalized = Math.max(50, Math.min(400, parseInt(percent, 10) || 100));
+    var normalized = Math.max(50, Math.min(1000, parseInt(percent, 10) || 100));
     var label = modal.querySelector('[data-report-zoom-value]');
     if (label) label.textContent = normalized + '%';
     modal.querySelectorAll('[data-report-zoom]').forEach(function (button) {
       var delta = parseInt(button.getAttribute('data-report-zoom'), 10) || 0;
-      button.disabled = !ready || (delta < 0 && normalized <= 50) || (delta > 0 && normalized >= 400);
+      button.disabled = !ready || (delta < 0 && normalized <= 50) || (delta > 0 && normalized >= 1000);
     });
   }
 
