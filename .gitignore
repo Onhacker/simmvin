@@ -13,6 +13,9 @@ uploads/expenses/*
 uploads/transfers/*
 !uploads/transfers/index.html
 !uploads/transfers/.htaccess
+uploads/debts/*
+!uploads/debts/index.html
+!uploads/debts/.htaccess
 .DS_Store
 /vendor/
 work/
