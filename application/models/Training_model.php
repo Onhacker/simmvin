@@ -38,8 +38,9 @@ class Training_model extends CI_Model
     {
         $event = $this->db->where('id', (int) $id)->get('training_events')->row_array();
         if (!$event) return NULL;
-        $event['regencies'] = $this->db->where('event_id', (int) $id)
+        $rows = $this->db->where('event_id', (int) $id)
             ->order_by('province_name')->order_by('regency_name')->get('event_regencies')->result_array();
+        $event['regencies'] = simp_resolve_event_regencies($this->regionDb, $rows);
         $event['summary'] = $this->db->select(
             'COUNT(DISTINCT CASE WHEN r.status="active" THEN r.id END) AS village_count,
              COUNT(DISTINCT r.id) AS archive_village_count,
@@ -123,7 +124,11 @@ class Training_model extends CI_Model
             if (!$existing) throw new InvalidArgumentException('Event tidak ditemukan.');
 
             $registrationCount = $this->db->where('event_id', $id)->count_all_results('registrations');
-            $registeredRegencies = $this->db->select('regency_id')->where(array('event_id'=>$id,'status'=>'active'))->group_by('regency_id')->get('registrations')->result_array();
+            $registeredRegencies = $this->db->select('province_id,province_name,regency_id,regency_name')
+                ->where(array('event_id'=>$id,'status'=>'active'))
+                ->group_by(array('province_id','province_name','regency_id','regency_name'))
+                ->get('registrations')->result_array();
+            $registeredRegencies = simp_resolve_event_regencies($this->regionDb, $registeredRegencies);
             if ($registrationCount > 0) {
                 if ($existing['billing_mode'] !== $data['billing_mode']) throw new InvalidArgumentException('Mode pembayaran tidak dapat diubah setelah ada registrasi.');
                 $existingVillageCents = simp_money_cents($existing['village_fee']);
@@ -148,8 +153,8 @@ class Training_model extends CI_Model
                 }
             }
             if ($registeredRegencies) {
-                $newIds = array(); foreach ($regions as $r) $newIds[(string)$r['regency_id']] = TRUE;
-                foreach ($registeredRegencies as $r) if (empty($newIds[(string)$r['regency_id']])) throw new InvalidArgumentException('Kabupaten yang sudah memiliki registrasi tidak dapat dihapus dari event.');
+                $newIds = array(); foreach ($regions as $r) { $key=simp_regency_identity_key($r); if($key!=='')$newIds[$key]=TRUE; }
+                foreach ($registeredRegencies as $r) if (empty($newIds[simp_regency_identity_key($r)])) throw new InvalidArgumentException('Kabupaten yang sudah memiliki registrasi tidak dapat dihapus dari event.');
             }
 
             $this->db->where('id', $id)->update('training_events', $data);

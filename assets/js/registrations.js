@@ -80,10 +80,10 @@
   }
 
   /*
-   * Jabatan memakai input search + datalist agar operator dapat mengetik
-   * beberapa huruf tanpa harus menggulir select yang panjang. Nilai yang
-   * dikirim ke server tetap position_id (hidden input), sedangkan input yang
-   * terlihat hanya menerima nama jabatan yang benar-benar ada di master aktif.
+   * Jabatan memakai combobox milik aplikasi, bukan <datalist> native. Pada
+   * Android/iOS datalist ditampilkan sebagai deretan saran di atas keyboard,
+   * sehingga operator tidak melihatnya sebagai dropdown. Nilai yang dikirim
+   * tetap position_id; teks pencarian hanya memilih master jabatan aktif.
    */
   function normalizePositionName(value) {
     return String(value === null || typeof value === 'undefined' ? '' : value)
@@ -95,7 +95,7 @@
   function positionPickerMarkup(positionList, selectedId, inputId, fieldName) {
     var pickerId = inputId + '-picker';
     var valueId = inputId + '-value';
-    var listId = inputId + '-list';
+    var listId = inputId + '-options';
     var selectedValue = String(selectedId || '');
     var selectedName = '';
     var options = [];
@@ -107,7 +107,14 @@
       if (!id || !name) return;
       var category = position.category_label || position.category || 'Lainnya';
       if (selectedValue === id) selectedName = name;
-      options.push('<option value="' + esc(name) + '" label="' + esc(category) + '" data-position-id="' + esc(id) + '"></option>');
+      var optionId = listId + '-option-' + options.length;
+      options.push([
+        '<button type="button" id="', esc(optionId), '" class="position-picker-option" role="option" tabindex="-1" aria-selected="false"',
+          ' data-position-option data-position-id="', esc(id), '" data-position-name="', esc(name), '"',
+          ' data-position-filter="', esc(normalizePositionName(name + ' ' + category)), '">',
+          '<span>', esc(name), '</span><small>', esc(category), '</small>',
+        '</button>'
+      ].join(''));
     });
 
     var hasSelected = selectedName !== '' && selectedValue !== '';
@@ -117,28 +124,104 @@
 
     return [
       '<div id="', esc(pickerId), '" class="input-style has-borders no-icon input-style-always-active mb-4 position-picker" data-position-picker data-position-value-id="', esc(valueId), '">',
-        '<input class="form-control" type="search" id="', esc(inputId), '" value="', esc(selectedName), '" list="', esc(listId), '" autocomplete="off" spellcheck="false" required data-position-search aria-autocomplete="list" placeholder="', esc(placeholder), '">',
+        '<input class="form-control" type="search" id="', esc(inputId), '" value="', esc(selectedName), '" autocomplete="off" spellcheck="false" required data-position-search role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="', esc(listId), '" placeholder="', esc(placeholder), '">',
         '<label class="color-highlight" for="', esc(inputId), '">Jabatan</label>',
         '<i class="fa fa-times disabled ', invalidClass, '"></i><i class="fa fa-check ', validClass, '"></i><em>(wajib)</em>',
-        '<datalist id="', esc(listId), '">', options.join(''), '</datalist>',
+        '<button type="button" class="position-picker-toggle" data-position-toggle tabindex="-1" aria-label="Buka daftar jabatan"><i class="fa fa-chevron-down"></i></button>',
+        '<div id="', esc(listId), '" class="position-picker-menu" role="listbox" data-position-options hidden>',
+          options.join(''),
+          '<p class="position-picker-empty" data-position-empty hidden>Tidak ada jabatan yang cocok.</p>',
+        '</div>',
       '</div>',
       '<input type="hidden" id="', esc(valueId), '" name="', esc(fieldName), '" value="', esc(hasSelected ? selectedValue : ''), '" data-position-value>',
     ].join('');
   }
 
+  function positionPickerOptions(picker) {
+    if (!picker) return [];
+    var menu = picker.querySelector('[data-position-options]');
+    var idBase = menu && menu.id ? menu.id : 'position-options';
+    var options = Array.prototype.slice.call(picker.querySelectorAll('[data-position-option]'));
+    options.forEach(function (option, index) {
+      if (!option.id) option.id = idBase + '-option-' + index;
+      if (!option.hasAttribute('aria-selected')) option.setAttribute('aria-selected', 'false');
+    });
+    return options;
+  }
+
+  function filterPositionPicker(picker) {
+    if (!picker) return [];
+    var search = picker.querySelector('[data-position-search]');
+    var query = normalizePositionName(search ? search.value : '');
+    var visible = [];
+    positionPickerOptions(picker).forEach(function (option) {
+      var filterText = option.dataset.positionFilter || normalizePositionName((option.dataset.positionName || '') + ' ' + option.textContent);
+      var matches = !query || String(filterText).indexOf(query) !== -1;
+      option.hidden = !matches;
+      if (!matches) option.classList.remove('is-active');
+      if (matches) visible.push(option);
+    });
+    var empty = picker.querySelector('[data-position-empty]');
+    if (empty) empty.hidden = visible.length > 0;
+    return visible;
+  }
+
+  function openPositionPicker(picker) {
+    if (!picker) return;
+    var search = picker.querySelector('[data-position-search]');
+    var menu = picker.querySelector('[data-position-options]');
+    if (!search || !menu || search.disabled) return;
+    var wasClosed = menu.hidden;
+    filterPositionPicker(picker);
+    menu.hidden = false;
+    picker.classList.add('is-open');
+    search.setAttribute('aria-expanded', 'true');
+    if (wasClosed) {
+      var reveal = function () {
+        if (!menu.hidden) menu.scrollIntoView({block: 'nearest'});
+      };
+      window.requestAnimationFrame(reveal);
+      window.setTimeout(reveal, 250);
+    }
+  }
+
+  function closePositionPicker(picker) {
+    if (!picker) return;
+    var search = picker.querySelector('[data-position-search]');
+    var menu = picker.querySelector('[data-position-options]');
+    if (menu) menu.hidden = true;
+    picker.classList.remove('is-open');
+    positionPickerOptions(picker).forEach(function (option) { option.classList.remove('is-active'); });
+    if (search) {
+      search.setAttribute('aria-expanded', 'false');
+      search.removeAttribute('aria-activedescendant');
+    }
+  }
+
+  function choosePositionOption(picker, option) {
+    if (!picker || !option) return false;
+    var search = picker.querySelector('[data-position-search]');
+    var valueId = picker.getAttribute('data-position-value-id');
+    var hidden = valueId ? document.getElementById(valueId) : null;
+    if (search) search.value = String(option.dataset.positionName || '');
+    if (hidden) hidden.value = String(option.dataset.positionId || '');
+    syncPositionPicker(picker);
+    closePositionPicker(picker);
+    return true;
+  }
+
   function syncPositionPicker(picker) {
     if (!picker) return false;
     var search = picker.querySelector('[data-position-search]');
-    var list = picker.querySelector('datalist');
     var valueId = picker.getAttribute('data-position-value-id');
     var hidden = valueId ? document.getElementById(valueId) : null;
-    if (!search || !list) return false;
+    if (!search) return false;
 
     var query = normalizePositionName(search.value);
     var match = null;
     if (query) {
-      Array.prototype.some.call(list.options, function (option) {
-        if (normalizePositionName(option.value) !== query) return false;
+      positionPickerOptions(picker).some(function (option) {
+        if (normalizePositionName(option.dataset.positionName || '') !== query) return false;
         match = option;
         return true;
       });
@@ -157,6 +240,9 @@
     var invalidIcon = picker.querySelector('.invalid');
     if (validIcon) validIcon.classList.toggle('disabled', !match);
     if (invalidIcon) invalidIcon.classList.toggle('disabled', !query || !!match);
+    positionPickerOptions(picker).forEach(function (option) {
+      option.setAttribute('aria-selected', match === option ? 'true' : 'false');
+    });
     return !!match;
   }
 
@@ -171,16 +257,90 @@
 
   document.addEventListener('input', function (event) {
     var search = event.target.closest('[data-position-search]');
-    if (search) syncPositionPicker(search.closest('[data-position-picker]'));
+    if (search) {
+      var picker = search.closest('[data-position-picker]');
+      syncPositionPicker(picker);
+      positionPickerOptions(picker).forEach(function (option) { option.classList.remove('is-active'); });
+      search.removeAttribute('aria-activedescendant');
+      openPositionPicker(picker);
+    }
   });
   document.addEventListener('change', function (event) {
     var search = event.target.closest('[data-position-search]');
     if (search) syncPositionPicker(search.closest('[data-position-picker]'));
   });
-  document.addEventListener('blur', function (event) {
+  document.addEventListener('focusin', function (event) {
     var search = event.target.closest('[data-position-search]');
-    if (search) syncPositionPicker(search.closest('[data-position-picker]'));
-  }, true);
+    if (search) openPositionPicker(search.closest('[data-position-picker]'));
+  });
+  document.addEventListener('focusout', function (event) {
+    var picker = event.target.closest('[data-position-picker]');
+    if (!picker) return;
+    window.setTimeout(function () {
+      if (!picker.contains(document.activeElement)) {
+        syncPositionPicker(picker);
+        closePositionPicker(picker);
+      }
+    }, 0);
+  });
+  document.addEventListener('click', function (event) {
+    var option = event.target.closest('[data-position-option]');
+    if (option) {
+      event.preventDefault();
+      var optionPicker = option.closest('[data-position-picker]');
+      choosePositionOption(optionPicker, option);
+      return;
+    }
+    var toggle = event.target.closest('[data-position-toggle]');
+    if (toggle) {
+      event.preventDefault();
+      var togglePicker = toggle.closest('[data-position-picker]');
+      var toggleMenu = togglePicker && togglePicker.querySelector('[data-position-options]');
+      var shouldOpen = !toggleMenu || toggleMenu.hidden;
+      var toggleSearch = togglePicker && togglePicker.querySelector('[data-position-search]');
+      if (toggleSearch) toggleSearch.focus();
+      if (shouldOpen) openPositionPicker(togglePicker);
+      else closePositionPicker(togglePicker);
+      return;
+    }
+    Array.prototype.forEach.call(document.querySelectorAll('[data-position-picker].is-open'), function (picker) {
+      if (!picker.contains(event.target)) closePositionPicker(picker);
+    });
+  });
+  document.addEventListener('keydown', function (event) {
+    var search = event.target.closest('[data-position-search]');
+    if (!search) return;
+    var picker = search.closest('[data-position-picker]');
+    if (event.key === 'Escape') {
+      closePositionPicker(picker);
+      return;
+    }
+    if (event.key === 'Tab') {
+      syncPositionPicker(picker);
+      closePositionPicker(picker);
+      return;
+    }
+    if (event.key !== 'ArrowDown' && event.key !== 'ArrowUp' && event.key !== 'Enter') return;
+    var menu = picker.querySelector('[data-position-options]');
+    if (!menu || menu.hidden) openPositionPicker(picker);
+    var visible = filterPositionPicker(picker);
+    if (!visible.length) return;
+    var activeIndex = visible.findIndex(function (option) { return option.classList.contains('is-active'); });
+    if (event.key === 'Enter') {
+      if (activeIndex >= 0) {
+        event.preventDefault();
+        choosePositionOption(picker, visible[activeIndex]);
+      }
+      return;
+    }
+    event.preventDefault();
+    activeIndex += event.key === 'ArrowDown' ? 1 : -1;
+    if (activeIndex < 0) activeIndex = visible.length - 1;
+    if (activeIndex >= visible.length) activeIndex = 0;
+    visible.forEach(function (option, index) { option.classList.toggle('is-active', index === activeIndex); });
+    search.setAttribute('aria-activedescendant', visible[activeIndex].id);
+    visible[activeIndex].scrollIntoView({block: 'nearest'});
+  });
 
   var form = document.getElementById('registration-create-form');
   if (form) {
@@ -1348,24 +1508,17 @@
     var picker = form.querySelector('[data-position-picker]');
     if (!picker) return;
     var search = picker.querySelector('[data-position-search]');
-    var list = picker.querySelector('datalist');
     var valueId = picker.getAttribute('data-position-value-id');
     var hidden = valueId ? document.getElementById(valueId) : null;
     var match = null;
-    if (list) {
-      Array.prototype.some.call(list.options, function (option) {
-        if (String(option.dataset.positionId || '') !== String(selectedId || '')) return false;
-        match = option;
-        return true;
-      });
-    }
-    if (search) search.value = match ? optionValue(match) : '';
+    positionPickerOptions(picker).some(function (option) {
+      if (String(option.dataset.positionId || '') !== String(selectedId || '')) return false;
+      match = option;
+      return true;
+    });
+    if (search) search.value = match ? String(match.dataset.positionName || '') : '';
     if (hidden) hidden.value = match ? String(match.dataset.positionId || '') : '';
     syncPositionPicker(picker);
-  }
-
-  function optionValue(option) {
-    return option ? String(option.value || option.textContent || '') : '';
   }
 
   function setSubmitBusy(button, busyText) {

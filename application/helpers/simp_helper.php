@@ -180,6 +180,139 @@ if (!function_exists('nav_is')) {
     }
 }
 
+if (!function_exists('simp_region_id_key')) {
+    /**
+     * Return a comparison key for Indonesian region identifiers.
+     *
+     * Older RAB datasets use underscores without zero padding (64_1), while
+     * the current central dataset uses official dotted codes (64.01).  The
+     * original value remains the stored/displayed ID; this key is only used
+     * when values from the two catalog versions must be compared safely.
+     */
+    function simp_region_id_key($value)
+    {
+        if (!is_scalar($value)) return '';
+        $value = trim((string) $value);
+        if ($value === '') return '';
+        $segments = preg_split('/[._]/', $value);
+        if (!$segments || count($segments) < 2) return $value;
+        foreach ($segments as $index => &$segment) {
+            if ($segment === '' || !ctype_digit($segment)) return $value;
+            $segment = (string) (int) $segment;
+            if ($index > 0 && $index < 3) $segment = str_pad($segment, 2, '0', STR_PAD_LEFT);
+            elseif ($index === 3) $segment = str_pad($segment, 4, '0', STR_PAD_LEFT);
+        }
+        unset($segment);
+        return implode('.', $segments);
+    }
+}
+
+if (!function_exists('simp_region_id_variants')) {
+    /** Return likely legacy/current spellings of one region identifier. */
+    function simp_region_id_variants($value)
+    {
+        if (!is_scalar($value)) return array();
+        $value = trim((string) $value);
+        if ($value === '') return array();
+        $variants = array($value => TRUE);
+        $key = simp_region_id_key($value);
+        if ($key !== '') {
+            $variants[$key] = TRUE;
+            $segments = explode('.', $key);
+            foreach ($segments as $index => &$segment) {
+                if ($index > 0 && ctype_digit($segment)) $segment = (string) (int) $segment;
+            }
+            unset($segment);
+            $variants[implode('_', $segments)] = TRUE;
+        }
+        return array_keys($variants);
+    }
+}
+
+if (!function_exists('simp_region_name_key')) {
+    function simp_region_name_key($value)
+    {
+        $value = preg_replace('/\s+/u', ' ', trim((string) $value));
+        return function_exists('mb_strtoupper') ? mb_strtoupper($value, 'UTF-8') : strtoupper($value);
+    }
+}
+
+if (!function_exists('simp_regency_identity_key')) {
+    /** Build a fail-closed identity from the stable province and snapshot name. */
+    function simp_regency_identity_key(array $row)
+    {
+        $provinceId = isset($row['province_id']) ? trim((string) $row['province_id']) : '';
+        $regencyName = simp_region_name_key(isset($row['regency_name']) ? $row['regency_name'] : '');
+        if ($provinceId === '' || $regencyName === '') return '';
+        return simp_region_id_key($provinceId) . '|' . $regencyName;
+    }
+}
+
+if (!function_exists('simp_resolve_event_regencies')) {
+    /**
+     * Reconcile event-region snapshots against the configured regional DB.
+     *
+     * This keeps migrated events usable when their snapshot came from a RAB
+     * catalog with a different ID separator, padding, or historical ordinal.
+     * Candidate IDs are accepted only when their names also match; the name
+     * guard prevents an old 64_3 (Berau) being mistaken for official 64.03
+     * (Kutai Kartanegara).
+     */
+    function simp_resolve_event_regencies($regionDb, array $rows)
+    {
+        if (!$rows || !$regionDb) return $rows;
+
+        $candidateIds = array();
+        $provinceIds = array();
+        foreach ($rows as $row) {
+            foreach (simp_region_id_variants(isset($row['regency_id']) ? $row['regency_id'] : '') as $variant) {
+                $candidateIds[$variant] = TRUE;
+            }
+            $provinceId = isset($row['province_id']) ? trim((string) $row['province_id']) : '';
+            if ($provinceId !== '') $provinceIds[$provinceId] = TRUE;
+        }
+
+        $catalog = array();
+        if ($candidateIds) {
+            $matches = $regionDb->select('k.id AS regency_id,k.kota AS regency_name,p.id AS province_id,p.provinsi AS province_name')
+                ->from('data_kota k')->join('data_provinsi p', 'p.id=k.id_provinsi')
+                ->where_in('k.id', array_keys($candidateIds))->get()->result_array();
+            foreach ($matches as $match) $catalog[(string) $match['regency_id']] = $match;
+        }
+
+        $nameCatalog = array();
+        if ($provinceIds) {
+            $matches = $regionDb->select('k.id AS regency_id,k.kota AS regency_name,p.id AS province_id,p.provinsi AS province_name')
+                ->from('data_kota k')->join('data_provinsi p', 'p.id=k.id_provinsi')
+                ->where_in('p.id', array_keys($provinceIds))->get()->result_array();
+            foreach ($matches as $match) {
+                $nameCatalog[(string) $match['province_id'] . '|' . simp_region_name_key($match['regency_name'])] = $match;
+            }
+        }
+
+        foreach ($rows as &$row) {
+            $resolved = NULL;
+            $sourceProvinceId = isset($row['province_id']) ? trim((string) $row['province_id']) : '';
+            $sourceName = simp_region_name_key(isset($row['regency_name']) ? $row['regency_name'] : '');
+            foreach (simp_region_id_variants(isset($row['regency_id']) ? $row['regency_id'] : '') as $variant) {
+                if (!isset($catalog[$variant])) continue;
+                $candidate = $catalog[$variant];
+                if ($sourceProvinceId !== '' && (string) $candidate['province_id'] !== $sourceProvinceId) continue;
+                if ($sourceName !== '' && simp_region_name_key($candidate['regency_name']) !== $sourceName) continue;
+                $resolved = $candidate;
+                break;
+            }
+            if (!$resolved) {
+                $nameKey = $sourceProvinceId . '|' . $sourceName;
+                if (isset($nameCatalog[$nameKey])) $resolved = $nameCatalog[$nameKey];
+            }
+            if ($resolved) $row = array_merge($row, $resolved);
+        }
+        unset($row);
+        return $rows;
+    }
+}
+
 if (!function_exists('csrf_field')) {
     function csrf_field()
     {

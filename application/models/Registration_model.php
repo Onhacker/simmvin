@@ -15,7 +15,8 @@ class Registration_model extends CI_Model
     {
         $events = $this->db->where('status', 'open')->order_by('start_date', 'DESC')->get('training_events')->result_array();
         foreach ($events as &$event) {
-            $event['regencies'] = $this->db->select('province_id,province_name,regency_id,regency_name')->where('event_id', $event['id'])->order_by('regency_name')->get('event_regencies')->result_array();
+            $rows = $this->db->select('province_id,province_name,regency_id,regency_name')->where('event_id', $event['id'])->order_by('regency_name')->get('event_regencies')->result_array();
+            $event['regencies'] = simp_resolve_event_regencies($this->regionDb, $rows);
         }
         unset($event);
         return $events;
@@ -34,7 +35,8 @@ class Registration_model extends CI_Model
         if ($onlyOpen) $this->db->where('status', 'open');
         $event = $this->db->get('training_events')->row_array();
         if (!$event) return NULL;
-        $event['regencies'] = $this->db->where('event_id', (int) $id)->get('event_regencies')->result_array();
+        $rows = $this->db->where('event_id', (int) $id)->get('event_regencies')->result_array();
+        $event['regencies'] = simp_resolve_event_regencies($this->regionDb, $rows);
         return $event;
     }
 
@@ -211,7 +213,7 @@ class Registration_model extends CI_Model
     {
         $ids = $this->normalize_ids($villageIds);
         if (!$ids) throw new InvalidArgumentException('Pilih minimal satu desa.');
-        $allowed = array(); foreach ($event['regencies'] as $r) $allowed[(string)$r['regency_id']] = TRUE;
+        $allowed = array(); foreach ($event['regencies'] as $r) { $key=simp_regency_identity_key($r); if($key!=='')$allowed[$key]=TRUE; }
         $rows = $this->regionDb->select('d.id AS village_id,d.desa AS village_name,k.id AS district_id,k.kecamatan AS district_name,kt.id AS regency_id,kt.kota AS regency_name,p.id AS province_id,p.provinsi AS province_name')
             ->from('data_desa d')->join('data_kecamatan k', 'k.id=d.id_kecamatan')->join('data_kota kt', 'kt.id=k.id_kota')->join('data_provinsi p', 'p.id=kt.id_provinsi')
             ->where_in('d.id', $ids)->get()->result_array();
@@ -219,8 +221,10 @@ class Registration_model extends CI_Model
         if (count($indexed) !== count($ids)) throw new InvalidArgumentException('Salah satu desa tidak ditemukan pada master wilayah.');
         $ordered = array();
         foreach ($ids as $id) {
-            if (empty($allowed[(string)$indexed[$id]['regency_id']])) throw new InvalidArgumentException('Desa ' . $indexed[$id]['village_name'] . ' berada di luar cakupan event.');
-            if ($this->db->where(array('event_id'=>$event['id'],'village_id'=>$id))->count_all_results('registrations')) throw new InvalidArgumentException('Desa ' . $indexed[$id]['village_name'] . ' sudah terdaftar pada event ini.');
+            if (empty($allowed[simp_regency_identity_key($indexed[$id])])) throw new InvalidArgumentException('Desa ' . $indexed[$id]['village_name'] . ' berada di luar cakupan event.');
+            if ($this->registration_exists_for_village((int) $event['id'], $indexed[$id])) {
+                throw new InvalidArgumentException('Desa ' . $indexed[$id]['village_name'] . ' sudah terdaftar pada event ini.');
+            }
             $ordered[] = $indexed[$id];
         }
         return $ordered;
@@ -265,11 +269,18 @@ class Registration_model extends CI_Model
                 }
             }
 
-            $currentRegencies=$this->db->select('regency_id')->where('event_id',(int)$lockedEvent['id'])->get('event_regencies')->result_array();
-            $allowedRegencies=array();foreach($currentRegencies as $regency)$allowedRegencies[(string)$regency['regency_id']]=TRUE;
+            $currentRegencies=$this->db->select('province_id,province_name,regency_id,regency_name')->where('event_id',(int)$lockedEvent['id'])->get('event_regencies')->result_array();
+            $currentRegencies=simp_resolve_event_regencies($this->regionDb,$currentRegencies);
+            $allowedRegencies=array();foreach($currentRegencies as $regency){$key=simp_regency_identity_key($regency);if($key!=='')$allowedRegencies[$key]=TRUE;}
             foreach($prepared as $item){
-                if(empty($allowedRegencies[(string)$item['village']['regency_id']])){
+                if(empty($allowedRegencies[simp_regency_identity_key($item['village'])])){
                     throw new InvalidArgumentException('Cakupan event telah berubah. Muat ulang form registrasi dan pilih desa kembali.');
+                }
+                // Lock event di atas menserialkan registrasi untuk event yang
+                // sama. Ulangi pemeriksaan setelah lock agar format legacy dan
+                // current tidak dapat membuat desa fisik yang sama dua kali.
+                if ($this->registration_exists_for_village((int) $lockedEvent['id'], $item['village'])) {
+                    throw new InvalidArgumentException('Desa '.$item['village']['village_name'].' sudah terdaftar pada event ini.');
                 }
             }
 
@@ -1129,6 +1140,29 @@ class Registration_model extends CI_Model
             if($id!==''&&preg_match('/^[A-Za-z0-9_.-]+$/D',$id))$out[$id]=$id;
         }
         return array_values($out);
+    }
+
+    private function registration_exists_for_village($eventId, array $village)
+    {
+        $villageId = isset($village['village_id']) ? trim((string) $village['village_id']) : '';
+        if ($villageId !== '' && $this->db->where('event_id', (int) $eventId)
+            ->where('village_id', $villageId)
+            ->count_all_results('registrations')) {
+            return TRUE;
+        }
+
+        // Beberapa katalog RAB lama memakai nomor urut kabupaten, bukan kode
+        // resmi (mis. Kutai Timur 64_8 vs 64.04). Snapshot nama menjadi
+        // identitas cadangan agar desa yang sama tidak dapat didaftarkan ulang.
+        foreach (array('province_id', 'regency_name', 'district_name', 'village_name') as $field) {
+            if (!isset($village[$field]) || trim((string) $village[$field]) === '') return FALSE;
+        }
+        return $this->db->where('event_id', (int) $eventId)
+            ->where('province_id', trim((string) $village['province_id']))
+            ->where('regency_name', trim((string) $village['regency_name']))
+            ->where('district_name', trim((string) $village['district_name']))
+            ->where('village_name', trim((string) $village['village_name']))
+            ->count_all_results('registrations') > 0;
     }
 
     private function active_position_map($forUpdate = FALSE)
