@@ -831,7 +831,6 @@ class Finance_model extends CI_Model
         $select = "r.id AS registration_id,r.event_id,r.province_id,r.province_name,r.regency_id,r.regency_name,
             r.district_id,r.district_name,r.village_id,r.village_name,r.expected_amount AS due_amount,
             e.code AS event_code,e.name AS event_name,e.start_date,e.end_date,e.location,e.billing_mode,
-            (SELECT COUNT(*) FROM participants pt WHERE pt.registration_id=r.id AND pt.is_active=1 AND pt.deleted_at IS NULL) AS participant_count,
             (SELECT COUNT(*) FROM payments py WHERE py.registration_id=r.id AND py.status='verified') AS verified_payment_count,
             (SELECT COUNT(*) FROM payments py WHERE py.registration_id=r.id AND py.status='pending') AS pending_payment_count,
             (SELECT COALESCE(SUM(py.amount),0) FROM payments py WHERE py.registration_id=r.id AND py.status='verified') AS verified_amount,
@@ -850,11 +849,36 @@ class Finance_model extends CI_Model
         if ($villageId !== '') $this->db->where('r.village_id', $villageId);
 
         $rows = $this->db
-            ->order_by('r.district_name', 'ASC')
             ->order_by('r.village_name', 'ASC')
+            ->order_by('r.district_name', 'ASC')
             ->order_by('e.start_date', 'DESC')
             ->order_by('e.id', 'DESC')
             ->get()->result_array();
+
+        // Load participant names in one additional query. Joining participants
+        // into the payment query would multiply invoice/payment aggregates,
+        // while GROUP_CONCAT can silently truncate longer village rosters.
+        $participantNames = array();
+        $registrationIds = array_values(array_unique(array_map(function ($row) {
+            return (int) $row['registration_id'];
+        }, $rows)));
+        if ($registrationIds) {
+            $participants = $this->db
+                ->select('registration_id,id,full_name')
+                ->from('participants')
+                ->where_in('registration_id', $registrationIds)
+                ->where('is_active', 1)
+                ->where('deleted_at IS NULL', NULL, FALSE)
+                ->order_by('registration_id', 'ASC')
+                ->order_by('full_name', 'ASC')
+                ->order_by('id', 'ASC')
+                ->get()->result_array();
+            foreach ($participants as $participant) {
+                $registrationId = (int) $participant['registration_id'];
+                if (!isset($participantNames[$registrationId])) $participantNames[$registrationId] = array();
+                $participantNames[$registrationId][] = (string) $participant['full_name'];
+            }
+        }
 
         $summaryCents = array(
             'total_due' => 0, 'verified' => 0, 'pending' => 0, 'outstanding' => 0,
@@ -865,6 +889,10 @@ class Finance_model extends CI_Model
         $villageKeys = array();
 
         foreach ($rows as &$row) {
+            $registrationId = (int) $row['registration_id'];
+            $row['participant_names'] = isset($participantNames[$registrationId])
+                ? $participantNames[$registrationId] : array();
+            $row['participant_count'] = count($row['participant_names']);
             $dueCents = $this->money_cents(isset($row['due_amount']) ? $row['due_amount'] : '0');
             $verifiedCents = $this->money_cents(isset($row['verified_amount']) ? $row['verified_amount'] : '0');
             $pendingCents = $this->money_cents(isset($row['pending_amount']) ? $row['pending_amount'] : '0');

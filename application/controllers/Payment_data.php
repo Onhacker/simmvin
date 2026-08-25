@@ -15,9 +15,33 @@ class Payment_data extends App_Controller
         try {
             $data = $this->report_data();
         } catch (InvalidArgumentException $e) {
+            if ($this->wants_json()) {
+                return $this->json(array('success'=>FALSE, 'message'=>$e->getMessage()), 422);
+            }
             $this->session->set_flashdata('error', $e->getMessage());
             redirect('data-bayar');
             return;
+        }
+
+        if ($this->wants_json()) {
+            $suffix = $data['filterQuery'] !== '' ? '?' . $data['filterQuery'] : '';
+            return $this->json(array(
+                'success' => TRUE,
+                'html' => $this->load->view('payment_data/_results', array(
+                    'report' => $data['report'],
+                    'filterScope' => $data['filterScope']
+                ), TRUE),
+                'filter_query' => $data['filterQuery'],
+                'filter_active' => !empty($data['filterActive']),
+                'has_rows' => !empty($data['report']['rows']),
+                'row_count' => count($data['report']['rows']),
+                'filters' => array(
+                    'district_id' => (string) $data['filters']['district_id'],
+                    'village_id' => (string) $data['filters']['village_id']
+                ),
+                'preview_url' => site_url('data-bayar/cetak') . $suffix,
+                'pdf_url' => site_url('data-bayar/pdf') . $suffix
+            ));
         }
 
         $data['pageTitle'] = 'Data Bayar';
@@ -151,6 +175,12 @@ class Payment_data extends App_Controller
             throw new InvalidArgumentException($label . ' tidak valid.');
         }
         return $value;
+    }
+
+    private function wants_json()
+    {
+        $accept = strtolower((string) $this->input->get_request_header('Accept'));
+        return $this->input->is_ajax_request() || strpos($accept, 'application/json') !== FALSE;
     }
 
     private function private_document_output($contentType, $body, $disposition = NULL)

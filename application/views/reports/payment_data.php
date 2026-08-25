@@ -19,11 +19,6 @@ if ($logoPath !== '' && is_file($logoPath) && is_readable($logoPath)) {
     if ($logoData !== FALSE) $logoDataUri = 'data:image/jpeg;base64,' . base64_encode($logoData);
 }
 
-$billingLabels = array(
-    'per_village' => 'Per Desa',
-    'per_participant' => 'Per Peserta',
-    'per_village_extra' => 'Desa + Peserta Tambahan'
-);
 $stateLabels = array(
     'paid' => array('Lunas', 'green'),
     'overpaid' => array('Lebih Bayar', 'blue'),
@@ -81,12 +76,16 @@ elseif (count($reportEvents) > 1) $eventScope = number_format(count($reportEvent
         .report-table th { padding: 5px 4px; border: 1px solid #8795a7; background: #1f5fab; color: #fff; font-size: 7.8px; line-height: 1.2; text-align: left; text-transform: uppercase; }
         .report-table td { padding: 5px 4px; border: 1px solid #c8d1dd; color: #111; font-size: 8.1px; vertical-align: top; overflow-wrap: break-word; }
         .report-table tbody tr:nth-child(even) td { background: #f8fafc; }
-        .report-table .district-start td { border-top: 2px solid #1f5fab; }
-        .district-name { display: block; margin-bottom: 3px; color: #1f5fab; font-size: 7px; font-weight: 800; text-transform: uppercase; }
+        .report-table tbody tr + tr td { border-top: 2px solid #1f5fab; }
         .number { text-align: center; }
         .money-cell { text-align: right; white-space: nowrap; }
         .primary { display: block; color: #111; font-weight: 700; }
         .secondary { display: block; margin-top: 1px; color: #4b5563; font-size: 7px; line-height: 1.25; white-space: normal; }
+        .participant-list { margin: 0; padding: 0; list-style: none; }
+        .participant-list li { margin: 0 0 1px; line-height: 1.25; }
+        .participant-number { display: inline-block; width: 14px; color: #4b5563; font-size: 7px; vertical-align: top; }
+        .participant-name { display: inline; }
+        .participant-empty { color: #4b5563; font-style: italic; }
         .status { display: inline-block; max-width: 100%; padding: 2px 4px; border-radius: 3px; color: #fff; font-size: 6.8px; font-weight: 700; line-height: 1.25; text-align: center; }
         .status.green { background: #1f7a45; }
         .status.yellow { background: #a76608; }
@@ -145,22 +144,19 @@ elseif (count($reportEvents) > 1) $eventScope = number_format(count($reportEvent
 
         <div class="section-title">Rincian Status Pembayaran</div>
         <table class="report-table">
-            <colgroup><col style="width:3%"><col style="width:17%"><col style="width:18%"><col style="width:6%"><col style="width:11%"><col style="width:18%"><col style="width:10%"><col style="width:10%"><col style="width:7%"></colgroup>
-            <thead><tr><th>No.</th><th>Kecamatan / Desa</th><th>Event / Mode</th><th>Peserta</th><th class="money-cell">Tagihan</th><th class="money-cell">Terverifikasi / Metode</th><th class="money-cell">Menunggu</th><th class="money-cell">Sisa</th><th>Status</th></tr></thead>
+            <colgroup><col style="width:3%"><col style="width:16%"><col style="width:25%"><col style="width:5%"><col style="width:10%"><col style="width:17%"><col style="width:9%"><col style="width:9%"><col style="width:6%"></colgroup>
+            <thead><tr><th>No.</th><th>Desa / Kecamatan</th><th>Nama Peserta</th><th>Jml.</th><th class="money-cell">Tagihan</th><th class="money-cell">Terverifikasi / Metode</th><th class="money-cell">Menunggu</th><th class="money-cell">Sisa</th><th>Status</th></tr></thead>
             <tbody>
             <?php if (!$rows): ?><tr class="empty-row"><td colspan="9">Belum ada data pembayaran pada lingkup yang dipilih.</td></tr><?php endif; ?>
-            <?php $currentDistrict = NULL; ?>
             <?php foreach ($rows as $index => $row): ?>
                 <?php
-                $districtStart = $currentDistrict !== (string)$row['district_id'];
-                if ($districtStart) $currentDistrict = (string)$row['district_id'];
                 $state = isset($stateLabels[$row['payment_state']]) ? $stateLabels[$row['payment_state']] : $stateLabels['unpaid'];
-                $billing = isset($billingLabels[$row['billing_mode']]) ? $billingLabels[$row['billing_mode']] : $row['billing_mode'];
+                $participantNames = isset($row['participant_names']) && is_array($row['participant_names']) ? $row['participant_names'] : array();
                 ?>
-                <tr<?= $districtStart ? ' class="district-start"' : '' ?>>
+                <tr>
                     <td class="number"><?= number_format($index + 1) ?></td>
-                    <td><?php if ($districtStart): ?><span class="district-name">Kecamatan <?= e($row['district_name']) ?></span><?php endif; ?><span class="primary"><?= e($row['village_name']) ?></span><span class="secondary"><?= e($row['district_name']) ?> · <?= e($row['regency_name']) ?></span></td>
-                    <td><span class="primary"><?= e($row['event_name']) ?></span><span class="secondary"><?= e($row['event_code']) ?> · <?= e($billing) ?></span></td>
+                    <td><span class="primary"><?= e($row['village_name']) ?></span><span class="secondary"><?= e($row['district_name']) ?> · <?= e($row['regency_name']) ?></span></td>
+                    <td><?php if ($participantNames): ?><ol class="participant-list"><?php foreach ($participantNames as $participantIndex => $participantName): ?><li><span class="participant-number"><?= number_format($participantIndex + 1) ?>.</span><span class="participant-name"><?= e($participantName) ?></span></li><?php endforeach; ?></ol><?php else: ?><span class="participant-empty">Belum ada peserta</span><?php endif; ?></td>
                     <td class="number"><?= number_format((int)$row['participant_count']) ?></td>
                     <td class="money-cell"><?= e($money($row['due_amount'])) ?></td>
                     <td class="money-cell"><span class="primary"><?= e($money($row['verified_amount'])) ?></span><span class="secondary">T <?= e($money($row['cash_total'], FALSE)) ?> · TF <?= e($money($row['transfer_total'], FALSE)) ?> · Q <?= e($money($row['qris_total'], FALSE)) ?></span></td>
