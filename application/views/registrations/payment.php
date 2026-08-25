@@ -112,7 +112,7 @@ $isVillageExtra = $billingMode === 'per_village_extra';
                         </div>
                         <div class="col-md-6">
                             <div class="input-style has-borders no-icon input-style-always-active mb-1">
-                                <input type="number" min="1" step="1" name="amount" id="payment-amount" class="form-control" required value="<?= e(old('amount')) ?>" placeholder="0">
+                                <input type="number" data-money min="1" step="1" name="amount" id="payment-amount" class="form-control" required value="<?= e(old('amount')) ?>" placeholder="Rp 0">
                                 <label for="payment-amount" class="color-highlight">Nominal pembayaran</label>
                                 <i class="fa fa-times disabled invalid color-red-dark"></i>
                                 <i class="fa fa-check disabled valid color-green-dark"></i>

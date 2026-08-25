@@ -126,7 +126,7 @@
 <script src="<?= base_url('assets/v22/scripts/bootstrap.min.js') ?>"></script>
 <script src="<?= base_url('assets/v22/scripts/custom.js') ?>?v=3"></script>
 <script>window.SIMP={baseUrl:<?= json_encode(base_url()) ?>,csrfName:<?= json_encode($this->security->get_csrf_token_name()) ?>,csrfHash:<?= json_encode($this->security->get_csrf_hash()) ?>,serviceWorkerUrl:<?= json_encode(base_url('service-worker.js')) ?>,serviceWorkerScope:<?= json_encode(base_url()) ?>};</script>
-<script src="<?= base_url('assets/js/app.js') ?>?v=10"></script>
+<script src="<?= base_url('assets/js/app.js') ?>?v=14"></script>
 <script src="<?= base_url('assets/js/auth.js') ?>?v=3"></script>
 </body>
 </html>

@@ -98,7 +98,7 @@ $selectedEventId = (int) old('event_id', $selectedEventId);
 
                         <div class="col-md-6">
                             <div class="input-style input-style-always-active has-borders no-icon mb-4">
-                                <input class="form-control js-money" id="expense-amount" type="number" inputmode="decimal" min="0.01" max="9999999999999999.99" step="0.01" name="amount" required value="<?= e(old('amount')) ?>" placeholder="0">
+                                <input class="form-control js-money" id="expense-amount" type="number" data-money inputmode="decimal" min="0.01" max="9999999999999999.99" step="0.01" name="amount" required value="<?= e(old('amount')) ?>" placeholder="Rp 0">
                                 <label for="expense-amount" class="color-highlight font-12 font-500">Jumlah</label>
                                 <i class="fa fa-times disabled invalid color-red-dark"></i>
                                 <i class="fa fa-check disabled valid color-green-dark"></i>
@@ -121,7 +121,7 @@ $selectedEventId = (int) old('event_id', $selectedEventId);
                         </div>
                         <div class="col-md-3 js-admin-fee">
                             <div class="input-style input-style-always-active has-borders no-icon mb-4">
-                                <input class="form-control" id="expense-admin-fee" type="number" min="0" step="0.01" name="admin_fee" value="<?= e(old('admin_fee', '0')) ?>" placeholder="0">
+                                <input class="form-control" id="expense-admin-fee" type="number" data-money min="0" step="0.01" name="admin_fee" value="<?= e(old('admin_fee', '0')) ?>" placeholder="Rp 0">
                                 <label for="expense-admin-fee" class="color-highlight font-12 font-500">Biaya Admin</label>
                                 <i class="fa fa-times disabled invalid color-red-dark"></i>
                                 <i class="fa fa-check disabled valid color-green-dark"></i>

@@ -88,10 +88,10 @@ $type = old('type', isset($accountData['type']) ? $accountData['type'] : 'bank')
 
                 <div class="col-md-6">
                     <div class="input-style input-style-always-active has-borders no-icon mb-2">
-                        <input class="form-control js-money" id="account-opening-balance" type="number" min="0" step="0.01"
+                        <input class="form-control js-money" id="account-opening-balance" type="number" data-money min="0" step="0.01"
                                name="opening_balance" required
                                value="<?= e(old('opening_balance', isset($accountData['opening_balance']) ? $accountData['opening_balance'] : '0')) ?>"
-                               placeholder="0">
+                               placeholder="Rp 0">
                         <label for="account-opening-balance" class="color-highlight font-12 font-500">Saldo Awal</label>
                         <i class="fa fa-times disabled invalid color-red-dark"></i>
                         <i class="fa fa-check disabled valid color-green-dark"></i>

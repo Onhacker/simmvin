@@ -21,6 +21,53 @@
   var participantFeeLabel = document.getElementById('participant-fee-label');
   var billingPreview = document.getElementById('billing-formula-preview');
 
+  function moneyRaw(input) {
+    return window.SimpMoney && typeof window.SimpMoney.raw === 'function'
+      ? (window.SimpMoney.raw(input) || input)
+      : input;
+  }
+
+  function moneyDisplay(input) {
+    return window.SimpMoney && typeof window.SimpMoney.display === 'function'
+      ? (window.SimpMoney.display(input) || input)
+      : input;
+  }
+
+  function moneyValue(input) {
+    var raw = moneyRaw(input);
+    return raw && typeof raw.value !== 'undefined' ? String(raw.value || '') : '';
+  }
+
+  function canonicalMoney(value) {
+    var match = String(value === null || typeof value === 'undefined' ? '' : value).trim().match(/^(\d+)(?:\.(\d{1,2}))?$/);
+    if (!match) return '0.00';
+    var major = match[1].replace(/^0+(?=\d)/, '') || '0';
+    return major + '.' + String(match[2] || '').padEnd(2, '0');
+  }
+
+  function moneyCents(value) {
+    var parts = canonicalMoney(value).split('.');
+    return (BigInt(parts[0]) * 100n) + BigInt(parts[1]);
+  }
+
+  function moneyFromCents(value) {
+    var cents = value < 0n ? 0n : value;
+    return String(cents / 100n) + '.' + String(cents % 100n).padStart(2, '0');
+  }
+
+  function setMoneyState(input, disabled, required) {
+    var raw = moneyRaw(input);
+    var display = moneyDisplay(input);
+    if (raw) {
+      raw.disabled = !!disabled;
+      raw.required = !!required;
+    }
+    if (display) {
+      display.disabled = !!disabled;
+      display.required = !!required;
+    }
+  }
+
   function option(value, label) {
     var element = document.createElement('option');
     element.value = value;
@@ -29,6 +76,9 @@
   }
 
   function currency(value) {
+    if (window.SimpMoney && typeof window.SimpMoney.format === 'function') {
+      return window.SimpMoney.format(canonicalMoney(value));
+    }
     return new Intl.NumberFormat('id-ID', {
       style: 'currency',
       currency: 'IDR',
@@ -36,36 +86,36 @@
     }).format(Number(value) || 0);
   }
 
-  function positiveNumber(input) {
-    var value = Number(input && input.value);
-    return Number.isFinite(value) && value > 0 ? value : 0;
+  function positiveMoney(input) {
+    var value = canonicalMoney(moneyValue(input));
+    return moneyCents(value) > 0n ? value : '0.00';
   }
 
   function updateBillingPreview() {
     if (!billingPreview) return;
 
-    var baseFee = positiveNumber(villageFee);
-    var perParticipantFee = positiveNumber(participantFee);
+    var baseFee = positiveMoney(villageFee);
+    var perParticipantFee = positiveMoney(participantFee);
     var includedCount = Math.max(1, parseInt(includedParticipantCount && includedParticipantCount.value, 10) || 1);
 
     if (mode.value === 'per_village') {
-      billingPreview.textContent = baseFee > 0
+      billingPreview.textContent = moneyCents(baseFee) > 0n
         ? 'Setiap desa memiliki tagihan tetap ' + currency(baseFee) + ', berapa pun jumlah pesertanya.'
         : 'Masukkan biaya tetap yang ditagihkan kepada setiap desa.';
       return;
     }
     if (mode.value === 'per_participant') {
-      billingPreview.textContent = perParticipantFee > 0
+      billingPreview.textContent = moneyCents(perParticipantFee) > 0n
         ? 'Total tagihan desa = jumlah peserta × ' + currency(perParticipantFee) + '.'
         : 'Masukkan biaya untuk setiap peserta.';
       return;
     }
 
-    if (baseFee > 0 && perParticipantFee > 0) {
+    if (moneyCents(baseFee) > 0n && moneyCents(perParticipantFee) > 0n) {
       billingPreview.textContent = 'Paket ' + currency(baseFee) + ' mencakup ' + includedCount +
         ' peserta. Peserta ke-' + (includedCount + 1) + ' dan seterusnya menambah ' +
         currency(perParticipantFee) + ' per orang. Contoh ' + (includedCount + 1) +
-        ' peserta: ' + currency(baseFee + perParticipantFee) + '.';
+        ' peserta: ' + currency(moneyFromCents(moneyCents(baseFee) + moneyCents(perParticipantFee))) + '.';
     } else {
       billingPreview.textContent = 'Isi biaya paket desa, jumlah peserta dalam paket, dan biaya setiap peserta tambahan.';
     }
@@ -80,10 +130,8 @@
     participantFeeGroup.style.display = usesParticipantFee ? '' : 'none';
     includedParticipantGroup.style.display = hybrid ? '' : 'none';
 
-    villageFee.disabled = !usesVillageFee;
-    villageFee.required = usesVillageFee;
-    participantFee.disabled = !usesParticipantFee;
-    participantFee.required = usesParticipantFee;
+    setMoneyState(villageFee, !usesVillageFee, usesVillageFee);
+    setMoneyState(participantFee, !usesParticipantFee, usesParticipantFee);
     includedParticipantCount.disabled = !hybrid;
     includedParticipantCount.required = hybrid;
 
@@ -191,8 +239,8 @@
   });
 
   mode.addEventListener('change', updateFees);
-  villageFee.addEventListener('input', updateBillingPreview);
-  participantFee.addEventListener('input', updateBillingPreview);
+  moneyDisplay(villageFee).addEventListener('input', updateBillingPreview);
+  moneyDisplay(participantFee).addEventListener('input', updateBillingPreview);
   includedParticipantCount.addEventListener('input', updateBillingPreview);
   updateFees();
   render();

@@ -109,14 +109,14 @@ foreach ((array) (isset($selectedRegions) ? $selectedRegions : array()) as $sele
                         </div>
                         <div class="col-md-6 fee-village">
                             <div class="input-style input-style-always-active has-borders no-icon validate-field mb-4">
-                                <input class="form-control" id="village-fee" type="number" min="1" step="1" name="village_fee" value="<?= e($villageFeeValue) ?>" placeholder="Contoh: 18000000">
+                                <input class="form-control" id="village-fee" type="number" data-money min="1" step="1" name="village_fee" value="<?= e($villageFeeValue) ?>" placeholder="Rp 18.000.000">
                                 <label for="village-fee" id="village-fee-label" class="color-highlight font-12 font-500">Biaya Per Desa</label>
                                 <i class="fa fa-times disabled invalid color-red-dark"></i><i class="fa fa-check disabled valid color-green-dark"></i><em>Rupiah</em>
                             </div>
                         </div>
                         <div class="col-md-6 fee-participant">
                             <div class="input-style input-style-always-active has-borders no-icon validate-field mb-4">
-                                <input class="form-control" id="participant-fee" type="number" min="1" step="1" name="participant_fee" value="<?= e($participantFeeValue) ?>" placeholder="Contoh: 3500000">
+                                <input class="form-control" id="participant-fee" type="number" data-money min="1" step="1" name="participant_fee" value="<?= e($participantFeeValue) ?>" placeholder="Rp 3.500.000">
                                 <label for="participant-fee" id="participant-fee-label" class="color-highlight font-12 font-500">Biaya Per Peserta</label>
                                 <i class="fa fa-times disabled invalid color-red-dark"></i><i class="fa fa-check disabled valid color-green-dark"></i><em>Rupiah</em>
                             </div>

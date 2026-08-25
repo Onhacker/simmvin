@@ -22,6 +22,87 @@
     }
   }
 
+  function moneyRaw(target) {
+    return window.SimpMoney && typeof window.SimpMoney.raw === 'function'
+      ? (window.SimpMoney.raw(target) || target)
+      : target;
+  }
+
+  function moneyDisplay(target) {
+    return window.SimpMoney && typeof window.SimpMoney.display === 'function'
+      ? (window.SimpMoney.display(target) || target)
+      : target;
+  }
+
+  function moneyValue(target) {
+    var raw = moneyRaw(target);
+    return raw && typeof raw.value !== 'undefined' ? String(raw.value || '') : '';
+  }
+
+  function canonicalMoney(value) {
+    var match = String(value === null || typeof value === 'undefined' ? '' : value).trim().match(/^(\d+)(?:\.(\d{1,2}))?$/);
+    if (!match) return '0.00';
+    var major = match[1].replace(/^0+(?=\d)/, '') || '0';
+    return major + '.' + String(match[2] || '').padEnd(2, '0');
+  }
+
+  function moneyCents(value) {
+    var parts = canonicalMoney(value).split('.');
+    return (BigInt(parts[0]) * 100n) + BigInt(parts[1]);
+  }
+
+  function moneyFromCents(value) {
+    var cents = value < 0n ? 0n : value;
+    return String(cents / 100n) + '.' + String(cents % 100n).padStart(2, '0');
+  }
+
+  function multiplyMoney(value, multiplier) {
+    var count = Math.max(0, parseInt(multiplier, 10) || 0);
+    return moneyFromCents(moneyCents(value) * BigInt(count));
+  }
+
+  function addMoney(left, right) {
+    return moneyFromCents(moneyCents(left) + moneyCents(right));
+  }
+
+  function compareMoney(left, right) {
+    var leftCents = moneyCents(left);
+    var rightCents = moneyCents(right);
+    return leftCents === rightCents ? 0 : (leftCents > rightCents ? 1 : -1);
+  }
+
+  function setMoney(target, value) {
+    if (window.SimpMoney && typeof window.SimpMoney.set === 'function') {
+      window.SimpMoney.set(moneyRaw(target), value);
+      return;
+    }
+    var raw = moneyRaw(target);
+    if (raw) raw.value = value === null || typeof value === 'undefined' ? '' : value;
+  }
+
+  function setMoneyValidity(target, message) {
+    if (window.SimpMoney && typeof window.SimpMoney.setValidity === 'function') {
+      window.SimpMoney.setValidity(moneyRaw(target), message || '');
+      return;
+    }
+    var field = moneyDisplay(target);
+    if (field && typeof field.setCustomValidity === 'function') field.setCustomValidity(message || '');
+  }
+
+  function setMoneyControl(target, properties) {
+    var raw = moneyRaw(target);
+    var display = moneyDisplay(target);
+    Object.keys(properties || {}).forEach(function (property) {
+      var value = properties[property];
+      if (raw) raw[property] = value;
+      if (display && display !== raw) display[property] = value;
+    });
+  }
+
+  function refreshMoney(scope) {
+    if (window.SimpMoney && typeof window.SimpMoney.refresh === 'function') window.SimpMoney.refresh(scope);
+  }
+
   function requestJson(url) {
     return fetch(url, {
       credentials: 'same-origin',
@@ -57,6 +138,9 @@
   }
 
   function formatCurrency(value) {
+    if (window.SimpMoney && typeof window.SimpMoney.format === 'function') {
+      return window.SimpMoney.format(canonicalMoney(value));
+    }
     return new Intl.NumberFormat('id-ID', {
       style: 'currency',
       currency: 'IDR',
@@ -394,19 +478,22 @@
     }
 
     function villageFee(eventData) {
-      return Math.max(0, Number(eventData && eventData.village_fee) || 0);
+      return canonicalMoney(eventData && eventData.village_fee);
     }
 
     function participantFee(eventData) {
-      return Math.max(0, Number(eventData && eventData.participant_fee) || 0);
+      return canonicalMoney(eventData && eventData.participant_fee);
     }
 
     function expectedForVillage(eventData, participantCount) {
-      var count = Math.max(0, Number(participantCount) || 0);
+      var count = Math.max(0, parseInt(participantCount, 10) || 0);
       var mode = billingMode(eventData);
-      if (mode === 'per_participant') return count * participantFee(eventData);
+      if (mode === 'per_participant') return multiplyMoney(participantFee(eventData), count);
       if (mode === 'per_village_extra') {
-        return villageFee(eventData) + Math.max(0, count - includedParticipantCount(eventData)) * participantFee(eventData);
+        return addMoney(
+          villageFee(eventData),
+          multiplyMoney(participantFee(eventData), Math.max(0, count - includedParticipantCount(eventData)))
+        );
       }
       return villageFee(eventData);
     }
@@ -576,7 +663,7 @@
               '</div>',
               '<div class="col-12 col-md-6">',
                 '<div class="input-style has-borders no-icon input-style-always-active mb-1">',
-                  '<input type="number" min="1" step="1" class="form-control" id="', amountId, '" name="', prefix, '[amount]" value="', esc(amount), '" placeholder="0" data-payment-input data-payment-required data-payment-amount>',
+                  '<input type="number" data-money min="1" step="1" class="form-control" id="', amountId, '" name="', prefix, '[amount]" value="', esc(amount), '" placeholder="Rp 0" data-payment-input data-payment-required data-payment-amount>',
                   '<label for="', amountId, '" class="color-highlight">Nominal pembayaran</label>',
                   '<i class="fa fa-check disabled valid color-green-dark"></i><i class="fa fa-times disabled invalid color-red-dark"></i><em>*</em>',
                 '</div>',
@@ -775,18 +862,21 @@
       var maximumText = block.querySelector('[data-payment-maximum-text]');
       var toggle = block.querySelector('[data-payment-toggle]');
       if (!amount) return;
-      var oldMaximum = Number(block.dataset.targetAmount) || 0;
-      var currentAmount = Number(amount.value) || 0;
-      var wasFull = amount.value !== '' && Math.abs(currentAmount - oldMaximum) < 0.001;
-      var maximum = Math.max(0, Number(targetAmount) || 0);
-      block.dataset.targetAmount = String(maximum);
-      amount.max = String(maximum);
+      var oldMaximum = canonicalMoney(block.dataset.targetAmount);
+      var currentAmount = moneyValue(amount);
+      var wasFull = currentAmount !== '' && compareMoney(currentAmount, oldMaximum) === 0;
+      var maximum = canonicalMoney(targetAmount);
+      block.dataset.targetAmount = maximum;
+      setMoneyControl(amount, {max: maximum});
       if (maximumText) maximumText.textContent = formatCurrency(maximum);
-      if (toggle && toggle.checked && (amount.value === '' || (fillWhenFull && wasFull))) amount.value = maximum > 0 ? String(maximum) : '';
-      if (amount.value !== '' && Number(amount.value) > maximum) {
-        amount.setCustomValidity('Nominal melebihi total tagihan ' + formatCurrency(maximum) + '.');
+      if (toggle && toggle.checked && (currentAmount === '' || (fillWhenFull && wasFull))) {
+        setMoney(amount, moneyCents(maximum) > 0n ? maximum : '');
+        currentAmount = moneyValue(amount);
+      }
+      if (currentAmount !== '' && compareMoney(currentAmount, maximum) > 0) {
+        setMoneyValidity(amount, 'Nominal melebihi total tagihan ' + formatCurrency(maximum) + '.');
       } else {
-        amount.setCustomValidity('');
+        setMoneyValidity(amount, '');
       }
     }
 
@@ -795,22 +885,30 @@
       var fields = block.querySelector('[data-payment-fields]');
       if (!toggle || !fields) return;
       var enabled = toggle.checked;
-      if (enabled && Number(block.dataset.targetAmount) <= 0) {
+      if (enabled && moneyCents(block.dataset.targetAmount) <= 0n) {
         toggle.checked = false;
         enabled = false;
         alertUser('Tagihan target ini Rp 0 sehingga pembayaran tidak perlu dicatat.', {title: 'Tidak Ada Tagihan', tone: 'warning'});
       }
       fields.classList.toggle('d-none', !enabled);
       Array.prototype.forEach.call(fields.querySelectorAll('[data-payment-input]'), function (input) {
-        input.disabled = !enabled;
-        input.required = enabled && input.hasAttribute('data-payment-required');
+        if (input.hasAttribute('data-money')) {
+          setMoneyControl(input, {
+            disabled: !enabled,
+            required: enabled && input.hasAttribute('data-payment-required')
+          });
+        } else {
+          input.disabled = !enabled;
+          input.required = enabled && input.hasAttribute('data-payment-required');
+        }
       });
       filterPaymentAccounts(block);
       updateProofRequirement(block);
-      updatePaymentAmount(block, Number(block.dataset.targetAmount), fillAmount);
+      updatePaymentAmount(block, block.dataset.targetAmount, fillAmount);
     }
 
     function initializePaymentBlocks(scope) {
+      if (window.SimpMoney && typeof window.SimpMoney.init === 'function') window.SimpMoney.init(scope);
       Array.prototype.forEach.call(scope.querySelectorAll('[data-payment-block]'), function (block) {
         syncPaymentBlock(block, false);
       });
@@ -859,7 +957,7 @@
         if (includedRow) includedRow.classList.remove('d-none');
         if (includedValue) includedValue.textContent = included + ' orang';
         if (extraRow) extraRow.classList.remove('d-none');
-        if (extraValue) extraValue.textContent = extras + ' × ' + formatCurrency(participantFee(selectedEvent)) + ' = ' + formatCurrency(extras * participantFee(selectedEvent));
+        if (extraValue) extraValue.textContent = extras + ' × ' + formatCurrency(participantFee(selectedEvent)) + ' = ' + formatCurrency(multiplyMoney(participantFee(selectedEvent), extras));
       } else {
         if (summary) summary.textContent = count + ' peserta · ' + formatCurrency(total) + ' per desa';
         if (baseLabel) baseLabel.textContent = 'Tagihan tetap per desa';
@@ -1103,8 +1201,8 @@
       if (fillButton) {
         var block = fillButton.closest('[data-payment-block]');
         var amount = block.querySelector('[data-payment-amount]');
-        amount.value = String(Number(block.dataset.targetAmount) || '');
-        amount.setCustomValidity('');
+        setMoney(amount, moneyCents(block.dataset.targetAmount) > 0n ? block.dataset.targetAmount : '');
+        setMoneyValidity(amount, '');
       }
     });
 
@@ -1119,9 +1217,13 @@
     });
 
     cards.addEventListener('input', function (event) {
-      if (!event.target.matches('[data-payment-amount]')) return;
-      var block = event.target.closest('[data-payment-block]');
-      updatePaymentAmount(block, Number(block.dataset.targetAmount), false);
+      var amount = moneyRaw(event.target);
+      // SimpMoney memancarkan ulang `input` pada raw hidden setelah input
+      // tampilan berubah. Tangani hanya event raw tersebut agar validasi tidak
+      // dijalankan dua kali (sekali dari visible, sekali dari raw).
+      if (!amount || event.target !== amount || !amount.matches('[data-payment-amount]')) return;
+      var block = amount.closest('[data-payment-block]');
+      updatePaymentAmount(block, block.dataset.targetAmount, false);
     });
 
     form.addEventListener('submit', function (event) {
@@ -1146,6 +1248,7 @@
       }
       syncPositionPickers(form);
       updateAllVillageBilling();
+      refreshMoney(form);
       if (!form.checkValidity()) {
         event.preventDefault();
         form.reportValidity();
@@ -1191,7 +1294,8 @@
         remaining = document.getElementById('village-payment-remaining').value;
       }
 
-      paymentAmount.max = remaining || '';
+      setMoneyControl(paymentAmount, {max: remaining || ''});
+      refreshMoney(paymentAmount);
       remainingLabel.textContent = remaining
         ? 'Maksimal sisa tagihan: ' + formatCurrency(remaining)
         : '';
@@ -1440,22 +1544,25 @@
 
       document.getElementById('registration-payment-participant').value = trigger.dataset.targetType === 'participant' ? trigger.dataset.targetId : '';
       paymentTargetLabel.textContent = trigger.dataset.targetLabel || 'Registrasi';
-      var remaining = Number(trigger.dataset.targetRemaining) || 0;
-      paymentAmountModal.value = remaining > 0 ? String(remaining) : '';
-      paymentAmountModal.max = String(remaining);
+      var remaining = canonicalMoney(trigger.dataset.targetRemaining);
+      setMoney(paymentAmountModal, moneyCents(remaining) > 0n ? remaining : '');
+      setMoneyControl(paymentAmountModal, {max: remaining});
       paymentTargetRemaining.textContent = formatCurrency(remaining);
       paymentMaxLabel.textContent = 'Nominal otomatis diisi lunas; ubah untuk pembayaran sebagian. Maksimal ' + formatCurrency(remaining);
       paymentModalForm.dataset.triggerId = trigger.dataset.targetId || '';
+      refreshMoney(paymentModalForm);
       modalOpen('registration-payment-modal');
     });
     paymentModalForm.addEventListener('submit', function (event) {
       event.preventDefault();
+      refreshMoney(paymentModalForm);
       if (!paymentModalForm.checkValidity()) { paymentModalForm.reportValidity(); return; }
       var submit = paymentModalForm.querySelector('[data-payment-submit]');
       if (submit) { submit.disabled = true; submit.dataset.originalText = submit.innerHTML; submit.innerHTML = '<i class="fa fa-spinner fa-spin me-1"></i>Menyimpan...'; }
       postModalForm(paymentModalForm).then(function (payload) {
         modalClose(document.querySelector('#registration-payment-modal .close-menu'));
         paymentModalForm.reset();
+        refreshMoney(paymentModalForm);
         restoreCurrentCsrf(paymentModalForm);
         return finishRegistrationMutation(payload, 'registration-detail-content');
       }, function (error) {

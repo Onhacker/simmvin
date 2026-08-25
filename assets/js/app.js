@@ -205,16 +205,455 @@
     });
   });
 
-  document.querySelectorAll('[data-rupiah]').forEach(function (input) {
-    var target = input.form && input.form.querySelector('input[name="' + input.getAttribute('data-rupiah') + '"]');
-    function sync() {
-      var value = (input.value || '').replace(/[^0-9]/g, '');
-      if (target) target.value = value;
-      input.value = value ? new Intl.NumberFormat('id-ID').format(value) : '';
+  /*
+   * Rupiah inputs keep the original input as a hidden, canonical value so its
+   * id/name/data attributes and every existing form/AJAX contract stay intact.
+   * SimpMoney.set(target, value) is silent by default; pass true, an event name,
+   * an array of event names, or {input:true, change:true} when listeners must run.
+   */
+  (function installMoneyInputs() {
+    var rawToDisplay = new WeakMap();
+    var displayToRaw = new WeakMap();
+    var lastState = new WeakMap();
+    var resetValue = new WeakMap();
+    var externalValidity = new WeakMap();
+    var nativeSetValidity = new WeakMap();
+    var dispatchingRaw = new WeakSet();
+    var displaySequence = 0;
+
+    function trimLeadingZeroes(value) {
+      value = String(value || '').replace(/^0+(?=\d)/, '');
+      return value === '' ? '0' : value;
     }
-    input.addEventListener('input', sync);
-    sync();
-  });
+
+    function groupThousands(value) {
+      var groups = [];
+      var cursor = String(value || '0');
+      while (cursor.length > 3) {
+        groups.unshift(cursor.slice(-3));
+        cursor = cursor.slice(0, -3);
+      }
+      groups.unshift(cursor || '0');
+      return groups.join('.');
+    }
+
+    function canonicalState(value) {
+      var text = value === null || typeof value === 'undefined' ? '' : String(value).trim();
+      if (text === '') {
+        return {empty:true, syntaxValid:true, major:'', fraction:'', raw:'', hadSeparator:false};
+      }
+      if (!/^\d+(?:\.\d+)?$/.test(text)) {
+        return {empty:false, syntaxValid:false, major:'', fraction:'', raw:text, original:text, hadSeparator:false};
+      }
+      var parts = text.split('.');
+      var major = trimLeadingZeroes(parts[0]);
+      var fraction = parts.length > 1 ? parts[1] : '';
+      return {
+        empty:false,
+        syntaxValid:true,
+        major:major,
+        fraction:fraction,
+        raw:major + (fraction !== '' ? '.' + fraction : ''),
+        hadSeparator:parts.length > 1,
+        majorTooLong:major.length > 16,
+        fractionTooLong:fraction.length > 2
+      };
+    }
+
+    function displayState(value) {
+      var text = value === null || typeof value === 'undefined' ? '' : String(value);
+      var withoutCurrency = text.replace(/^\s*rp\.?\s*/i, '').replace(/\s+/g, '');
+      if (withoutCurrency === '') {
+        return {empty:true, syntaxValid:true, major:'', fraction:'', raw:'', hadSeparator:false};
+      }
+
+      var pieces = withoutCurrency.split(',');
+      var syntaxValid = pieces.length <= 2 && /^[0-9.,]+$/.test(withoutCurrency);
+      var majorText = pieces.shift() || '';
+      var fractionText = pieces.length ? pieces.join('') : '';
+      var plainMajor = /^\d+$/.test(majorText);
+      var groupedMajor = /^\d{1,3}(?:\.\d{3})+$/.test(majorText);
+      var decimalOnly = majorText === '' && withoutCurrency.charAt(0) === ',';
+      if ((!plainMajor && !groupedMajor && !decimalOnly) || !/^\d*$/.test(fractionText)) syntaxValid = false;
+      var majorDigits = majorText.replace(/\./g, '').replace(/\D/g, '');
+      var fractionDigits = fractionText.replace(/\D/g, '');
+      if (majorDigits === '' && fractionDigits === '') {
+        if (decimalOnly) {
+          return {empty:false, syntaxValid:true, major:'0', fraction:'', raw:'0', hadSeparator:true, original:text, fromDisplay:true};
+        }
+        return {empty:false, syntaxValid:false, major:'', fraction:'', raw:'', hadSeparator:false, original:text, fromDisplay:true};
+      }
+      var major = trimLeadingZeroes(majorDigits || '0');
+      return {
+        empty:false,
+        syntaxValid:syntaxValid,
+        major:major,
+        fraction:fractionDigits,
+        raw:major + (fractionDigits !== '' ? '.' + fractionDigits : ''),
+        hadSeparator:withoutCurrency.indexOf(',') !== -1,
+        majorTooLong:major.length > 16,
+        fractionTooLong:fractionDigits.length > 2,
+        original:text,
+        fromDisplay:true
+      };
+    }
+
+    function formatState(state, preserveTypedFraction) {
+      if (!state || state.empty) return '';
+      if (!state.syntaxValid || state.major === '') return state.original || state.raw || '';
+      var fraction = state.fraction || '';
+      if (!preserveTypedFraction && fraction !== '' && /^0+$/.test(fraction)) fraction = '';
+      return 'Rp ' + groupThousands(state.major) +
+        (fraction !== '' ? ',' + fraction : (preserveTypedFraction && state.hadSeparator ? ',' : ''));
+    }
+
+    function comparableFraction(state) {
+      return ((state && state.fraction) || '') + '00';
+    }
+
+    function compareStates(left, right) {
+      if (left.major.length !== right.major.length) return left.major.length < right.major.length ? -1 : 1;
+      if (left.major !== right.major) return left.major < right.major ? -1 : 1;
+      var leftFraction = comparableFraction(left).slice(0, 2);
+      var rightFraction = comparableFraction(right).slice(0, 2);
+      if (leftFraction === rightFraction) return 0;
+      return leftFraction < rightFraction ? -1 : 1;
+    }
+
+    function resolveElement(target) {
+      if (!target) return null;
+      if (typeof target !== 'string') return target.nodeType === 1 ? target : null;
+      var byId = document.getElementById(target);
+      if (byId) return byId;
+      try { return document.querySelector(target); } catch (error) { return null; }
+    }
+
+    function rawInput(target) {
+      var element = resolveElement(target);
+      if (!element) return null;
+      if (rawToDisplay.has(element)) return element;
+      if (displayToRaw.has(element)) return displayToRaw.get(element);
+      if (element.matches && element.matches('input[data-money]')) {
+        initialiseInput(element);
+        return rawToDisplay.has(element) ? element : null;
+      }
+      return null;
+    }
+
+    function displayInput(target) {
+      var raw = rawInput(target);
+      return raw ? rawToDisplay.get(raw) || null : null;
+    }
+
+    function constraintState(raw, attribute) {
+      var value = raw.getAttribute(attribute);
+      if (value === null || value === '') return null;
+      var state = canonicalState(value);
+      return state.syntaxValid && !state.empty && !state.majorTooLong && !state.fractionTooLong ? state : null;
+    }
+
+    function internalValidationMessage(raw, state) {
+      if (!state) return '';
+      if (!state.syntaxValid) return 'Nominal Rupiah tidak valid.';
+      if (state.empty) return '';
+      if (state.majorTooLong) return 'Nominal maksimal 16 digit sebelum desimal.';
+      if (state.fractionTooLong) return 'Nominal maksimal memiliki 2 angka desimal.';
+      var step = raw.getAttribute('step');
+      if (step && /^1(?:\.0+)?$/.test(step) && state.fraction && !/^0+$/.test(state.fraction)) {
+        return 'Nominal harus berupa Rupiah penuh tanpa angka desimal.';
+      }
+      var minimum = constraintState(raw, 'min');
+      var maximum = constraintState(raw, 'max');
+      if (minimum && compareStates(state, minimum) < 0) return 'Nominal minimal ' + formatState(minimum, false) + '.';
+      if (maximum && compareStates(state, maximum) > 0) return 'Nominal maksimal ' + formatState(maximum, false) + '.';
+      return '';
+    }
+
+    function applyValidity(raw, state) {
+      var visible = rawToDisplay.get(raw);
+      if (!visible) return;
+      var message = externalValidity.get(raw) || internalValidationMessage(raw, state);
+      var nativeSetter = nativeSetValidity.get(raw);
+      if (nativeSetter) nativeSetter(message);
+      visible.setCustomValidity(message);
+      visible.setAttribute('aria-invalid', message ? 'true' : 'false');
+    }
+
+    function copyBooleanConstraint(raw, visible, attribute, property) {
+      visible[property] = !!raw[property];
+      if (raw[property]) visible.setAttribute(attribute, attribute);
+      else visible.removeAttribute(attribute);
+    }
+
+    function syncConstraints(raw) {
+      var visible = rawToDisplay.get(raw);
+      if (!visible) return;
+      copyBooleanConstraint(raw, visible, 'required', 'required');
+      copyBooleanConstraint(raw, visible, 'disabled', 'disabled');
+      copyBooleanConstraint(raw, visible, 'readonly', 'readOnly');
+      ['min', 'max', 'step'].forEach(function (attribute) {
+        if (raw.hasAttribute(attribute)) visible.setAttribute(attribute, raw.getAttribute(attribute));
+        else visible.removeAttribute(attribute);
+      });
+      visible.setAttribute('aria-required', raw.required ? 'true' : 'false');
+      visible.setAttribute('aria-disabled', raw.disabled ? 'true' : 'false');
+      applyValidity(raw, lastState.get(raw) || canonicalState(raw.value));
+    }
+
+    function refreshInput(raw, force) {
+      var visible = rawToDisplay.get(raw);
+      if (!visible) return null;
+      var pendingState = lastState.get(raw);
+      if (!force && pendingState && pendingState.fromDisplay && !pendingState.syntaxValid) {
+        visible.value = pendingState.original || '';
+        syncConstraints(raw);
+        return raw;
+      }
+      var state = canonicalState(raw.value);
+      if (state.syntaxValid) raw.value = state.raw;
+      lastState.set(raw, state);
+      visible.value = formatState(state, false);
+      syncConstraints(raw);
+      return raw;
+    }
+
+    function rawEvent(raw, type) {
+      var event;
+      try { event = new Event(type, {bubbles:true}); }
+      catch (error) {
+        event = document.createEvent('Event');
+        event.initEvent(type, true, false);
+      }
+      dispatchingRaw.add(raw);
+      try { raw.dispatchEvent(event); }
+      finally { dispatchingRaw.delete(raw); }
+    }
+
+    function requestedEvents(option) {
+      if (!option) return [];
+      if (option === true) return ['input'];
+      if (typeof option === 'string') return [option];
+      if (Array.isArray(option)) return option;
+      var events = [];
+      if (option.input) events.push('input');
+      if (option.change) events.push('change');
+      return events;
+    }
+
+    function syncFromVisible(visible, dispatchInput) {
+      var raw = displayToRaw.get(visible);
+      if (!raw) return null;
+      externalValidity.delete(raw);
+      var state = displayState(visible.value);
+      lastState.set(raw, state);
+      visible.value = formatState(state, true);
+      applyValidity(raw, state);
+      if (!state.syntaxValid) return raw;
+      raw.value = state.raw;
+      if (dispatchInput) {
+        var beforeEvent = raw.value;
+        rawEvent(raw, 'input');
+        if (raw.value !== beforeEvent) refreshInput(raw, true);
+      }
+      return raw;
+    }
+
+    function uniqueDisplayId(raw) {
+      var base = raw.id ? raw.id + '-money-display' : 'simp-money-display';
+      var candidate = base;
+      while (document.getElementById(candidate)) {
+        displaySequence += 1;
+        candidate = base + '-' + displaySequence;
+      }
+      return candidate;
+    }
+
+    function associateLabels(raw, visible) {
+      if (!raw.id || !visible) return;
+      var visited = [];
+      function updateLabels(root) {
+        if (!root || visited.indexOf(root) !== -1) return;
+        visited.push(root);
+        if (root.nodeType === 1 && root.matches('label') && root.getAttribute('for') === raw.id) {
+          root.setAttribute('for', visible.id);
+        }
+        if (!root.querySelectorAll) return;
+        Array.prototype.forEach.call(root.querySelectorAll('label'), function (label) {
+          if (label.getAttribute('for') === raw.id) label.setAttribute('for', visible.id);
+        });
+      }
+
+      /* Dynamic form cards are often initialised before their tree is attached. */
+      updateLabels(typeof raw.getRootNode === 'function' ? raw.getRootNode() : raw.parentNode);
+      updateLabels(document);
+    }
+
+    function initialiseInput(raw) {
+      if (!raw || raw.nodeType !== 1 || !raw.matches('input[data-money]')) return null;
+      if (rawToDisplay.has(raw)) {
+        associateLabels(raw, rawToDisplay.get(raw));
+        return raw;
+      }
+      var initialDefault = canonicalState(raw.defaultValue);
+      resetValue.set(raw, initialDefault.syntaxValid ? initialDefault.raw : raw.defaultValue);
+      var visible = raw.cloneNode(false);
+      Array.prototype.slice.call(visible.attributes).forEach(function (attribute) {
+        if (attribute.name.indexOf('data-') === 0 || attribute.name.indexOf('on') === 0) visible.removeAttribute(attribute.name);
+      });
+      visible.type = 'text';
+      visible.removeAttribute('name');
+      visible.id = uniqueDisplayId(raw);
+      visible.setAttribute('data-simp-money-display', '');
+      visible.setAttribute('inputmode', 'decimal');
+      visible.setAttribute('spellcheck', 'false');
+      visible.removeAttribute('pattern');
+
+      raw.type = 'hidden';
+      raw.setAttribute('aria-hidden', 'true');
+      raw.parentNode.insertBefore(visible, raw.nextSibling);
+      rawToDisplay.set(raw, visible);
+      displayToRaw.set(visible, raw);
+
+      var nativeSetter = raw.setCustomValidity.bind(raw);
+      nativeSetValidity.set(raw, nativeSetter);
+      try {
+        raw.setCustomValidity = function (message) {
+          setValidity(raw, message);
+        };
+      } catch (ignored) {}
+
+      visible.addEventListener('input', function () { syncFromVisible(visible, true); });
+      visible.addEventListener('change', function () {
+        syncFromVisible(visible, false);
+        visible.value = formatState(lastState.get(raw), false);
+        if (lastState.get(raw) && lastState.get(raw).syntaxValid) rawEvent(raw, 'change');
+      });
+      visible.addEventListener('blur', function () { refreshInput(raw, false); });
+      raw.addEventListener('input', function () {
+        if (!dispatchingRaw.has(raw)) refreshInput(raw, true);
+      });
+      raw.addEventListener('change', function () {
+        if (!dispatchingRaw.has(raw)) refreshInput(raw, true);
+      });
+
+      associateLabels(raw, visible);
+      refreshInput(raw, true);
+      visible.defaultValue = visible.value;
+      return raw;
+    }
+
+    function restoreResetValues(scope) {
+      moneyInputs(scope).forEach(function (raw) {
+        if (!rawToDisplay.has(raw)) return;
+        raw.value = resetValue.has(raw) ? resetValue.get(raw) : '';
+        externalValidity.delete(raw);
+        refreshInput(raw, true);
+      });
+    }
+
+    function moneyInputs(scope) {
+      var root = scope && (scope.nodeType === 1 || scope.nodeType === 9) ? scope : document;
+      var inputs = [];
+      if (root.nodeType === 1 && root.matches('input[data-money]')) inputs.push(root);
+      if (root.querySelectorAll) {
+        Array.prototype.forEach.call(root.querySelectorAll('input[data-money]'), function (input) { inputs.push(input); });
+      }
+      return inputs;
+    }
+
+    function init(scope) {
+      var root = resolveElement(scope) || (scope && scope.nodeType ? scope : document);
+      return moneyInputs(root).map(initialiseInput).filter(function (input) { return !!input; });
+    }
+
+    function refresh(targetOrScope) {
+      var direct = rawInput(targetOrScope);
+      if (direct) return refreshInput(direct, false);
+      var root = resolveElement(targetOrScope) || (targetOrScope && targetOrScope.nodeType ? targetOrScope : document);
+      init(root);
+      var refreshed = [];
+      moneyInputs(root).forEach(function (raw) {
+        if (rawToDisplay.has(raw)) refreshed.push(refreshInput(raw, false));
+      });
+      return refreshed;
+    }
+
+    function setValue(target, value, dispatchOption) {
+      var raw = rawInput(target);
+      if (!raw) return null;
+      externalValidity.delete(raw);
+      var state = canonicalState(value);
+      raw.value = state.syntaxValid ? state.raw : (value === null || typeof value === 'undefined' ? '' : String(value));
+      refreshInput(raw, true);
+      requestedEvents(dispatchOption).forEach(function (type) {
+        if (type === 'input' || type === 'change') rawEvent(raw, type);
+      });
+      refreshInput(raw, true);
+      return raw;
+    }
+
+    function setValidity(target, message) {
+      var raw = rawInput(target);
+      if (!raw) return false;
+      message = message === null || typeof message === 'undefined' ? '' : String(message);
+      if (message) externalValidity.set(raw, message);
+      else externalValidity.delete(raw);
+      applyValidity(raw, lastState.get(raw) || canonicalState(raw.value));
+      return true;
+    }
+
+    function format(value) {
+      var state = canonicalState(value);
+      if (!state.syntaxValid || state.empty || state.majorTooLong || state.fractionTooLong) return '';
+      return formatState(state, false);
+    }
+
+    window.SimpMoney = {
+      init:init,
+      refresh:refresh,
+      set:setValue,
+      raw:rawInput,
+      display:displayInput,
+      setValidity:setValidity,
+      format:format
+    };
+
+    document.addEventListener('submit', function (event) {
+      if (!event.target || !event.target.querySelectorAll) return;
+      event.target.querySelectorAll('[data-simp-money-display]').forEach(function (visible) {
+        syncFromVisible(visible, false);
+      });
+    }, true);
+
+    document.addEventListener('reset', function (event) {
+      if (event.defaultPrevented) return;
+      restoreResetValues(event.target);
+      window.setTimeout(function () { refresh(event.target); }, 0);
+    });
+
+    if (window.MutationObserver) {
+      new MutationObserver(function (mutations) {
+        mutations.forEach(function (mutation) {
+          if (mutation.type === 'childList') {
+            Array.prototype.forEach.call(mutation.addedNodes, function (node) {
+              if (node.nodeType === 1) init(node);
+            });
+          } else if (mutation.type === 'attributes') {
+            var target = mutation.target;
+            if (mutation.attributeName === 'data-money' && target.matches('input[data-money]')) initialiseInput(target);
+            else if (rawToDisplay.has(target)) syncConstraints(target);
+          }
+        });
+      }).observe(document.documentElement, {
+        childList:true,
+        subtree:true,
+        attributes:true,
+        attributeFilter:['data-money', 'required', 'disabled', 'readonly', 'min', 'max', 'step']
+      });
+    }
+
+    init(document);
+  })();
 
   function refreshCsrf(hash, name) {
     if (name) window.SIMP.csrfName = name;

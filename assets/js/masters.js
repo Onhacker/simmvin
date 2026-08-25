@@ -3,6 +3,34 @@
 
   function byId(id) { return document.getElementById(id); }
 
+  function moneyRaw(target) {
+    return window.SimpMoney && typeof window.SimpMoney.raw === 'function'
+      ? (window.SimpMoney.raw(target) || target)
+      : target;
+  }
+
+  function moneyDisplay(target) {
+    return window.SimpMoney && typeof window.SimpMoney.display === 'function'
+      ? (window.SimpMoney.display(target) || target)
+      : target;
+  }
+
+  function isMoneyField(target) {
+    return !!target && (target.hasAttribute('data-money') || moneyDisplay(target) !== target);
+  }
+
+  function setMoney(target, value) {
+    if (window.SimpMoney && typeof window.SimpMoney.set === 'function') {
+      window.SimpMoney.set(moneyRaw(target), value);
+      return;
+    }
+    if (target) target.value = value === null || typeof value === 'undefined' ? '' : value;
+  }
+
+  function refreshMoney(scope) {
+    if (window.SimpMoney && typeof window.SimpMoney.refresh === 'function') window.SimpMoney.refresh(scope);
+  }
+
   function updateCsrf(payload) {
     if (!payload || !payload.csrf) return;
     var name = payload.csrf.name || (window.SIMP && window.SIMP.csrfName);
@@ -57,7 +85,9 @@
       var current = byId(id);
       var next = parsed.getElementById(id);
       if (!current || !next) throw new Error('Bagian data yang diperbarui tidak ditemukan.');
-      current.replaceWith(document.importNode(next, true));
+      var replacement = document.importNode(next, true);
+      current.replaceWith(replacement);
+      if (window.SimpMoney && typeof window.SimpMoney.init === 'function') window.SimpMoney.init(replacement);
     });
   }
 
@@ -103,6 +133,7 @@
       var field = accountForm.elements[name];
       if (!field) return;
       if (field.type === 'checkbox') field.checked = Number(value) === 1;
+      else if (isMoneyField(field)) setMoney(field, value);
       else field.value = value === null || typeof value === 'undefined' ? '' : value;
     }
 
@@ -130,6 +161,7 @@
       setAccountValue('sort_order', editing ? account.sort_order : '0');
       setAccountValue('include_in_total', editing ? account.include_in_total : 1);
       setAccountValue('is_active', editing ? account.is_active : 1);
+      refreshMoney(accountForm);
       accountSubmit.innerHTML = '<i class="fa fa-save me-1"></i>' + (editing ? 'Simpan Perubahan' : 'Simpan Akun');
       toggleAccountBankFields();
       openMenu('account-modal-opener');
@@ -147,6 +179,7 @@
 
     accountForm.addEventListener('submit', function (event) {
       event.preventDefault();
+      refreshMoney(accountForm);
       if (!accountForm.checkValidity()) { accountForm.reportValidity(); return; }
       setBusy(accountSubmit, true, '<i class="fa fa-save me-1"></i>Simpan Akun');
       requestForm(accountForm).then(function (payload) {

@@ -108,7 +108,7 @@
 <script src="<?= base_url('assets/v22/scripts/bootstrap.min.js') ?>"></script>
 <script src="<?= base_url('assets/v22/scripts/custom.js') ?>?v=3"></script>
 <script>window.SIMP={baseUrl:<?= json_encode(base_url()) ?>,csrfName:<?= json_encode($this->security->get_csrf_token_name()) ?>,csrfHash:<?= json_encode($this->security->get_csrf_hash()) ?>,serviceWorkerUrl:<?= json_encode(base_url('service-worker.js')) ?>,serviceWorkerScope:<?= json_encode(base_url()) ?>};</script>
-<script src="<?= base_url('assets/js/app.js') ?>?v=10"></script>
+<script src="<?= base_url('assets/js/app.js') ?>?v=14"></script>
 <?php
 $resolvedPageScripts = array();
 if (!empty($pageScript)) $resolvedPageScripts[] = $pageScript;
@@ -116,7 +116,7 @@ if (!empty($pageScripts) && is_array($pageScripts)) $resolvedPageScripts = array
 $resolvedPageScripts = array_values(array_unique(array_filter($resolvedPageScripts)));
 ?>
 <?php foreach ($resolvedPageScripts as $resolvedPageScript): ?>
-    <script src="<?= base_url('assets/js/' . basename($resolvedPageScript)) ?>?v=24"></script>
+    <script src="<?= base_url('assets/js/' . basename($resolvedPageScript)) ?>?v=25"></script>
 <?php endforeach; ?>
 </body>
 </html>

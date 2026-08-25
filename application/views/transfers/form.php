@@ -63,7 +63,7 @@
 
                 <div class="col-lg-4">
                     <div class="input-style input-style-always-active has-borders no-icon mb-4">
-                        <input class="form-control" id="transfer-amount" type="number" min="0.01" step="0.01" name="amount" required value="<?= e(old('amount')) ?>" placeholder="0">
+                        <input class="form-control" id="transfer-amount" type="number" data-money min="0.01" step="0.01" name="amount" required value="<?= e(old('amount')) ?>" placeholder="Rp 0">
                         <label for="transfer-amount" class="color-highlight font-12 font-500">Jumlah Transfer</label>
                         <i class="fa fa-times disabled invalid color-red-dark"></i>
                         <i class="fa fa-check disabled valid color-green-dark"></i>
@@ -72,7 +72,7 @@
                 </div>
                 <div class="col-lg-4">
                     <div class="input-style input-style-always-active has-borders no-icon mb-2">
-                        <input class="form-control" id="transfer-admin-fee" type="number" min="0" step="0.01" name="admin_fee" value="<?= e(old('admin_fee', '0')) ?>" placeholder="0">
+                        <input class="form-control" id="transfer-admin-fee" type="number" data-money min="0" step="0.01" name="admin_fee" value="<?= e(old('admin_fee', '0')) ?>" placeholder="Rp 0">
                         <label for="transfer-admin-fee" class="color-highlight font-12 font-500">Biaya Transfer</label>
                         <i class="fa fa-times disabled invalid color-red-dark"></i>
                         <i class="fa fa-check disabled valid color-green-dark"></i>

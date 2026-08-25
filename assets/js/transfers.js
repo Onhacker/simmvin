@@ -4,6 +4,10 @@
   var addForm = document.getElementById('transfer-add-form');
   var addModalId = 'transfer-add-modal';
 
+  function refreshMoney(scope) {
+    if (window.SimpMoney && typeof window.SimpMoney.refresh === 'function') window.SimpMoney.refresh(scope);
+  }
+
   function updateCsrf(payload) {
     if (!payload || !payload.csrf) return;
     window.SIMP = window.SIMP || {};
@@ -86,6 +90,7 @@
         var csrf = addForm.querySelector('input[name="' + window.SIMP.csrfName + '"]');
         if (csrf) csrf.value = window.SIMP.csrfHash;
       }
+      refreshMoney(addForm);
     }
     var opener = document.querySelector('[data-menu="' + addModalId + '"]');
     if (opener) opener.click();
@@ -100,6 +105,7 @@
   if (addForm) {
     addForm.addEventListener('submit', function (event) {
       event.preventDefault();
+      refreshMoney(addForm);
       if (!addForm.checkValidity()) { addForm.reportValidity(); return; }
       var from = addForm.querySelector('[name="from_account_id"]');
       var to = addForm.querySelector('[name="to_account_id"]');

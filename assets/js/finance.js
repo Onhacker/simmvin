@@ -3,6 +3,39 @@
 
   function all(selector) { return Array.prototype.slice.call(document.querySelectorAll(selector)); }
 
+  function moneyRaw(target) {
+    return window.SimpMoney && typeof window.SimpMoney.raw === 'function'
+      ? (window.SimpMoney.raw(target) || target)
+      : target;
+  }
+
+  function moneyDisplay(target) {
+    return window.SimpMoney && typeof window.SimpMoney.display === 'function'
+      ? (window.SimpMoney.display(target) || target)
+      : target;
+  }
+
+  function setMoney(target, value) {
+    if (window.SimpMoney && typeof window.SimpMoney.set === 'function') {
+      window.SimpMoney.set(moneyRaw(target), value);
+      return;
+    }
+    if (target) target.value = value === null || typeof value === 'undefined' ? '' : value;
+  }
+
+  function setMoneyControl(target, properties) {
+    var raw = moneyRaw(target);
+    var display = moneyDisplay(target);
+    Object.keys(properties || {}).forEach(function (property) {
+      if (raw) raw[property] = properties[property];
+      if (display && display !== raw) display[property] = properties[property];
+    });
+  }
+
+  function refreshMoney(scope) {
+    if (window.SimpMoney && typeof window.SimpMoney.refresh === 'function') window.SimpMoney.refresh(scope);
+  }
+
   function toggleAccountFields() {
     var type = document.querySelector('.js-account-type');
     if (!type) return;
@@ -20,8 +53,8 @@
     var isTransfer = method.value === 'transfer';
     fee.style.opacity = isTransfer ? '1' : '.55';
     var input = fee.querySelector('input');
-    if (!isTransfer && input) { input.value = '0'; input.readOnly = true; }
-    else if (input) input.readOnly = false;
+    if (!isTransfer && input) { setMoney(input, '0'); setMoneyControl(input, {readOnly: true}); }
+    else if (input) setMoneyControl(input, {readOnly: false});
   }
 
   var type = document.querySelector('.js-account-type');
@@ -50,6 +83,7 @@
 
   var transfer = document.querySelector('.js-transfer-form');
   if (transfer) transfer.addEventListener('submit', function (event) {
+    refreshMoney(transfer);
     var from = transfer.querySelector('.js-from-account');
     var to = transfer.querySelector('.js-to-account');
     if (from && to && from.value && from.value === to.value) {
@@ -152,8 +186,8 @@
     function updateExpenseFeeRule() {
       if (!expenseMethod || !expenseFee) return;
       var isTransfer = expenseMethod.value === 'transfer';
-      expenseFee.readOnly = !isTransfer;
-      if (!isTransfer) expenseFee.value = '0';
+      setMoneyControl(expenseFee, {readOnly: !isTransfer});
+      if (!isTransfer) setMoney(expenseFee, '0');
     }
 
     document.addEventListener('click', function (event) {
@@ -165,6 +199,7 @@
       filterExpenseAccounts();
       updateExpenseProofRequirement();
       updateExpenseFeeRule();
+      refreshMoney(expenseForm);
       var opener = document.querySelector('[data-menu="expense-add-modal"]');
       if (opener) opener.click();
     });
@@ -176,6 +211,7 @@
 
     expenseForm.addEventListener('submit', function (event) {
       event.preventDefault();
+      refreshMoney(expenseForm);
       if (!expenseForm.checkValidity()) { expenseForm.reportValidity(); return; }
       if (expenseSubmit) { expenseSubmit.disabled = true; expenseSubmit.dataset.originalText = expenseSubmit.innerHTML; expenseSubmit.innerHTML = '<i class="fa fa-spinner fa-spin me-1"></i>Menyimpan...'; }
       var headers = {'X-Requested-With':'XMLHttpRequest','Accept':'application/json'};

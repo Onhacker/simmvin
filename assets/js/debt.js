@@ -3,6 +3,44 @@
 
   function byId(id) { return document.getElementById(id); }
 
+  function moneyRaw(target) {
+    return window.SimpMoney && typeof window.SimpMoney.raw === 'function'
+      ? (window.SimpMoney.raw(target) || target)
+      : target;
+  }
+
+  function moneyDisplay(target) {
+    return window.SimpMoney && typeof window.SimpMoney.display === 'function'
+      ? (window.SimpMoney.display(target) || target)
+      : target;
+  }
+
+  function isMoneyField(target) {
+    if (!target) return false;
+    return target.hasAttribute('data-money') || moneyDisplay(target) !== target;
+  }
+
+  function setMoney(target, value) {
+    if (window.SimpMoney && typeof window.SimpMoney.set === 'function') {
+      window.SimpMoney.set(moneyRaw(target), value);
+      return;
+    }
+    if (target) target.value = value === null || typeof value === 'undefined' ? '' : value;
+  }
+
+  function setMoneyControl(target, properties) {
+    var raw = moneyRaw(target);
+    var display = moneyDisplay(target);
+    Object.keys(properties || {}).forEach(function (property) {
+      if (raw) raw[property] = properties[property];
+      if (display && display !== raw) display[property] = properties[property];
+    });
+  }
+
+  function refreshMoney(scope) {
+    if (window.SimpMoney && typeof window.SimpMoney.refresh === 'function') window.SimpMoney.refresh(scope);
+  }
+
   function updateCsrf(payload) {
     if (!payload || !payload.csrf) return;
     var name = payload.csrf.name || (window.SIMP && window.SIMP.csrfName);
@@ -87,7 +125,9 @@
       var current = byId('debt-content');
       var next = parsed.getElementById('debt-content');
       if (!current || !next) throw new Error('Bagian daftar hutang tidak ditemukan.');
-      current.replaceWith(document.importNode(next, true));
+      var replacement = document.importNode(next, true);
+      current.replaceWith(replacement);
+      if (window.SimpMoney && typeof window.SimpMoney.init === 'function') window.SimpMoney.init(replacement);
       bindForms();
     });
   }
@@ -103,15 +143,18 @@
 
   function setCreateValue(name, value) {
     if (!createForm || !createForm.elements[name]) return;
-    createForm.elements[name].value = value === null || typeof value === 'undefined' ? '' : value;
+    var field = createForm.elements[name];
+    if (isMoneyField(field)) setMoney(field, value);
+    else field.value = value === null || typeof value === 'undefined' ? '' : value;
   }
 
   function setPrincipalLock(locked) {
     var amount = byId('debt-amount');
     var help = byId('debt-amount-help');
     if (amount) {
-      amount.readOnly = !!locked;
-      amount.setAttribute('aria-readonly', locked ? 'true' : 'false');
+      setMoneyControl(amount, {readOnly: !!locked});
+      var display = moneyDisplay(amount);
+      if (display) display.setAttribute('aria-readonly', locked ? 'true' : 'false');
     }
     if (help) help.classList.toggle('d-none', !locked);
   }
@@ -126,6 +169,7 @@
     if (title) title.textContent = 'Tambah Hutang';
     setPrincipalLock(false);
     setCreateValue('debt_date', localIsoDate());
+    refreshMoney(createForm);
     var submit = byId('debt-create-submit');
     if (submit) submit.innerHTML = '<i class="fa fa-save me-1"></i> Simpan Hutang';
   }
@@ -149,6 +193,7 @@
     setCreateValue('description', debt.description);
     setCreateValue('note', debt.note);
     setPrincipalLock(Number(debt.lock_principal) === 1);
+    refreshMoney(createForm);
     var submit = byId('debt-create-submit');
     if (submit) submit.innerHTML = '<i class="fa fa-save me-1"></i> Simpan Perubahan';
     openMenu('debt-create-opener');
@@ -267,8 +312,8 @@
   function updateDebtFeeRule() {
     var fee = byId('debt-pay-fee');
     if (!fee) return;
-    fee.value = '0';
-    fee.readOnly = true;
+    setMoney(fee, '0');
+    setMoneyControl(fee, {readOnly: true});
   }
 
   function preparePayment(button) {
@@ -285,16 +330,18 @@
     byId('debt-pay-creditor').textContent = debt.creditor || debt.debt_no || '-';
     byId('debt-pay-remaining').innerHTML = 'Sisa hutang: <strong>' + formatRupiah(debt.remaining || 0) + '</strong>';
     var amount = byId('debt-pay-amount');
-    amount.max = debt.remaining || '0';
-    amount.value = debt.remaining || '';
+    setMoneyControl(amount, {max: debt.remaining || '0'});
+    setMoney(amount, debt.remaining || '');
     populateAccounts();
     updateProofRequirement();
     updateDebtFeeRule();
+    refreshMoney(payForm);
     openMenu('debt-pay-opener');
     window.setTimeout(function () { var field = byId('debt-pay-date'); if (field) field.focus(); }, 80);
   }
 
   function formatRupiah(value) {
+    if (window.SimpMoney && typeof window.SimpMoney.format === 'function') return window.SimpMoney.format(value);
     var number = Number(value || 0);
     if (!isFinite(number)) number = 0;
     return 'Rp ' + new Intl.NumberFormat('id-ID', {maximumFractionDigits: 0}).format(number);
@@ -327,6 +374,7 @@
 
   function submitAjaxForm(form, button, errorTitle, reopenId, normalButtonHtml, successTitle) {
     if (form.dataset.submitting === '1') return;
+    refreshMoney(form);
     if (!form.checkValidity()) { form.reportValidity(); return; }
     form.dataset.submitting = '1';
     setBusy(button, true, normalButtonHtml);
