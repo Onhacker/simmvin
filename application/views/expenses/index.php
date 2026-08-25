@@ -97,14 +97,9 @@ $canVerify = !empty($canVerify);
                 <span class="badge bg-blue-dark color-white ms-auto flex-shrink-0"><?= number_format(count($rows)) ?> data</span>
             </div>
             <div class="divider mt-3 mb-3"></div>
-            <div class="d-flex align-items-center">
-                <span class="icon icon-m rounded-xl bg-green-dark shadow-s me-3 flex-shrink-0">
-                    <i class="fas fa-receipt color-white"></i>
-                </span>
-                <div class="min-width-zero">
-                    <p class="font-11 opacity-60 mb-n1">Total pengeluaran terverifikasi</p>
-                    <h3 class="color-green-dark mb-0"><?= rupiah($verifiedTotal) ?></h3>
-                </div>
+            <div class="expense-summary-total">
+                <p class="font-11 opacity-60 mb-n1">Total pengeluaran terverifikasi</p>
+                <h3 class="color-green-dark mb-0"><?= rupiah($verifiedTotal) ?></h3>
             </div>
         </div>
     </div>
@@ -113,7 +108,6 @@ $canVerify = !empty($canVerify);
     <?php if (!$rows): ?>
         <div class="card card-style">
             <div class="content text-center py-4">
-                <i class="fa fa-receipt fa-3x color-highlight opacity-30 mb-3"></i>
                 <h3>Belum Ada Pengeluaran</h3>
                 <p class="mb-0">Pengeluaran untuk event aktif akan tampil di halaman ini.</p>
             </div>
@@ -131,22 +125,15 @@ $canVerify = !empty($canVerify);
         $total = simp_money_from_cents($amountCents + $adminFeeCents);
         $method = isset($methodLabels[$row['method']]) ? $methodLabels[$row['method']] : ucfirst((string) $row['method']);
         ?>
-        <div class="card card-style">
+        <div class="card card-style expense-card">
             <div class="content">
-                <div class="d-flex flex-column flex-sm-row align-items-sm-start">
-                    <div class="d-flex align-items-start min-width-zero flex-grow-1">
-                        <span class="icon icon-m rounded-xl bg-red-dark shadow-s me-3 flex-shrink-0">
-                            <i class="fas fa-receipt color-white"></i>
-                        </span>
-                        <div class="min-width-zero">
-                            <p class="font-11 color-highlight font-600 mb-n1"><?= e($row['expense_no']) ?></p>
-                            <h4 class="mb-1"><?= e($row['category_name']) ?></h4>
-                            <p class="font-11 opacity-60 mb-0">
-                                <i class="fa fa-calendar-alt me-1"></i><?= tanggal_id($row['expense_date']) ?>
-                            </p>
-                        </div>
+                <div class="expense-card-header">
+                    <div class="expense-card-title min-width-zero">
+                        <p class="font-11 color-highlight font-600 mb-1"><?= e($row['expense_no']) ?></p>
+                        <h4 class="mb-1"><?= e($row['category_name']) ?></h4>
+                        <p class="font-11 opacity-60 mb-0"><?= tanggal_id($row['expense_date']) ?></p>
                     </div>
-                    <div class="mt-2 mt-sm-0 ms-sm-auto ps-sm-3 flex-shrink-0">
+                    <div class="expense-card-status mt-3">
                         <?= status_badge($row['status']) ?>
                     </div>
                 </div>
@@ -158,7 +145,7 @@ $canVerify = !empty($canVerify);
 
                 <?php if (!empty($row['debt_id'])): ?>
                     <p class="font-11 opacity-60 mb-n1">Sumber transaksi</p>
-                    <h5 class="font-14 color-red-dark mb-3"><i class="fa fa-file-invoice-dollar me-1"></i>Pembayaran <?= e($row['debt_no']) ?> · <?= e($row['debt_creditor']) ?></h5>
+                    <h5 class="font-14 color-red-dark mb-3">Pembayaran <?= e($row['debt_no']) ?> · <?= e($row['debt_creditor']) ?></h5>
                 <?php endif; ?>
 
                 <p class="font-11 opacity-60 mb-n1">Kategori</p>
@@ -167,24 +154,19 @@ $canVerify = !empty($canVerify);
                 <p class="font-11 opacity-60 mb-n1">Uraian</p>
                 <p class="mb-3"><?= nl2br(e($row['description'])) ?></p>
 
-                <div class="d-flex align-items-start mb-3">
-                    <span class="icon icon-s rounded-xl bg-fade-blue-light color-blue-dark me-3 flex-shrink-0">
-                        <i class="fa fa-wallet"></i>
-                    </span>
-                    <div class="min-width-zero">
-                        <p class="font-11 opacity-60 mb-n1">Akun Dana</p>
-                        <h5 class="font-14 mb-n1"><?= e($row['account_name']) ?></h5>
-                        <p class="font-11 color-highlight mb-0"><?= e($method) ?></p>
-                    </div>
+                <div class="expense-card-field mb-3">
+                    <p class="font-11 opacity-60 mb-n1">Akun Dana</p>
+                    <h5 class="font-14 mb-n1"><?= e($row['account_name']) ?></h5>
+                    <p class="font-11 color-highlight mb-0"><?= e($method) ?></p>
                 </div>
 
                 <div class="divider mb-3"></div>
 
-                <div class="d-flex mb-2">
+                <div class="expense-card-money-row d-flex mb-2">
                     <span class="opacity-60 pe-3">Nilai pengeluaran</span>
                     <strong class="ms-auto text-end"><?= rupiah($amount) ?></strong>
                 </div>
-                <div class="d-flex mb-3">
+                <div class="expense-card-money-row d-flex mb-3">
                     <span class="opacity-60 pe-3">Biaya admin</span>
                     <strong class="ms-auto text-end"><?= rupiah($adminFee) ?></strong>
                 </div>
@@ -208,10 +190,10 @@ $canVerify = !empty($canVerify);
                     <a class="btn btn-s font-12 font-600 bg-fade-blue-light color-blue-dark rounded-s"
                        target="_blank" rel="noopener"
                        href="<?= site_url('dokumen/pengeluaran/' . $row['id']) ?>">
-                        <i class="fas fa-paperclip me-1"></i> Buka Bukti
+                        Buka Bukti
                     </a>
                 <?php else: ?>
-                    <p class="font-12 opacity-50 mb-0"><i class="fa fa-paperclip me-1"></i>Belum ada bukti pembayaran.</p>
+                    <p class="font-12 opacity-50 mb-0">Belum ada bukti pembayaran.</p>
                 <?php endif; ?>
 
                 <?php if ($row['status'] !== 'rejected' && $this->Auth_model->can('expenses.verify') && (empty($row['debt_id']) || $this->Auth_model->can('debts.verify'))): ?>

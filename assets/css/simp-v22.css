@@ -1058,6 +1058,51 @@ body {
   display: none !important;
 }
 
+/* Expense cards are intentionally text-first.  Keeping each record in one
+ * vertical flow makes long descriptions and category names readable on a
+ * phone, without relying on decorative icons to convey the field meaning. */
+#expense-list .expense-card-header {
+  display: block;
+}
+
+#expense-list .expense-card-title h4 {
+  overflow-wrap: anywhere;
+}
+
+#expense-list .expense-card-status {
+  min-height: 28px;
+}
+
+#expense-list .expense-card-field,
+#expense-list .expense-card-money-row {
+  min-width: 0;
+}
+
+#expense-list .expense-card-money-row {
+  align-items: baseline;
+  gap: 12px;
+}
+
+#expense-list .expense-card-money-row > strong {
+  white-space: nowrap;
+}
+
+@media (max-width: 575.98px) {
+  #expense-list .expense-card-money-row {
+    display: block !important;
+  }
+
+  #expense-list .expense-card-money-row > span,
+  #expense-list .expense-card-money-row > strong {
+    display: block;
+  }
+
+  #expense-list .expense-card-money-row > strong {
+    margin-top: 3px;
+    text-align: left !important;
+  }
+}
+
 @media print {
   #preloader, .header, #footer-bar, .page-title, #menu-main, .menu-hider,
   .simp-no-print, .back-to-top, .simp-pwa-install { display: none !important; }
