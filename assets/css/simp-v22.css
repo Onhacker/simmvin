@@ -190,6 +190,23 @@ select[multiple].form-select { height: auto !important; min-height: 150px; paddi
   z-index: 3;
 }
 
+/* Modal tambah peserta memakai dropdown bertingkat biasa: kecamatan dipilih
+ * dahulu, kemudian desa dimuat oleh JavaScript. Appearance native sengaja
+ * dipulihkan supaya daftar panjang tetap dapat digulir oleh Android/iOS. */
+#page .input-style select.registration-cascade-select {
+  -webkit-appearance: auto !important;
+  -moz-appearance: auto !important;
+  appearance: auto !important;
+  height: 53px !important;
+  min-height: 53px !important;
+  padding-right: 42px !important;
+  background-image: none !important;
+}
+
+.registration-cascade-select-wrap > em {
+  right: 28px !important;
+}
+
 .simp-balance-value { font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
 .min-width-zero { min-width: 0; }
 
