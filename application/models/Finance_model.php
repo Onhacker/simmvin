@@ -1468,7 +1468,7 @@ class Finance_model extends CI_Model
         $eventMap = array();
 
         $this->db->select(
-            "e.id,e.code,e.name,e.start_date,e.end_date,e.status,e.billing_mode,e.included_participant_count,
+            "e.id,e.code,e.name,e.start_date,e.end_date,e.status,e.billing_mode,e.village_fee,e.participant_fee,e.included_participant_count,
              COALESCE(SUM(p.amount),0) income,
              COALESCE(SUM(CASE WHEN p.method='cash' THEN p.amount ELSE 0 END),0) cash_total,
              COALESCE(SUM(CASE WHEN p.method='transfer' THEN p.amount ELSE 0 END),0) transfer_total,
@@ -1481,7 +1481,7 @@ class Finance_model extends CI_Model
         if (!empty($filters['date_from'])) $this->db->where('p.payment_date >=', $filters['date_from']);
         if (!empty($filters['date_to'])) $this->db->where('p.payment_date <=', $filters['date_to']);
         $paymentEvents = $this->db
-            ->group_by(array('e.id','e.code','e.name','e.start_date','e.end_date','e.status','e.billing_mode','e.included_participant_count'))
+            ->group_by(array('e.id','e.code','e.name','e.start_date','e.end_date','e.status','e.billing_mode','e.village_fee','e.participant_fee','e.included_participant_count'))
             ->get()->result_array();
 
         foreach ($paymentEvents as $event) {
@@ -1492,7 +1492,7 @@ class Finance_model extends CI_Model
         // has no receipt yet, so registration counts do not disappear from a
         // zero-income report.
         $activeEvents = $this->db
-            ->select('id,code,name,start_date,end_date,status,billing_mode,included_participant_count')
+            ->select('id,code,name,start_date,end_date,status,billing_mode,village_fee,participant_fee,included_participant_count')
             ->from('training_events')->where('status', 'open')
             ->order_by('start_date', 'DESC')->order_by('id', 'DESC')
             ->get()->result_array();
@@ -1527,6 +1527,23 @@ class Finance_model extends CI_Model
             }
         }
 
+        // Calculate the expected amount from the event tariff separately from
+        // verified cash received.  This makes hybrid billing readable:
+        // village package + chargeable additional participants.
+        foreach ($eventMap as $eventId => &$event) {
+            $villageFeeCents = $event['village_fee_cents'];
+            $participantFeeCents = $event['participant_fee_cents'];
+            if ($event['billing_mode'] === 'per_participant') {
+                $event['tariff_total_cents'] = $event['participants'] * $participantFeeCents;
+            } elseif ($event['billing_mode'] === 'per_village_extra') {
+                $event['tariff_total_cents'] = ($event['villages'] * $villageFeeCents) + ($event['additional_participants'] * $participantFeeCents);
+            } else {
+                $event['tariff_total_cents'] = $event['villages'] * $villageFeeCents;
+            }
+            $event['tariff_total'] = $this->cents_to_decimal($event['tariff_total_cents']);
+        }
+        unset($event);
+
         $events = array_values($eventMap);
         usort($events, function ($left, $right) {
             $dateCompare = strcmp((string)$right['start_date'], (string)$left['start_date']);
@@ -1541,6 +1558,7 @@ class Finance_model extends CI_Model
         $villageCount = 0;
         $participantCount = 0;
         $additionalParticipantCount = 0;
+        $tariffTotalCents = 0;
         foreach ($events as $event) {
             $incomeCents += (int)$event['income_cents'];
             $cashCents += (int)$event['cash_total_cents'];
@@ -1549,6 +1567,7 @@ class Finance_model extends CI_Model
             $villageCount += (int)$event['villages'];
             $participantCount += (int)$event['participants'];
             $additionalParticipantCount += (int)$event['additional_participants'];
+            $tariffTotalCents += (int)$event['tariff_total_cents'];
         }
 
         $this->db->select(
@@ -1594,11 +1613,13 @@ class Finance_model extends CI_Model
                 'villages' => $villageCount,
                 'participants' => $participantCount,
                 'additional_participants' => $additionalParticipantCount,
+                'tariff_total_cents' => $tariffTotalCents,
                 'income_cents' => $incomeCents,
                 'cash_total_cents' => $cashCents,
                 'transfer_total_cents' => $transferCents,
                 'qris_total_cents' => $qrisCents,
                 'income' => $this->cents_to_decimal($incomeCents),
+                'tariff_total' => $this->cents_to_decimal($tariffTotalCents),
                 'cash_total' => $this->cents_to_decimal($cashCents),
                 'transfer_total' => $this->cents_to_decimal($transferCents),
                 'qris_total' => $this->cents_to_decimal($qrisCents),
@@ -1627,6 +1648,8 @@ class Finance_model extends CI_Model
             'status' => (string)$event['status'],
             'billing_mode' => (string)$event['billing_mode'],
             'included_participant_count' => (int)$event['included_participant_count'],
+            'village_fee_cents' => $this->finance_breakdown_money_cents(isset($event['village_fee']) ? $event['village_fee'] : '0'),
+            'participant_fee_cents' => $this->finance_breakdown_money_cents(isset($event['participant_fee']) ? $event['participant_fee'] : '0'),
             'villages' => 0,
             'participants' => 0,
             'additional_participants' => 0,
@@ -1639,6 +1662,12 @@ class Finance_model extends CI_Model
             'transfer_total' => $this->cents_to_decimal($transferCents),
             'qris_total' => $this->cents_to_decimal($qrisCents)
         );
+    }
+
+    private function finance_breakdown_money_cents($value)
+    {
+        $cents = $this->money_cents($value);
+        return $cents === NULL ? 0 : (int)$cents;
     }
 
     public function ledger($accountId, $limit = 100)

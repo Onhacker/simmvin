@@ -85,16 +85,31 @@ class Reports extends App_Controller
         try {
             $filters = $this->date_filters();
         } catch (InvalidArgumentException $e) {
+            if ($this->input->is_ajax_request()) {
+                return $this->json(array('success'=>FALSE, 'message'=>$e->getMessage()), 422);
+            }
             $this->session->set_flashdata('error', $e->getMessage());
             $filters = array('date_from'=>date('Y-m-d'),'date_to'=>date('Y-m-d'));
         }
-        $this->render('reports/finance', array(
+        $data = array(
             'pageTitle' => 'Laporan Keuangan',
             'report' => $this->finance->finance_report($filters),
             'breakdown' => $this->finance->finance_breakdown($filters),
             'filters' => $filters,
             'pageScript' => 'finance.js'
-        ));
+        );
+        if ($this->input->is_ajax_request()) {
+            $query = http_build_query(array_filter($filters, function ($value) { return $value !== ''; }));
+            $suffix = $query !== '' ? '?' . $query : '';
+            return $this->json(array(
+                'success' => TRUE,
+                'html' => $this->load->view('reports/finance_content', $data, TRUE),
+                'filters' => $filters,
+                'preview_url' => site_url('laporan/keuangan/cetak') . $suffix,
+                'pdf_url' => site_url('laporan/keuangan/pdf') . $suffix
+            ));
+        }
+        $this->render('reports/finance', $data);
     }
 
     public function finance_print()

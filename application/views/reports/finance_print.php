@@ -37,6 +37,30 @@ $netCents = isset($report['net_cents']) ? (int)$report['net_cents'] : $moneyCent
 $expenseGrandCents = 0;
 foreach ($expenseCategories as $category) $expenseGrandCents += isset($category['total_cents']) ? (int)$category['total_cents'] : $moneyCents(isset($category['total']) ? $category['total'] : 0);
 $expenseGrand = simp_money_from_cents($expenseGrandCents);
+$tariffFormula = function ($event) use ($printRupiah) {
+    $mode = isset($event['billing_mode']) ? (string)$event['billing_mode'] : 'per_village';
+    $villages = (int)($event['villages'] ?? 0);
+    $participants = (int)($event['participants'] ?? 0);
+    $additional = (int)($event['additional_participants'] ?? 0);
+    $villageFeeCents = (int)($event['village_fee_cents'] ?? 0);
+    $participantFeeCents = (int)($event['participant_fee_cents'] ?? 0);
+    $villageFee = simp_money_from_cents($villageFeeCents);
+    $participantFee = simp_money_from_cents($participantFeeCents);
+    $lines = array();
+    if ($mode === 'per_participant') {
+        $subtotal = simp_money_from_cents($participants * $participantFeeCents);
+        $lines[] = number_format($participants) . ' peserta x ' . $printRupiah($participantFee) . ' = ' . $printRupiah($subtotal);
+    } elseif ($mode === 'per_village_extra') {
+        $villageSubtotal = simp_money_from_cents($villages * $villageFeeCents);
+        $additionalSubtotal = simp_money_from_cents($additional * $participantFeeCents);
+        $lines[] = number_format($villages) . ' desa x ' . $printRupiah($villageFee) . ' = ' . $printRupiah($villageSubtotal);
+        $lines[] = number_format($additional) . ' peserta tambahan x ' . $printRupiah($participantFee) . ' = ' . $printRupiah($additionalSubtotal);
+    } else {
+        $subtotal = simp_money_from_cents($villages * $villageFeeCents);
+        $lines[] = number_format($villages) . ' desa x ' . $printRupiah($villageFee) . ' = ' . $printRupiah($subtotal);
+    }
+    return $lines;
+};
 ?>
 <!DOCTYPE html>
 <html lang="id">
@@ -78,6 +102,8 @@ $expenseGrand = simp_money_from_cents($expenseGrandCents);
         .report-table td { padding: 5px 5px; border: 1px solid #cfd7e2; vertical-align: top; overflow-wrap: break-word; word-wrap: break-word; }
         .report-table tbody tr:nth-child(even) td { background: #f7f9fc; }
         .report-table .number { text-align: center; }
+        /* Keep ordinal columns genuinely narrow in Dompdf as well as in the browser. */
+        .report-table th.number-col, .report-table td.number-col { width: 24px; min-width: 24px; max-width: 24px; padding-left: 2px; padding-right: 2px; white-space: nowrap; overflow: hidden; }
         .report-table .money { text-align: right; white-space: nowrap; }
         .report-table .primary { display: block; font-weight: 700; }
         .report-table .secondary { display: block; margin-top: 1px; color: #5f6b7a; font-size: 7.2px; line-height: 1.3; }
@@ -140,42 +166,39 @@ $expenseGrand = simp_money_from_cents($expenseGrandCents);
             <td><span class="summary-label">Peserta</span><span class="summary-value"><?= number_format((int)($income['participants'] ?? 0)) ?></span></td>
             <td><span class="summary-label">Peserta tambahan</span><span class="summary-value"><?= number_format((int)($income['additional_participants'] ?? 0)) ?></span></td>
             <td><span class="summary-label">Tunai · Transfer · QRIS</span><span class="summary-value"><?= e($printRupiah($income['cash_total'] ?? 0, TRUE)) ?> · <?= e($printRupiah($income['transfer_total'] ?? 0, TRUE)) ?> · <?= e($printRupiah($income['qris_total'] ?? 0, TRUE)) ?></span></td>
-            <td><span class="summary-label">Total pemasukan</span><span class="summary-value positive"><?= e($printRupiah($income['income'] ?? 0)) ?></span></td>
+            <td><span class="summary-label">Tarif / Dana masuk</span><span class="summary-value positive"><?= e($printRupiah($income['tariff_total'] ?? 0)) ?> / <?= e($printRupiah($income['income'] ?? 0)) ?></span></td>
         </tr>
     </table>
     <table class="report-table">
-        <colgroup><col style="width:4%"><col style="width:32%"><col style="width:16%"><col style="width:10%"><col style="width:10%"><col style="width:12%"><col style="width:16%"></colgroup>
-        <thead><tr><th>No.</th><th>Event</th><th>Mode tagihan</th><th>Desa</th><th>Peserta</th><th>Tambahan</th><th class="money">Dana masuk</th></tr></thead>
+        <thead><tr><th class="number-col" width="2%" style="width:2%">No.</th><th width="23%" style="width:23%">Event</th><th width="13%" style="width:13%">Mode tagihan</th><th width="40%" style="width:40%">Perhitungan tarif</th><th class="money" width="22%" style="width:22%">Dana masuk terverifikasi</th></tr></thead>
         <tbody>
-        <?php if (!$events): ?><tr class="empty-row"><td colspan="7">Belum ada pemasukan atau event aktif pada periode ini.</td></tr><?php endif; ?>
+        <?php if (!$events): ?><tr class="empty-row"><td colspan="5">Belum ada pemasukan atau event aktif pada periode ini.</td></tr><?php endif; ?>
         <?php foreach ($events as $index => $event): ?>
+            <?php $formulaLines = $tariffFormula($event); ?>
             <tr>
-                <td class="number"><?= number_format($index + 1) ?></td>
-                <td><span class="primary"><?= e($event['name']) ?></span><span class="secondary"><?= e($event['code']) ?> · <?= e(tanggal_id($event['start_date'])) ?> s.d. <?= e(tanggal_id($event['end_date'])) ?></span></td>
-                <td><span class="mode-badge"><?= e(isset($modeLabels[$event['billing_mode']]) ? $modeLabels[$event['billing_mode']] : ucfirst((string)$event['billing_mode'])) ?></span></td>
-                <td class="number"><?= number_format((int)$event['villages']) ?></td>
-                <td class="number"><?= number_format((int)$event['participants']) ?></td>
-                <td class="number"><?= number_format((int)$event['additional_participants']) ?></td>
-                <td class="money"><span class="primary"><?= e($printRupiah($event['income'])) ?></span><span class="secondary">Tunai <?= e($printRupiah($event['cash_total'], FALSE)) ?> · TF <?= e($printRupiah($event['transfer_total'], FALSE)) ?> · QRIS <?= e($printRupiah($event['qris_total'], FALSE)) ?></span></td>
+                <td class="number number-col" width="2%" style="width:2%"><?= number_format($index + 1) ?></td>
+                <td width="23%" style="width:23%"><span class="primary"><?= e($event['name']) ?></span><span class="secondary"><?= e($event['code']) ?> · <?= e(tanggal_id($event['start_date'])) ?> s.d. <?= e(tanggal_id($event['end_date'])) ?></span></td>
+                <td width="13%" style="width:13%"><span class="mode-badge"><?= e(isset($modeLabels[$event['billing_mode']]) ? $modeLabels[$event['billing_mode']] : ucfirst((string)$event['billing_mode'])) ?></span></td>
+                <td width="40%" style="width:40%"><?php foreach ($formulaLines as $formulaLine): ?><span class="primary"><?= e($formulaLine) ?></span><?php endforeach; ?><span class="secondary">Total berdasarkan tarif: <?= e($printRupiah($event['tariff_total'] ?? 0)) ?></span></td>
+                <td class="money" width="22%" style="width:22%"><span class="primary"><?= e($printRupiah($event['income'])) ?></span><span class="secondary">Tunai <?= e($printRupiah($event['cash_total'], FALSE)) ?> · TF <?= e($printRupiah($event['transfer_total'], FALSE)) ?> · QRIS <?= e($printRupiah($event['qris_total'], FALSE)) ?></span></td>
             </tr>
         <?php endforeach; ?>
         </tbody>
-        <?php if ($events): ?><tfoot><tr><td colspan="3">TOTAL PEMASUKAN</td><td class="number"><?= number_format((int)($income['villages'] ?? 0)) ?></td><td class="number"><?= number_format((int)($income['participants'] ?? 0)) ?></td><td class="number"><?= number_format((int)($income['additional_participants'] ?? 0)) ?></td><td class="money"><?= e($printRupiah($income['income'] ?? 0)) ?></td></tr></tfoot><?php endif; ?>
+        <?php if ($events): ?><tfoot><tr><td colspan="3">TOTAL</td><td>Total berdasarkan tarif: <?= e($printRupiah($income['tariff_total'] ?? 0)) ?></td><td class="money">Dana masuk: <?= e($printRupiah($income['income'] ?? 0)) ?></td></tr></tfoot><?php endif; ?>
     </table>
 
     <div class="section-title">Rincian pengeluaran per kategori</div>
     <table class="report-table">
-        <colgroup><col style="width:5%"><col style="width:45%"><col style="width:15%"><col style="width:13%"><col style="width:22%"></colgroup>
-        <thead><tr><th>No.</th><th>Kategori</th><th class="number">Transaksi</th><th class="money">Biaya admin</th><th class="money">Total pengeluaran</th></tr></thead>
+        <thead><tr><th class="number-col" width="2%" style="width:2%">No.</th><th width="49%" style="width:49%">Kategori</th><th class="number" width="11%" style="width:11%">Transaksi</th><th class="money" width="16%" style="width:16%">Biaya admin</th><th class="money" width="22%" style="width:22%">Total pengeluaran</th></tr></thead>
         <tbody>
         <?php if (!$expenseCategories): ?><tr class="empty-row"><td colspan="5">Belum ada pengeluaran terverifikasi pada periode ini.</td></tr><?php endif; ?>
         <?php foreach ($expenseCategories as $index => $category): ?>
             <tr>
-                <td class="number"><?= number_format($index + 1) ?></td>
-                <td><span class="primary"><?= e($category['name']) ?></span><span class="secondary">Nilai pokok <?= e($printRupiah($category['amount'])) ?></span></td>
-                <td class="number"><?= number_format((int)$category['transaction_count']) ?></td>
-                <td class="money"><?= e($printRupiah($category['admin_fee'])) ?></td>
-                <td class="money"><span class="primary"><?= e($printRupiah($category['total'])) ?></span></td>
+                <td class="number number-col" width="2%" style="width:2%"><?= number_format($index + 1) ?></td>
+                <td width="49%" style="width:49%"><span class="primary"><?= e($category['name']) ?></span><span class="secondary">Nilai pokok <?= e($printRupiah($category['amount'])) ?></span></td>
+                <td class="number" width="11%" style="width:11%"><?= number_format((int)$category['transaction_count']) ?></td>
+                <td class="money" width="16%" style="width:16%"><?= e($printRupiah($category['admin_fee'])) ?></td>
+                <td class="money" width="22%" style="width:22%"><span class="primary"><?= e($printRupiah($category['total'])) ?></span></td>
             </tr>
         <?php endforeach; ?>
         </tbody>

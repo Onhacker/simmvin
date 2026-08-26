@@ -3,6 +3,119 @@
 
   function all(selector) { return Array.prototype.slice.call(document.querySelectorAll(selector)); }
 
+  function financeFilterUrl() {
+    var form = document.querySelector('[data-finance-filter-form]');
+    if (!form) return null;
+    var url = new URL(form.action || window.location.href, window.location.href);
+    var from = form.querySelector('[name="date_from"]');
+    var to = form.querySelector('[name="date_to"]');
+    url.search = '';
+    if (from && from.value) url.searchParams.set('date_from', from.value);
+    if (to && to.value) url.searchParams.set('date_to', to.value);
+    return url;
+  }
+
+  function financeDatesValid() {
+    var form = document.querySelector('[data-finance-filter-form]');
+    if (!form) return true;
+    var from = form.querySelector('[name="date_from"]');
+    var to = form.querySelector('[name="date_to"]');
+    if (from && to && from.value && to.value && from.value > to.value) {
+      financeAlert('Dari tanggal tidak boleh setelah sampai tanggal.', 'Periode Tidak Valid', 'warning');
+      from.focus();
+      return false;
+    }
+    return true;
+  }
+
+  function setFinancePrintUrls(previewUrl, pdfUrl) {
+    var trigger = document.querySelector('[data-finance-print-trigger]');
+    var modal = document.getElementById('finance-print-modal');
+    var frame = modal ? modal.querySelector('[data-report-preview-frame]') : null;
+    var pdf = modal ? modal.querySelector('[data-report-file-label="PDF"]') : null;
+    var share = modal ? modal.querySelector('[data-report-share-pdf]') : null;
+    if (trigger) trigger.href = previewUrl;
+    if (frame) {
+      frame.setAttribute('data-src', previewUrl);
+      frame.removeAttribute('src');
+      frame.dataset.loaded = 'false';
+    }
+    if (pdf) pdf.href = pdfUrl;
+    if (share) share.setAttribute('data-report-pdf-url', pdfUrl);
+  }
+
+  function financeAlert(message, title, tone) {
+    if (typeof window.simpAlert === 'function') window.simpAlert(message, {title:title, tone:tone});
+  }
+
+  function requestFinanceFilter(url) {
+    var form = document.querySelector('[data-finance-filter-form]');
+    var button = form ? form.querySelector('[data-finance-apply]') : null;
+    var label = button ? button.querySelector('span') : null;
+    if (button) button.disabled = true;
+    if (label) label.textContent = 'Memuat...';
+    return fetch(url.toString(), {
+      credentials:'same-origin', cache:'no-store',
+      headers:{'X-Requested-With':'XMLHttpRequest','Accept':'application/json'}
+    }).then(function (response) {
+      var responseUrl = String(response.url || '');
+      if (response.redirected || response.status === 401 || /\/login(?:[/?#]|$)/i.test(responseUrl)) throw new Error('Sesi Anda telah berakhir. Silakan masuk kembali.');
+      return response.text().then(function (body) {
+        var payload;
+        try { payload = JSON.parse(body); }
+        catch (error) { throw new Error('Laporan keuangan gagal diperbarui.'); }
+        if (!response.ok || payload.success !== true) throw new Error(payload.message || 'Laporan keuangan gagal diperbarui.');
+        return payload;
+      });
+    }).then(function (payload) {
+      var current = document.getElementById('finance-report-content');
+      if (!current || !payload.html) throw new Error('Potongan laporan keuangan tidak lengkap.');
+      var parsed = new DOMParser().parseFromString(payload.html, 'text/html');
+      var next = parsed.getElementById('finance-report-content');
+      if (!next) throw new Error('Potongan laporan keuangan tidak lengkap.');
+      current.replaceWith(document.importNode(next, true));
+      setFinancePrintUrls(payload.preview_url, payload.pdf_url);
+      if (window.history && window.history.replaceState) window.history.replaceState({}, '', url.toString());
+      return payload;
+    }).catch(function (error) {
+      financeAlert(error.message || 'Laporan keuangan gagal diperbarui.', 'Filter Gagal', 'danger');
+      throw error;
+    }).finally(function () {
+      if (button) button.disabled = false;
+      if (label) label.textContent = 'Terapkan';
+    });
+  }
+
+  document.addEventListener('submit', function (event) {
+    var form = event.target.closest('[data-finance-filter-form]');
+    if (!form) return;
+    event.preventDefault();
+    if (!financeDatesValid()) return;
+    var url = financeFilterUrl();
+    if (url) requestFinanceFilter(url).catch(function () {});
+  });
+
+  // Cetak always follows the dates currently visible in the form.  The user
+  // does not need to press Terapkan first; the modal receives fresh preview
+  // and PDF URLs immediately before the shared print handler opens it.
+  document.addEventListener('click', function (event) {
+    var trigger = event.target.closest('[data-finance-print-trigger]');
+    if (!trigger) return;
+    if (!financeDatesValid()) {
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      return;
+    }
+    var url = financeFilterUrl();
+    if (!url) return;
+    var previewUrl = new URL(trigger.href, window.location.href);
+    var pdfAnchor = document.querySelector('#finance-print-modal [data-report-file-label="PDF"]');
+    var pdfUrl = new URL(pdfAnchor ? pdfAnchor.href : trigger.href.replace(/\/cetak(?=\?|$)/, '/pdf'), window.location.href);
+    previewUrl.search = url.search;
+    pdfUrl.search = url.search;
+    setFinancePrintUrls(previewUrl.toString(), pdfUrl.toString());
+  }, true);
+
   function moneyRaw(target) {
     return window.SimpMoney && typeof window.SimpMoney.raw === 'function'
       ? (window.SimpMoney.raw(target) || target)
