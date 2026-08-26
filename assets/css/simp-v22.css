@@ -915,16 +915,20 @@ body {
 }
 
 .simp-print-modal-actions {
-  display: flex;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
   flex: 0 0 auto;
   gap: 10px;
   padding-top: 10px;
 }
 
 .simp-print-modal-actions > .btn {
-  flex: 1 1 0;
   width: auto;
+  min-width: 0;
   margin: 0 !important;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .simp-print-modal-actions.is-icon-only > .btn {
@@ -1072,7 +1076,13 @@ body {
     margin-right: 10px !important;
   }
 
-  .simp-print-modal-actions { gap: 6px; }
+  .simp-print-modal-actions {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 6px;
+  }
+  .simp-print-modal-actions.is-icon-only {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
   .simp-print-zoom-title { font-size: 11px; }
   .simp-print-paper-note { font-size: 11px !important; }
 

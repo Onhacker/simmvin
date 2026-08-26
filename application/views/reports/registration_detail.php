@@ -99,7 +99,7 @@ if ($eventLocation === '') $eventLocation = '-';
         .report-table thead { display: table-header-group; }
         .report-table tr { page-break-inside: avoid; }
         .report-table th { padding: 5px 3px; border: 1px solid #9eacbd; background: #1f5fab; color: #fff; font-size: 7px; line-height: 1.2; text-align: left; text-transform: uppercase; }
-        .report-table td { padding: 5px 3px; border: 1px solid #cfd7e2; vertical-align: top; font-size: 7.8px; overflow-wrap: break-word; }
+        .report-table td { padding: 5px 3px; border: 1px solid #cfd7e2; vertical-align: top; font-size: 7.8px; overflow-wrap: break-word; word-wrap: break-word; }
         .report-table tbody tr:nth-child(even) td { background: #f7f9fc; }
         .report-table .number { text-align: center; }
         .report-table .money { text-align: right; white-space: nowrap; }
@@ -122,8 +122,6 @@ if ($eventLocation === '') $eventLocation = '-';
             html, body { background: #fff; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
             .sheet-stage { width: auto !important; height: auto !important; min-height: 0 !important; margin: 0 !important; }
             .sheet { width: auto; min-height: 0; margin: 0; padding: 0; box-shadow: none; transform: none !important; }
-            .report-table th { background: #e8eef7 !important; color: #111827 !important; border-color: #6b7280 !important; }
-            .status { background: #fff !important; color: #111827 !important; border: 1px solid #6b7280 !important; }
         }
     </style>
 </head>

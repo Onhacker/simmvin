@@ -55,11 +55,14 @@ class Pdf_renderer
         $canvas = $dompdf->getCanvas();
         $font = $dompdf->getFontMetrics()->getFont('Helvetica', 'normal');
         if ($font) {
-            if ($landscape) {
-                $canvas->page_text(self::F4_HEIGHT_POINTS - 130, self::F4_WIDTH_POINTS - 20, 'Halaman {PAGE_NUM} dari {PAGE_COUNT}', $font, 7.5, array(0.35, 0.35, 0.35));
-            } else {
-                $canvas->page_text(466, 916, 'Halaman {PAGE_NUM} dari {PAGE_COUNT}', $font, 7.5, array(0.35, 0.35, 0.35));
-            }
+            /* Derive the footer from the actual canvas.  Hard-coded portrait
+             * coordinates drift when a template changes orientation, paper
+             * margins, or Dompdf resolves a custom @page size. */
+            $canvasWidth = method_exists($canvas, 'get_width') ? (float) $canvas->get_width() : ($landscape ? self::F4_HEIGHT_POINTS : self::F4_WIDTH_POINTS);
+            $canvasHeight = method_exists($canvas, 'get_height') ? (float) $canvas->get_height() : ($landscape ? self::F4_WIDTH_POINTS : self::F4_HEIGHT_POINTS);
+            $footerX = max(0, $canvasWidth - 130);
+            $footerY = max(0, $canvasHeight - 20);
+            $canvas->page_text($footerX, $footerY, 'Halaman {PAGE_NUM} dari {PAGE_COUNT}', $font, 7.5, array(0.35, 0.35, 0.35));
         }
 
         return $dompdf->output();

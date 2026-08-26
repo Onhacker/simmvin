@@ -120,6 +120,8 @@
       frame.dataset.loaded = 'false';
     }
     if (pdf) pdf.href = payload.pdf_url;
+    var share = modal.querySelector('[data-report-share-pdf]');
+    if (share) share.setAttribute('data-report-pdf-url', payload.pdf_url);
   }
 
   function requestJson(url, signal) {

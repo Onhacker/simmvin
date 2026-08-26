@@ -352,10 +352,160 @@
       });
   });
 
-  function reportPreviewAlert(message, title) {
+  function reportPreviewAlert(message, title, tone) {
     if (typeof window.simpAlert === 'function') {
-      window.simpAlert(message, {title:title || 'Pratinjau Laporan', tone:'warning'});
+      window.simpAlert(message, {title:title || 'Pratinjau Laporan', tone:tone || 'warning'});
     }
+  }
+
+  /*
+   * A PDF cannot be attached to WhatsApp through a wa.me URL.  On browsers
+   * that implement Web Share Level 2 we can, however, hand the actual PDF
+   * file to the native share sheet and let the user choose WhatsApp.  The
+   * file is prefetched as soon as a print modal is opened so the share call
+   * still happens inside the button's user gesture (Safari is strict about
+   * this).  Unsupported browsers get a deterministic download fallback and
+   * an MVIN dialog explaining the next step.
+   */
+  var reportPdfCache = Object.create(null);
+
+  function reportPdfLink(modal) {
+    return modal ? modal.querySelector('[data-report-file-download][data-report-file-label="PDF"]') : null;
+  }
+
+  function reportPdfUrl(modal, shareButton) {
+    var fromButton = shareButton && shareButton.getAttribute('data-report-pdf-url');
+    var link = reportPdfLink(modal);
+    var fromLink = link && link.getAttribute('href');
+    /* Data Bayar changes the PDF link after an AJAX filter.  Always prefer
+     * that live link over the initial button attribute. */
+    var source = (fromLink && fromLink !== '#') ? fromLink : fromButton;
+    if (!source || source === '#') return '';
+    try { return new URL(source, window.location.href).toString(); }
+    catch (error) { return source; }
+  }
+
+  function reportPdfFileName(title) {
+    var safe = String(title || 'Laporan MVIN')
+      .replace(/[^a-z0-9]+/gi, '-')
+      .replace(/^-+|-+$/g, '')
+      .toLowerCase() || 'laporan-mvin';
+    return safe + '.pdf';
+  }
+
+  function fetchReportPdf(url, title) {
+    var cached = reportPdfCache[url];
+    if (cached && !cached.error) return cached;
+    if (cached && cached.error) delete reportPdfCache[url];
+
+    var entry = {loading:true, file:null, error:null, promise:null};
+    entry.promise = fetch(url, {
+      credentials:'same-origin',
+      cache:'no-store',
+      headers:{'Accept':'application/pdf','X-Requested-With':'XMLHttpRequest'}
+    }).then(function (response) {
+      var responseUrl = String(response.url || '');
+      var contentType = String(response.headers.get('content-type') || '').toLowerCase();
+      if (!response.ok || response.redirected || /\/login(?:[/?#]|$)/i.test(responseUrl)) {
+        throw new Error('Sesi Anda telah berakhir atau PDF tidak dapat dibuat.');
+      }
+      if (contentType.indexOf('text/html') !== -1 || contentType.indexOf('application/json') !== -1) {
+        throw new Error('Server mengembalikan halaman selain PDF. Muat ulang halaman lalu coba kembali.');
+      }
+      return response.blob();
+    }).then(function (blob) {
+      var pdfBlob = blob;
+      if (typeof Blob === 'function' && (!blob.type || blob.type.toLowerCase().indexOf('pdf') === -1)) {
+        pdfBlob = new Blob([blob], {type:'application/pdf'});
+      }
+      var filename = reportPdfFileName(title || 'Laporan MVIN');
+      var file = typeof File === 'function'
+        ? new File([pdfBlob], filename, {type:'application/pdf'})
+        : pdfBlob;
+      try { file.name = filename; } catch (error) {}
+      entry.file = file;
+      entry.loading = false;
+      return file;
+    }).catch(function (error) {
+      entry.loading = false;
+      entry.error = error;
+      throw error;
+    });
+    reportPdfCache[url] = entry;
+    return entry;
+  }
+
+  function primeReportPdf(modal) {
+    var url = reportPdfUrl(modal);
+    if (!url) return null;
+    var titleNode = modal && modal.querySelector('[data-report-share-title]');
+    var title = titleNode ? titleNode.getAttribute('data-report-share-title') : '';
+    var entry = fetchReportPdf(url, title);
+    /* Prefetch errors are reported when the user explicitly presses share. */
+    entry.promise.catch(function () {});
+    return entry;
+  }
+
+  function downloadReportPdf(file, filename) {
+    var objectUrl = URL.createObjectURL(file);
+    var anchor = document.createElement('a');
+    anchor.href = objectUrl;
+    anchor.download = filename;
+    anchor.style.display = 'none';
+    document.body.appendChild(anchor);
+    anchor.click();
+    anchor.remove();
+    window.setTimeout(function () { URL.revokeObjectURL(objectUrl); }, 1500);
+  }
+
+  function setReportShareBusy(button, busy) {
+    if (!button) return;
+    if (busy) {
+      button.dataset.originalHtml = button.innerHTML;
+      button.dataset.busy = 'true';
+      button.setAttribute('aria-busy', 'true');
+      button.disabled = true;
+      var iconOnly = button.closest('.is-icon-only');
+      button.innerHTML = iconOnly
+        ? '<i class="fa fa-spinner fa-spin" aria-hidden="true"></i><span class="visually-hidden">Menyiapkan PDF...</span>'
+        : '<i class="fa fa-spinner fa-spin me-1" aria-hidden="true"></i>Menyiapkan PDF...';
+    } else {
+      button.dataset.busy = 'false';
+      button.removeAttribute('aria-busy');
+      button.disabled = false;
+      if (button.dataset.originalHtml) button.innerHTML = button.dataset.originalHtml;
+    }
+  }
+
+  function shareReportPdf(button, file, title) {
+    var filename = file && file.name ? file.name : reportPdfFileName(title);
+    var canUseNativeShare = false;
+    try {
+      canUseNativeShare = !!(navigator.share) && (!navigator.canShare || navigator.canShare({files:[file]}));
+    } catch (error) { canUseNativeShare = false; }
+
+    function fallbackShare(error) {
+      /* Closing the native chooser is a normal user action. */
+      if (error && error.name === 'AbortError') return;
+      downloadReportPdf(file, filename);
+      reportPreviewAlert('Perangkat ini menolak berbagi langsung. PDF sudah diunduh; lampirkan file tersebut di WhatsApp.', 'PDF Diunduh', 'info');
+    }
+
+    if (canUseNativeShare) {
+      try {
+        Promise.resolve(navigator.share({
+          files:[file],
+          title:title || 'Laporan MVIN',
+          text:'PDF ' + (title || 'Laporan MVIN')
+        })).catch(fallbackShare);
+      } catch (error) {
+        fallbackShare(error);
+      }
+      return;
+    }
+
+    downloadReportPdf(file, filename);
+    reportPreviewAlert('Perangkat ini belum mendukung berbagi file langsung. PDF sudah diunduh; lampirkan file tersebut di WhatsApp.', 'PDF Diunduh', 'info');
   }
 
   function updateReportZoomControls(frame, percent, ready) {
@@ -488,6 +638,10 @@
       return;
     }
 
+    /* Warm the current PDF while the preview is opening.  This makes the
+     * subsequent Web Share call eligible for Safari's transient gesture. */
+    primeReportPdf(modal);
+
     var source = frame.getAttribute('data-src');
     if (source) {
       var separator = source.indexOf('?') === -1 ? '?' : '&';
@@ -521,6 +675,36 @@
     var delta = parseInt(zoomButton.getAttribute('data-report-zoom'), 10) || 0;
     var percent = previewApi.setZoom(previewApi.getZoom() + delta);
     updateReportZoomControls(frame, percent, true);
+  });
+
+  document.addEventListener('click', function (event) {
+    var shareButton = event.target.closest('[data-report-share-pdf]');
+    if (!shareButton) return;
+    event.preventDefault();
+    if (shareButton.dataset.busy === 'true') return;
+
+    var modal = shareButton.closest('.simp-print-modal');
+    var url = reportPdfUrl(modal, shareButton);
+    if (!url) {
+      reportPreviewAlert('Tautan PDF belum tersedia. Muat ulang pratinjau lalu coba kembali.', 'PDF Belum Tersedia', 'warning');
+      return;
+    }
+    var title = shareButton.getAttribute('data-report-share-title') || 'Laporan MVIN';
+    var entry = reportPdfCache[url];
+    if (!entry || entry.error) entry = fetchReportPdf(url, title);
+    if (!entry.file) {
+      setReportShareBusy(shareButton, true);
+      entry.promise.then(function () {
+        setReportShareBusy(shareButton, false);
+        reportPreviewAlert('PDF sudah siap. Tekan tombol WhatsApp sekali lagi untuk memilih penerima.', 'PDF Siap', 'info');
+      }).catch(function (error) {
+        setReportShareBusy(shareButton, false);
+        reportPreviewAlert(error.message || 'PDF gagal disiapkan.', 'Berbagi PDF Gagal', 'danger');
+      });
+      return;
+    }
+    shareReportPdf(shareButton, entry.file, title);
+    return;
   });
 
   document.addEventListener('click', function (event) {

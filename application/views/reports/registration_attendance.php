@@ -150,7 +150,7 @@ if (!$pages) {
         .report-table .col-room { width: 6%; }
         .report-table .col-note { width: 5%; }
         .report-table th { height: 5.6mm; padding: 1.1mm .8mm; border: 1px solid #111; background: #e8e8e8; color: #000; font-size: 9.1px; line-height: 1.12; text-align: center; text-transform: uppercase; }
-        .report-table td { height: 10.5mm; padding: 1mm 1.2mm; border: 1px solid #111; vertical-align: middle; color: #000; font-size: 10.3px; line-height: 1.17; overflow-wrap: anywhere; }
+        .report-table td { height: 10.5mm; padding: 1mm 1.2mm; border: 1px solid #111; vertical-align: middle; color: #000; font-size: 10.3px; line-height: 1.17; overflow-wrap: anywhere; word-wrap: break-word; }
         .report-table tr { page-break-inside: avoid; }
         .report-table .number { text-align: center; }
         .report-table .contact { white-space: nowrap; }

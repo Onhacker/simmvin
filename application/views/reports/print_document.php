@@ -141,7 +141,7 @@ $accountSummary = array_merge(array(
         .report-table thead { display: table-header-group; }
         .report-table tr { page-break-inside: avoid; }
         .report-table th { padding: 5px 4px; border: 1px solid #9eacbd; background: #1f5fab; color: #fff; font-size: 7.3px; line-height: 1.25; text-align: left; text-transform: uppercase; }
-        .report-table td { padding: 5px 4px; border: 1px solid #cfd7e2; vertical-align: top; overflow-wrap: break-word; }
+        .report-table td { padding: 5px 4px; border: 1px solid #cfd7e2; vertical-align: top; overflow-wrap: break-word; word-wrap: break-word; }
         .report-table tbody tr:nth-child(even) td { background: #f7f9fc; }
         .report-table .number { text-align: center; }
         .report-table .money { text-align: right; white-space: nowrap; }
@@ -151,7 +151,8 @@ $accountSummary = array_merge(array(
         .expense-category-heading { margin: 12px 0 4px; padding: 6px 8px; border-left: 4px solid #1f5fab; background: #eaf2fc; color: #174b8b; page-break-after: avoid; break-after: avoid; }
         .expense-category-heading span { display: block; color: #6b7280; font-size: 7px; font-weight: 700; letter-spacing: .25px; line-height: 1.1; text-transform: uppercase; }
         .expense-category-heading strong { display: block; margin-top: 2px; color: #174b8b; font-size: 12px; line-height: 1.2; }
-        .expense-category-table { margin-bottom: 7px; }
+        .expense-category-group { page-break-inside: avoid; break-inside: avoid; }
+        .expense-category-table { margin-bottom: 7px; page-break-before: avoid; break-before: avoid; }
         .expense-category-table .category-total-row td { background: #eef5ff !important; border-top: 2px solid #1f5fab; color: #174b8b; font-weight: 800; }
         .expense-category-table .category-total-row .money-label,
         .expense-grand-total .money-label { text-align: right; }
@@ -171,8 +172,6 @@ $accountSummary = array_merge(array(
             .screen-note { display: none !important; }
             .sheet-stage { width: auto !important; height: auto !important; min-height: 0 !important; margin: 0 !important; }
             .sheet { width: auto; min-height: 0; margin: 0; padding: 0; box-shadow: none; transform: none !important; }
-            .report-table th { background: #e8eef7 !important; color: #111827 !important; border-color: #6b7280 !important; }
-            .status { background: #fff !important; color: #111827 !important; border: 1px solid #6b7280 !important; }
         }
         @media screen and (max-width: 820px) {
             .screen-note { margin-left: 12px; margin-right: 12px; }
@@ -368,6 +367,7 @@ $accountSummary = array_merge(array(
                 $grandExpenseCents += $categoryTotalCents;
                 $categoryTotal = simp_money_from_cents($categoryTotalCents);
                 ?>
+                <div class="expense-category-group">
                 <div class="expense-category-heading"><span>Kategori</span><strong><?= e($expenseGroup['name']) ?></strong></div>
                 <table class="report-table expense-category-table">
                     <colgroup><col style="width:4%"><col style="width:14%"><col style="width:34%"><col style="width:17%"><col style="width:10%"><col style="width:10%"><col style="width:11%"></colgroup>
@@ -398,6 +398,7 @@ $accountSummary = array_merge(array(
                     </tbody>
                     <tfoot><tr class="category-total-row"><td colspan="6" class="money-label">Total <?= e($expenseGroup['name']) ?></td><td class="money"><?= e($printRupiah($categoryTotal)) ?></td></tr></tfoot>
                 </table>
+                </div>
             <?php endforeach; ?>
             <?php $grandExpense = simp_money_from_cents($grandExpenseCents); ?>
             <table class="report-table expense-grand-total">
