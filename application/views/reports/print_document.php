@@ -5,6 +5,10 @@ $validReportKinds = array('income', 'expense', 'accounts', 'debt');
 $reportKind = isset($reportKind) && in_array($reportKind, $validReportKinds, TRUE) ? $reportKind : 'income';
 $documentTitle = isset($documentTitle) ? (string) $documentTitle : 'Laporan';
 $organizationName = isset($organizationName) ? (string) $organizationName : 'Penyelenggara Pelatihan';
+$displayOrganization = trim($organizationName) !== '';
+if ($reportKind === 'expense' && strcasecmp(trim($organizationName), 'Penyelenggara Pelatihan') === 0) {
+    $displayOrganization = FALSE;
+}
 $activeEvents = isset($activeEvents) && is_array($activeEvents) ? $activeEvents : array();
 $rows = isset($rows) && is_array($rows) ? $rows : array();
 $debtSummary = isset($summary) && is_array($summary) ? $summary : array();
@@ -30,11 +34,6 @@ if (count($activeEvents) === 1 && !$hasEventScope) {
     $eventScope = number_format(count($activeEvents)) . ' event aktif';
 }
 
-$expenseSummary = array(
-    'verified_count' => 0, 'pending_count' => 0, 'rejected_count' => 0,
-    'verified_total' => 0, 'pending_total' => 0, 'rejected_total' => 0,
-    'cash_total' => 0, 'transfer_total' => 0, 'qris_total' => 0
-);
 $expenseGroups = array();
 if ($reportKind === 'expense') {
     // Rejected transactions are kept in the operational list for audit
@@ -47,15 +46,7 @@ if ($reportKind === 'expense') {
     }));
 
     foreach ($rows as $expenseRow) {
-        $status = isset($expenseRow['status']) ? strtolower(trim((string) $expenseRow['status'])) : 'pending';
         $total = $moneyCents($expenseRow['amount']) + $moneyCents($expenseRow['admin_fee']);
-        if (isset($expenseSummary[$status . '_count'])) {
-            $expenseSummary[$status . '_count']++;
-            $expenseSummary[$status . '_total'] += $total;
-        }
-        if ($status === 'verified' && isset($expenseSummary[$expenseRow['method'] . '_total'])) {
-            $expenseSummary[$expenseRow['method'] . '_total'] += $total;
-        }
 
         // Keep the printout in the same order as the master category list,
         // with uncategorised transactions collected at the end.
@@ -79,20 +70,6 @@ if ($reportKind === 'expense') {
         $expenseGroups[$groupKey]['total_cents'] += $total;
     }
     ksort($expenseGroups, SORT_STRING);
-    foreach (array('verified_total','pending_total','rejected_total','cash_total','transfer_total','qris_total') as $moneyKey) {
-        $expenseSummary[$moneyKey] = simp_money_from_signed_cents($expenseSummary[$moneyKey]);
-    }
-}
-$expensePrintTotal = '0.00';
-if ($reportKind === 'expense') {
-    // Keep the printed grand total in integer cents; adding DECIMAL strings as
-    // PHP floats can lose precision for large financial amounts.
-    $verifiedPrintCents = simp_money_cents($expenseSummary['verified_total']);
-    $pendingPrintCents = simp_money_cents($expenseSummary['pending_total']);
-    $expensePrintTotal = simp_money_from_signed_cents(
-        ($verifiedPrintCents === NULL ? 0 : $verifiedPrintCents) +
-        ($pendingPrintCents === NULL ? 0 : $pendingPrintCents)
-    );
 }
 $accountSummary = array_merge(array(
     'account_count'=>count($accounts), 'active_count'=>0, 'inactive_count'=>0,
@@ -138,6 +115,15 @@ $accountSummary = array_merge(array(
         .summary-value { display: block; margin-top: 2px; color: #111827; font-size: 11px; font-weight: 800; }
         .summary-value.positive { color: #18743d; }
         .summary-value.negative { color: #b42318; }
+        .expense-summary-table { width: 100%; margin-bottom: 8px; border-collapse: collapse; table-layout: fixed; }
+        .expense-summary-table th, .expense-summary-table td { padding: 6px 8px; border: 1px solid #d7dee8; vertical-align: middle; }
+        .expense-summary-table th { background: #1f5fab; color: #fff; font-size: 8px; line-height: 1.2; text-align: left; text-transform: uppercase; }
+        .expense-summary-table th:first-child, .expense-summary-table td:first-child { width: 70%; }
+        .expense-summary-table th:last-child, .expense-summary-table td:last-child { width: 30%; }
+        .expense-summary-table td:last-child { text-align: right; white-space: nowrap; }
+        .expense-summary-table tbody tr:nth-child(even) td { background: #f7f9fc; }
+        .expense-summary-table tfoot td { background: #dcecff !important; border-top: 2px solid #174b8b; color: #111827; font-size: 10px; font-weight: 800; }
+        .expense-summary-table .empty-summary { color: #6b7280; text-align: center; }
         .report-table { table-layout: fixed; }
         .report-table thead { display: table-header-group; }
         .report-table tr { page-break-inside: avoid; }
@@ -191,7 +177,7 @@ $accountSummary = array_merge(array(
         <tr>
             <td>
                 <div class="brand-code">MVIN</div>
-                <div class="organization"><?= e($organizationName) ?></div>
+                <?php if ($displayOrganization): ?><div class="organization"><?= e($organizationName) ?></div><?php endif; ?>
             </td>
             <td class="title-block">
                 <h1><?= e($documentTitle) ?></h1>
@@ -244,19 +230,20 @@ $accountSummary = array_merge(array(
             </tr>
         </table>
     <?php elseif ($reportKind === 'expense'): ?>
-        <table class="summary-grid">
-            <tr>
-                <td><span class="summary-label">Jumlah Transaksi</span><span class="summary-value"><?= number_format(count($rows)) ?></span></td>
-                <td><span class="summary-label">Terverifikasi</span><span class="summary-value positive"><?= e($printRupiah($expenseSummary['verified_total'])) ?></span></td>
-                <td><span class="summary-label">Menunggu</span><span class="summary-value"><?= e($printRupiah($expenseSummary['pending_total'])) ?></span></td>
-                <td><span class="summary-label">Status Data</span><span class="summary-value"><?= number_format($expenseSummary['verified_count']) ?> / <?= number_format($expenseSummary['pending_count']) ?></span></td>
-            </tr>
-            <tr>
-                <td><span class="summary-label">Tunai Terverifikasi</span><span class="summary-value"><?= e($printRupiah($expenseSummary['cash_total'])) ?></span></td>
-                <td><span class="summary-label">Transfer Terverifikasi</span><span class="summary-value"><?= e($printRupiah($expenseSummary['transfer_total'])) ?></span></td>
-                <td><span class="summary-label">QRIS Terverifikasi</span><span class="summary-value"><?= e($printRupiah($expenseSummary['qris_total'])) ?></span></td>
-                <td><span class="summary-label">Total Tercetak</span><span class="summary-value positive"><?= e($printRupiah($expensePrintTotal)) ?></span></td>
-            </tr>
+        <?php $expenseSummaryTotalCents = 0; ?>
+        <table class="expense-summary-table">
+            <thead><tr><th>Kategori</th><th>Jumlah</th></tr></thead>
+            <tbody>
+            <?php if (!$expenseGroups): ?>
+                <tr><td colspan="2" class="empty-summary">Belum ada transaksi pengeluaran pada event aktif.</td></tr>
+            <?php else: ?>
+                <?php foreach ($expenseGroups as $expenseSummaryGroup): ?>
+                    <?php $expenseSummaryTotalCents += (int) $expenseSummaryGroup['total_cents']; ?>
+                    <tr><td><?= e($expenseSummaryGroup['name']) ?></td><td><?= e($printRupiah(simp_money_from_cents((int) $expenseSummaryGroup['total_cents']))) ?></td></tr>
+                <?php endforeach; ?>
+            <?php endif; ?>
+            </tbody>
+            <tfoot><tr><td>Total</td><td><?= e($printRupiah(simp_money_from_cents($expenseSummaryTotalCents))) ?></td></tr></tfoot>
         </table>
     <?php elseif ($reportKind === 'debt'): ?>
         <?php $debtSummary = array_merge(array(
