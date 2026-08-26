@@ -790,6 +790,11 @@ class Registrations extends App_Controller
         $eventIds = array_map(function ($event) { return (int) $event['id']; }, $activeEvents);
         $rows = $eventIds ? $this->registration->get_all(array('event_ids' => $eventIds, 'active_only' => TRUE)) : array();
         $rows = $this->registration->with_regency_codes($rows);
+        // Complete any legacy rows that were created before persistent MOU
+        // numbering was deployed.  The resolver above supplies the official
+        // kode_kota even when the old registration snapshot used a different
+        // ID spelling; once assigned, the value is never recomputed.
+        $rows = $this->registration->ensure_mou_numbers($rows);
         $eventOrder = array();
         foreach ($activeEvents as $eventIndex => $event) {
             $eventOrder[(int) (isset($event['id']) ? $event['id'] : 0)] = $eventIndex;

@@ -118,6 +118,16 @@ CREATE TABLE IF NOT EXISTS event_regencies (
   CONSTRAINT fk_event_regencies_event FOREIGN KEY (event_id) REFERENCES training_events(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+-- Counter MOU dipisahkan dari registrasi agar penomoran tetap atomik ketika
+-- beberapa event/koneksi menambahkan desa pada kabupaten dan tahun yang sama.
+-- Nomor yang sudah diberikan tidak pernah dihitung ulang dari urutan ekspor.
+CREATE TABLE IF NOT EXISTS registration_mou_counters (
+  regency_code VARCHAR(30) NOT NULL,
+  mou_year SMALLINT UNSIGNED NOT NULL,
+  last_sequence INT UNSIGNED NOT NULL DEFAULT 0,
+  PRIMARY KEY (regency_code, mou_year)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 CREATE TABLE IF NOT EXISTS registrations (
   id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
   event_id BIGINT UNSIGNED NOT NULL,
@@ -129,6 +139,10 @@ CREATE TABLE IF NOT EXISTS registrations (
   district_name VARCHAR(180) NOT NULL,
   village_id VARCHAR(30) NOT NULL,
   village_name VARCHAR(180) NOT NULL,
+  mou_no VARCHAR(120) NOT NULL,
+  mou_sequence INT UNSIGNED NOT NULL,
+  mou_regency_code VARCHAR(30) NOT NULL,
+  mou_year SMALLINT UNSIGNED NOT NULL,
   expected_amount DECIMAL(18,2) NOT NULL DEFAULT 0,
   notes TEXT NULL,
   status ENUM('active','cancelled') NOT NULL DEFAULT 'active',
@@ -139,7 +153,10 @@ CREATE TABLE IF NOT EXISTS registrations (
   created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   UNIQUE KEY uq_registration_event_village (event_id, village_id),
+  UNIQUE KEY uq_registration_mou_no (mou_no),
+  UNIQUE KEY uq_registration_mou_sequence (mou_regency_code, mou_year, mou_sequence),
   KEY idx_registrations_region (province_id, regency_id, district_id, village_id),
+  KEY idx_registrations_mou_counter (mou_regency_code, mou_year, mou_sequence),
   CONSTRAINT fk_registrations_event FOREIGN KEY (event_id) REFERENCES training_events(id),
   CONSTRAINT fk_registrations_canceller FOREIGN KEY (cancelled_by) REFERENCES users(id) ON DELETE SET NULL,
   CONSTRAINT fk_registrations_creator FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE SET NULL,

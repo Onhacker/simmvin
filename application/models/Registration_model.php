@@ -143,6 +143,115 @@ class Registration_model extends CI_Model
         return $rows;
     }
 
+    /**
+     * Fill MOU numbers for legacy rows exactly once.
+     *
+     * Deployments that predate the MOU columns can still have registrations
+     * without a number after the SQL patch (for example when the old regional
+     * ID did not match the new catalog).  Resolve those rows with the regional
+     * code already attached by with_regency_codes(), allocate under the same
+     * locked counter used by create_batch(), and persist the result.  This is
+     * intentionally called by the export path only; normal reads remain
+     * side-effect free.
+     */
+    public function ensure_mou_numbers(array $rows)
+    {
+        if (!$rows) return $rows;
+        foreach ($rows as $row) {
+            if (!array_key_exists('mou_no', $row)) {
+                throw new RuntimeException('Kolom nomor MOU belum tersedia. Jalankan patch_registration_mou_numbers.sql pada database MVIN.');
+            }
+        }
+
+        $missing = FALSE;
+        foreach ($rows as $row) {
+            if (trim((string) (isset($row['mou_no']) ? $row['mou_no'] : '')) === '') {
+                $missing = TRUE;
+                break;
+            }
+        }
+        if (!$missing) return $rows;
+
+        // Match the print/export grouping so the first assignment is pleasant
+        // to read, while preserving the original array keys for the caller.
+        $keys = array_keys($rows);
+        usort($keys, function ($leftKey, $rightKey) use ($rows) {
+            $left = $rows[$leftKey];
+            $right = $rows[$rightKey];
+            $leftCode = $this->mou_code_from_row(is_array($left) ? $left : array());
+            $rightCode = $this->mou_code_from_row(is_array($right) ? $right : array());
+            if ($leftCode !== $rightCode) return strnatcasecmp($leftCode, $rightCode);
+            $leftDate = substr((string) (isset($left['event_start_date']) ? $left['event_start_date'] : ''), 0, 10);
+            $rightDate = substr((string) (isset($right['event_start_date']) ? $right['event_start_date'] : ''), 0, 10);
+            if ($leftDate !== $rightDate) return strcmp($rightDate, $leftDate);
+            $leftEvent = (int) (isset($left['event_id']) ? $left['event_id'] : 0);
+            $rightEvent = (int) (isset($right['event_id']) ? $right['event_id'] : 0);
+            if ($leftEvent !== $rightEvent) return $rightEvent <=> $leftEvent;
+            foreach (array('district_name', 'village_name') as $field) {
+                $comparison = strnatcasecmp(
+                    trim((string) (isset($left[$field]) ? $left[$field] : '')),
+                    trim((string) (isset($right[$field]) ? $right[$field] : ''))
+                );
+                if ($comparison !== 0) return $comparison;
+            }
+            return ((int) $leftKey) <=> ((int) $rightKey);
+        });
+
+        $originalDbDebug = $this->db->db_debug;
+        $this->db->db_debug = FALSE;
+        $this->db->trans_begin();
+        try {
+            foreach ($keys as $key) {
+                $row =& $rows[$key];
+                if (trim((string) (isset($row['mou_no']) ? $row['mou_no'] : '')) !== '') {
+                    unset($row);
+                    continue;
+                }
+                $registrationId = (int) (isset($row['id']) ? $row['id'] : 0);
+                if ($registrationId < 1) throw new RuntimeException('Registrasi legacy tidak memiliki ID yang valid untuk nomor MOU.');
+
+                $locked = $this->db->query(
+                    'SELECT r.id,r.mou_no,r.mou_sequence,r.mou_regency_code,r.mou_year,r.regency_id,r.regency_name,e.start_date FROM registrations r JOIN training_events e ON e.id=r.event_id WHERE r.id=? FOR UPDATE',
+                    array($registrationId)
+                )->row_array();
+                if (!$locked) throw new RuntimeException('Registrasi tidak ditemukan saat menetapkan nomor MOU.');
+                if (trim((string) $locked['mou_no']) !== '') {
+                    $row['mou_no'] = $locked['mou_no'];
+                    if (isset($locked['mou_sequence'])) $row['mou_sequence'] = $locked['mou_sequence'];
+                    if (isset($locked['mou_regency_code'])) $row['mou_regency_code'] = $locked['mou_regency_code'];
+                    if (isset($locked['mou_year'])) $row['mou_year'] = $locked['mou_year'];
+                    unset($row);
+                    continue;
+                }
+
+                $code = $this->mou_code_from_row(array_merge($locked, array(
+                    'regency_code' => isset($row['regency_code']) ? $row['regency_code'] : ''
+                )));
+                $mou = $this->allocate_registration_mou($code, $locked['start_date']);
+                $updated = $this->db->query(
+                    "UPDATE registrations SET mou_no=?,mou_sequence=?,mou_regency_code=?,mou_year=? WHERE id=? AND (mou_no IS NULL OR TRIM(mou_no)='')",
+                    array($mou['mou_no'], $mou['sequence'], $mou['regency_code'], $mou['year'], $registrationId)
+                );
+                if (!$updated || $this->db->affected_rows() !== 1) {
+                    throw new RuntimeException('Nomor MOU legacy gagal disimpan.');
+                }
+                $row['mou_no'] = $mou['mou_no'];
+                $row['mou_sequence'] = $mou['sequence'];
+                $row['mou_regency_code'] = $mou['regency_code'];
+                $row['mou_year'] = $mou['year'];
+                unset($row);
+            }
+            if ($this->db->trans_status() === FALSE) throw new RuntimeException('Transaksi nomor MOU gagal.');
+            if (!$this->db->trans_commit()) throw new RuntimeException('Transaksi nomor MOU gagal diselesaikan.');
+            $this->db->db_debug = $originalDbDebug;
+            return $rows;
+        } catch (Throwable $e) {
+            $this->db->trans_rollback();
+            $this->db->db_debug = $originalDbDebug;
+            throw $e;
+        }
+    }
+
     /** Summary for the registration index, independent of the current page. */
     public function get_all_summary($filters = array())
     {
@@ -283,7 +392,7 @@ class Registration_model extends CI_Model
         $ids = $this->normalize_ids($villageIds);
         if (!$ids) throw new InvalidArgumentException('Pilih minimal satu desa.');
         $allowed = array(); foreach ($event['regencies'] as $r) { $key=simp_regency_identity_key($r); if($key!=='')$allowed[$key]=TRUE; }
-        $rows = $this->regionDb->select('d.id AS village_id,d.desa AS village_name,k.id AS district_id,k.kecamatan AS district_name,kt.id AS regency_id,kt.kota AS regency_name,p.id AS province_id,p.provinsi AS province_name')
+        $rows = $this->regionDb->select('d.id AS village_id,d.desa AS village_name,k.id AS district_id,k.kecamatan AS district_name,kt.id AS regency_id,kt.kota AS regency_name,kt.kode_kota AS regency_code,p.id AS province_id,p.provinsi AS province_name')
             ->from('data_desa d')->join('data_kecamatan k', 'k.id=d.id_kecamatan')->join('data_kota kt', 'kt.id=k.id_kota')->join('data_provinsi p', 'p.id=kt.id_provinsi')
             ->where_in('d.id', $ids)->get()->result_array();
         $indexed = array(); foreach ($rows as $row) $indexed[(string)$row['village_id']] = $row;
@@ -317,12 +426,31 @@ class Registration_model extends CI_Model
                 'payments'=>isset($paymentGroups[$villageId]) && is_array($paymentGroups[$villageId]) ? $paymentGroups[$villageId] : array()
             );
         }
+        // Allocate a batch in the same Kecamatan/desa order used by the
+        // mailing export.  This keeps newly issued numbers intuitive without
+        // ever changing numbers that were assigned in an earlier batch.
+        usort($prepared, function ($left, $right) {
+            $leftCode = $this->mou_code_from_row(isset($left['village']) && is_array($left['village']) ? $left['village'] : array());
+            $rightCode = $this->mou_code_from_row(isset($right['village']) && is_array($right['village']) ? $right['village'] : array());
+            if ($leftCode !== $rightCode) return strnatcasecmp($leftCode, $rightCode);
+            foreach (array('district_name', 'village_name') as $field) {
+                $comparison = strnatcasecmp(
+                    trim((string) (isset($left['village'][$field]) ? $left['village'][$field] : '')),
+                    trim((string) (isset($right['village'][$field]) ? $right['village'][$field] : ''))
+                );
+                if ($comparison !== 0) return $comparison;
+            }
+            return strnatcasecmp(
+                (string) (isset($left['village']['village_id']) ? $left['village']['village_id'] : ''),
+                (string) (isset($right['village']['village_id']) ? $right['village']['village_id'] : '')
+            );
+        });
         $created = array(); $createdPayments = array(); $now = date('Y-m-d H:i:s');
         $originalDbDebug=$this->db->db_debug;$this->db->db_debug=FALSE;
         $this->db->trans_begin();
         try {
             $lockedEvent = $this->db->query(
-                'SELECT id,status,billing_mode,village_fee,participant_fee,included_participant_count FROM training_events WHERE id=? FOR UPDATE',
+                'SELECT id,status,start_date,billing_mode,village_fee,participant_fee,included_participant_count FROM training_events WHERE id=? FOR UPDATE',
                 array((int)$event['id'])
             )->row_array();
             if(!$lockedEvent||$lockedEvent['status']!=='open'){
@@ -358,9 +486,19 @@ class Registration_model extends CI_Model
                 $villageId = (string) $village['village_id'];
                 $participants=$item['participants'];
                 $expected = $this->expected_amount($lockedEvent, count($participants));
+                // Allocate the MOU number while the registration transaction
+                // is open.  The counter row is locked, so concurrent events
+                // cannot receive the same number; a rollback also releases
+                // the number instead of leaving a misleading gap.
+                $mou = $this->allocate_registration_mou($this->mou_code_from_row($village), $lockedEvent['start_date']);
                 $registration = $village;
-                $registration['event_id'] = (int)$lockedEvent['id']; unset($registration['village_id']);
+                $registration['event_id'] = (int)$lockedEvent['id'];
+                unset($registration['village_id'], $registration['regency_code']);
                 $registration['village_id'] = $villageId;
+                $registration['mou_no'] = $mou['mou_no'];
+                $registration['mou_sequence'] = $mou['sequence'];
+                $registration['mou_regency_code'] = $mou['regency_code'];
+                $registration['mou_year'] = $mou['year'];
                 $registration['expected_amount'] = $expected;
                 if(isset($notesByVillage[$villageId])&&!is_scalar($notesByVillage[$villageId]))throw new InvalidArgumentException('Catatan Desa '.$village['village_name'].' tidak valid.');
                 $registrationNote=isset($notesByVillage[$villageId])?trim((string)$notesByVillage[$villageId]):'';
@@ -1543,6 +1681,84 @@ class Registration_model extends CI_Model
         $cents = simp_money_cents($value);
         if ($cents === NULL) return NULL;
         return $negative ? -$cents : $cents;
+    }
+
+    /**
+     * Allocate one immutable MOU number for a registration.
+     *
+     * The counter is keyed by the official kabupaten code and the year of the
+     * event start date.  It is deliberately separate from the registration
+     * table because an event row lock only serializes registrations for one
+     * event; two events can otherwise allocate the same number concurrently.
+     */
+    private function allocate_registration_mou($regencyCode, $eventDate)
+    {
+        $code = $this->normalize_mou_code($regencyCode);
+        if (!$this->valid_date($eventDate)) {
+            throw new InvalidArgumentException('Tanggal mulai event tidak valid untuk nomor MOU.');
+        }
+        $date = DateTime::createFromFormat('!Y-m-d', (string) $eventDate);
+        if (!$date) throw new InvalidArgumentException('Tanggal mulai event tidak valid untuk nomor MOU.');
+        $year = (int) $date->format('Y');
+
+        // INSERT first so SELECT ... FOR UPDATE always has a row to lock.
+        // The no-op duplicate clause is intentional: it does not increment
+        // the counter until the locked value has been read and advanced.
+        $inserted = $this->db->query(
+            'INSERT INTO registration_mou_counters (regency_code,mou_year,last_sequence) VALUES (?,?,0) ON DUPLICATE KEY UPDATE last_sequence=last_sequence',
+            array($code, $year)
+        );
+        if (!$inserted) {
+            throw new RuntimeException('Penomoran MOU belum siap. Jalankan patch_registration_mou_numbers.sql pada database MVIN.');
+        }
+
+        $counter = $this->db->query(
+            'SELECT last_sequence FROM registration_mou_counters WHERE regency_code=? AND mou_year=? FOR UPDATE',
+            array($code, $year)
+        )->row_array();
+        if (!$counter) throw new RuntimeException('Counter nomor MOU tidak dapat dikunci.');
+
+        $sequence = (int) $counter['last_sequence'] + 1;
+        if ($sequence < 1 || $sequence > 4294967295) {
+            throw new RuntimeException('Urutan nomor MOU sudah mencapai batas maksimum.');
+        }
+        if (!$this->db->where(array('regency_code' => $code, 'mou_year' => $year))
+            ->update('registration_mou_counters', array('last_sequence' => $sequence))) {
+            throw new RuntimeException('Counter nomor MOU gagal diperbarui.');
+        }
+
+        return array(
+            'mou_no' => sprintf('%03d.RAB/%s/SPK/%s/%04d', $sequence, $code, $this->roman_month((int) $date->format('n')), $year),
+            'sequence' => $sequence,
+            'regency_code' => $code,
+            'year' => $year
+        );
+    }
+
+    /** Keep the code stored in the MOU safe, stable, and within schema size. */
+    private function mou_code_from_row(array $row)
+    {
+        foreach (array('regency_code', 'mou_regency_code', 'regency_id', 'regency_name') as $field) {
+            if (isset($row[$field]) && trim((string) $row[$field]) !== '') {
+                return $this->normalize_mou_code($row[$field]);
+            }
+        }
+        throw new InvalidArgumentException('Kode kabupaten tidak tersedia untuk nomor MOU. Periksa master wilayah dan snapshot registrasi.');
+    }
+
+    private function normalize_mou_code($value)
+    {
+        $code = trim((string) $value);
+        $code = preg_replace('/[^A-Z0-9._-]+/u', '-', strtoupper($code));
+        $code = trim((string) $code, '-');
+        if ($code === '') $code = 'KAB';
+        return substr($code, 0, 30);
+    }
+
+    private function roman_month($month)
+    {
+        $months = array(1 => 'I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X', 'XI', 'XII');
+        return isset($months[(int) $month]) ? $months[(int) $month] : 'I';
     }
 
     private function receipt_no()

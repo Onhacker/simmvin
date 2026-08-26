@@ -294,14 +294,20 @@ class Excel_renderer
             $sheet->getRowDimension(1)->setRowHeight(34);
             $sheet->freezePane('A2');
 
-            $mouSequences = array();
             foreach ($rows as $index => $row) {
                 $excelRow = $index + 2;
                 $amounts = $this->registration_village_contract_amounts($row);
                 $this->set_text($sheet, 'A' . $excelRow, isset($row['district_name']) ? $row['district_name'] : '');
                 $this->set_text($sheet, 'B' . $excelRow, isset($row['village_name']) ? $row['village_name'] : '');
                 $this->set_number($sheet, 'C' . $excelRow, isset($row['participant_count']) ? $row['participant_count'] : 0);
-                $this->set_text($sheet, 'D' . $excelRow, $this->registration_mou_number($row, $mouSequences));
+                // No MOU is assigned once on the registration row.  Never
+                // derive it from the current export order: adding a village
+                // in an earlier Kecamatan must not renumber existing rows.
+                $mouNo = trim((string) (isset($row['mou_no']) ? $row['mou_no'] : ''));
+                if ($mouNo === '') {
+                    throw new RuntimeException('Nomor MOU belum ditetapkan pada salah satu registrasi. Jalankan patch database lalu buka kembali ekspor Data Desa.');
+                }
+                $this->set_text($sheet, 'D' . $excelRow, $mouNo);
                 $this->set_number($sheet, 'E' . $excelRow, $amounts['village']);
                 $this->set_number($sheet, 'F' . $excelRow, $amounts['additional']);
                 $this->set_number($sheet, 'G' . $excelRow, $amounts['total']);
@@ -1027,45 +1033,6 @@ class Excel_renderer
             'additional' => simp_money_from_cents($additionalCents),
             'total' => simp_money_from_cents($totalCents)
         );
-    }
-
-    /** Build a deterministic sequence within each regency and event year. */
-    private function registration_mou_number(array $row, array &$sequences)
-    {
-        $dateValue = isset($row['event_start_date']) ? (string) $row['event_start_date'] : '';
-        $date = DateTime::createFromFormat('!Y-m-d', substr($dateValue, 0, 10));
-        if (!$date || $date->format('Y-m-d') !== substr($dateValue, 0, 10)) {
-            $createdAt = isset($row['created_at']) ? substr((string) $row['created_at'], 0, 10) : '';
-            $date = DateTime::createFromFormat('!Y-m-d', $createdAt);
-        }
-        if (!$date) $date = new DateTime('today');
-
-        $regencyCode = trim((string) (isset($row['regency_code']) ? $row['regency_code'] : ''));
-        if ($regencyCode === '') $regencyCode = trim((string) (isset($row['regency_id']) ? $row['regency_id'] : ''));
-        if ($regencyCode === '') {
-            $regencyCode = preg_replace('/^(KABUPATEN|KOTA)\s+/iu', '', trim((string) (isset($row['regency_name']) ? $row['regency_name'] : '')));
-        }
-        $regencyCode = preg_replace('/[^A-Z0-9._-]+/u', '-', strtoupper($regencyCode));
-        $regencyCode = trim((string) $regencyCode, '-');
-        if ($regencyCode === '') $regencyCode = 'KAB';
-
-        $year = $date->format('Y');
-        $sequenceKey = $regencyCode . '|' . $year;
-        $sequences[$sequenceKey] = isset($sequences[$sequenceKey]) ? $sequences[$sequenceKey] + 1 : 1;
-
-        return sprintf(
-            '%03d.RAB/%s/SPK/%s/%s',
-            $sequences[$sequenceKey],
-            $regencyCode,
-            $this->roman_month((int) $date->format('n')),
-            $year
-        );
-    }
-
-    private function roman_month($month)
-    {
-        $months = array(1 => 'I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X', 'XI', 'XII');
-        return isset($months[(int) $month]) ? $months[(int) $month] : 'I';
     }
 
     private function rupiah_in_words($value)
