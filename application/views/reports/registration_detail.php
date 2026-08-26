@@ -162,7 +162,7 @@ if ($eventLocation === '') $eventLocation = '-';
         <tr>
             <td><span class="summary-label">Terverifikasi</span><span class="summary-value positive"><?= e($money($verifiedCents)) ?></span></td>
             <td><span class="summary-label">Menunggu Verifikasi</span><span class="summary-value warning"><?= e($money($pendingCents)) ?></span></td>
-            <td><span class="summary-label">Sisa Tagihan</span><span class="summary-value <?= $remainingCents > 0 ? 'negative' : 'positive' ?>"><?= e($money($remainingCents)) ?></span><?php if ($pendingCents > 0): ?><span class="secondary">Setelah komitmen: <?= e($money($remainingAfterCommitmentCents)) ?></span><?php endif; ?></td>
+            <td><span class="summary-label">Sisa Tagihan</span><span class="summary-value <?= $remainingCents > 0 ? 'negative' : 'positive' ?>"><?= e($money($remainingCents)) ?></span><?php if ($pendingCents > 0): ?><span class="secondary">Sisa: <?= e($money($remainingAfterCommitmentCents)) ?></span><?php endif; ?></td>
         </tr>
     </table>
 

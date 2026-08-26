@@ -1421,6 +1421,66 @@
       if (shouldReopen) modalOpen(modalId);
     });
   }
+
+  var attendanceDateForm = document.getElementById('registration-attendance-date-form');
+  document.addEventListener('click', function (event) {
+    var attendanceTrigger = event.target.closest('[data-registration-attendance-open]');
+    if (!attendanceTrigger) return;
+    event.preventDefault();
+    modalOpen('registration-attendance-date-modal');
+  });
+  if (attendanceDateForm) {
+    attendanceDateForm.addEventListener('submit', function (event) {
+      event.preventDefault();
+      var dateField = document.getElementById('registration-attendance-date');
+      var dateValue = dateField ? String(dateField.value || '').trim() : '';
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(dateValue)) {
+        modalAlert('registration-attendance-date-modal', 'Pilih tanggal absen terlebih dahulu.', {
+          title: 'Tanggal Belum Dipilih',
+          tone: 'warning'
+        });
+        return;
+      }
+
+      function urlWithAttendanceDate(source) {
+        try {
+          var parsed = new URL(source, window.location.href);
+          parsed.searchParams.set('attendance_date', dateValue);
+          return parsed.toString();
+        } catch (error) {
+          return source + (source.indexOf('?') === -1 ? '?' : '&') + 'attendance_date=' + encodeURIComponent(dateValue);
+        }
+      }
+
+      var previewUrl = urlWithAttendanceDate(attendanceDateForm.getAttribute('data-preview-url') || '');
+      var pdfUrl = urlWithAttendanceDate(attendanceDateForm.getAttribute('data-pdf-url') || '');
+      var printModal = document.getElementById('registration-attendance-print-modal');
+      var previewTrigger = document.getElementById('registration-attendance-preview-trigger');
+      if (!printModal || !previewTrigger) return;
+
+      var frame = printModal.querySelector('[data-report-preview-frame]');
+      var pdfLink = printModal.querySelector('[data-report-file-download][data-report-file-label="PDF"]');
+      var shareButton = printModal.querySelector('[data-report-share-pdf]');
+      var title = printModal.querySelector('#registration-attendance-print-modal-title');
+      var dateParts = dateValue.split('-');
+      var monthNames = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
+      var dateLabel = Number(dateParts[2]) + ' ' + (monthNames[Number(dateParts[1]) - 1] || '') + ' ' + dateParts[0];
+
+      if (frame) frame.setAttribute('data-src', previewUrl);
+      if (pdfLink) pdfLink.setAttribute('href', pdfUrl);
+      if (shareButton) {
+        shareButton.setAttribute('data-report-pdf-url', pdfUrl);
+        shareButton.setAttribute('data-report-share-title', 'Absen ' + dateLabel);
+      }
+      if (title) title.textContent = 'Cetak Absen · ' + dateLabel;
+      previewTrigger.setAttribute('href', previewUrl);
+
+      var closeButton = document.querySelector('#registration-attendance-date-modal .close-menu');
+      modalClose(closeButton);
+      window.setTimeout(function () { previewTrigger.click(); }, 220);
+    });
+  }
+
   function refreshCsrfFromPayload(payload) {
     if (!payload || !payload.csrf || !payload.csrf.hash) return;
     if (window.SIMP) {

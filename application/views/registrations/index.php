@@ -29,6 +29,18 @@ $registrationPageUrl = function ($page) {
     $page = max(1, (int) $page);
     return site_url('registrasi') . ($page > 1 ? '?page=' . $page : '');
 };
+$attendanceDefaultDate = date('Y-m-d');
+$attendanceMinDate = '';
+$attendanceMaxDate = '';
+if ($activeEvents) {
+    $firstEventStart = isset($activeEvents[0]['start_date']) ? trim((string) $activeEvents[0]['start_date']) : '';
+    $firstEventEnd = isset($activeEvents[0]['end_date']) ? trim((string) $activeEvents[0]['end_date']) : '';
+    if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $firstEventStart)) $attendanceDefaultDate = $firstEventStart;
+    if (count($activeEvents) === 1) {
+        if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $firstEventStart)) $attendanceMinDate = $firstEventStart;
+        if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $firstEventEnd)) $attendanceMaxDate = $firstEventEnd;
+    }
+}
 ?>
 
 <div id="registration-index-content">
@@ -44,10 +56,12 @@ $registrationPageUrl = function ($page) {
             <div class="divider mt-3 mb-3"></div>
             <div class="registration-index-actions">
                 <?php if ($canPrint): ?>
-                    <a href="<?= site_url('registrasi/cetak') ?>" class="btn btn-m btn-full bg-theme color-theme border rounded-s font-600 shadow-0" data-report-preview-open="registration-print-modal"><i class="fa fa-print me-1 color-highlight"></i> Cetak Peserta</a>
+                    <a href="#" class="btn btn-s btn-full bg-theme color-theme border rounded-s font-600 shadow-0" data-registration-attendance-open><i class="fa fa-clipboard-check me-1 color-highlight"></i> Cetak Absen</a>
+                    <a href="<?= site_url('registrasi/peserta/cetak') ?>" class="btn btn-s btn-full bg-theme color-theme border rounded-s font-600 shadow-0" data-report-preview-open="registration-participant-print-modal"><i class="fa fa-users me-1 color-highlight"></i> Cetak Data Peserta</a>
+                    <a href="<?= site_url('registrasi/desa/cetak') ?>" class="btn btn-s btn-full bg-theme color-theme border rounded-s font-600 shadow-0" data-report-preview-open="registration-village-print-modal"><i class="fa fa-building me-1 color-highlight"></i> Cetak Desa</a>
                 <?php endif; ?>
                 <?php if ($canCreate): ?>
-                    <button type="button" class="btn btn-m btn-full gradient-highlight rounded-s font-600 shadow-s" data-registration-add-open><i class="fa fa-plus me-1"></i> Tambah Peserta</button>
+                    <button type="button" class="btn btn-s btn-full gradient-highlight rounded-s font-600 shadow-s" data-registration-add-open><i class="fa fa-plus me-1"></i> Tambah Peserta</button>
                 <?php endif; ?>
             </div>
         <?php endif; ?>
@@ -89,9 +103,9 @@ $registrationPageUrl = function ($page) {
                     <div class="registration-card-detail-row"><span class="registration-card-label">Tagihan</span><span class="registration-card-separator" aria-hidden="true">|</span><strong class="registration-card-value simp-balance-value"><?= rupiah($row['expected_amount']) ?></strong></div>
                     <div class="registration-card-detail-row"><span class="registration-card-label">Terverifikasi</span><span class="registration-card-separator" aria-hidden="true">|</span><strong class="registration-card-value color-green-dark simp-balance-value"><?= rupiah($verifiedAmount) ?></strong></div>
                     <?php if ($pendingAmount > 0): ?><div class="registration-card-detail-row"><span class="registration-card-label">Menunggu verifikasi</span><span class="registration-card-separator" aria-hidden="true">|</span><strong class="registration-card-value color-yellow-dark simp-balance-value"><?= rupiah($pendingAmount) ?></strong></div><?php endif; ?>
-                    <div class="registration-card-detail-row"><span class="registration-card-label">Sisa setelah komitmen</span><span class="registration-card-separator" aria-hidden="true">|</span><strong class="registration-card-value <?= $remainingAmountCents > 0 ? 'color-yellow-dark' : 'color-green-dark' ?> simp-balance-value"><?= rupiah($remainingAmount) ?></strong></div>
+                    <div class="registration-card-detail-row"><span class="registration-card-label">Sisa</span><span class="registration-card-separator" aria-hidden="true">|</span><strong class="registration-card-value <?= $remainingAmountCents > 0 ? 'color-yellow-dark' : 'color-green-dark' ?> simp-balance-value"><?= rupiah($remainingAmount) ?></strong></div>
                 </div>
-                <a class="btn btn-full btn-m gradient-highlight rounded-s font-600 font-12 mt-3" href="<?= site_url('registrasi/'.$row['id']) ?>">Lihat Detail <i class="fa fa-arrow-right ms-1"></i></a>
+                <div class="d-flex justify-content-end mt-2"><a class="btn btn-s gradient-highlight rounded-s font-600 font-11 px-3" href="<?= site_url('registrasi/'.$row['id']) ?>">Lihat Detail <i class="fa fa-arrow-right ms-1"></i></a></div>
             </div></div>
         <?php endforeach; ?>
         <div id="registration-pagination" class="card card-style mx-0" data-registration-pagination>
@@ -117,13 +131,53 @@ $registrationPageUrl = function ($page) {
 </div>
 
 <?php if ($canPrint && $activeEvents): ?>
+    <a id="registration-attendance-date-opener" href="#" class="d-none" data-menu="registration-attendance-date-modal" aria-hidden="true" tabindex="-1"></a>
+    <a id="registration-attendance-preview-trigger" href="<?= site_url('registrasi/absen/cetak') ?>" class="d-none" data-report-preview-open="registration-attendance-print-modal" aria-hidden="true" tabindex="-1"></a>
+    <div id="registration-attendance-date-modal" class="menu menu-box-modal rounded-m" data-menu-width="390" data-menu-height="390" role="dialog" aria-modal="true" aria-labelledby="registration-attendance-date-title">
+        <div class="content mb-0">
+            <div class="d-flex align-items-start mb-3">
+                <div class="min-width-zero pe-3"><p class="font-600 color-highlight mb-n1">Daftar hadir</p><h3 id="registration-attendance-date-title" class="font-20 mb-0">Pilih Tanggal Absen</h3></div>
+                <button type="button" class="close-menu btn btn-xxs bg-theme color-theme border rounded-s ms-auto flex-shrink-0" aria-label="Tutup"><i class="fa fa-times"></i></button>
+            </div>
+            <p class="font-12 mb-3">Tanggal awal event memakai judul <strong>Data Registrasi</strong>. Tanggal berikutnya memakai judul <strong>Absen</strong>.</p>
+            <form id="registration-attendance-date-form" data-preview-url="<?= site_url('registrasi/absen/cetak') ?>" data-pdf-url="<?= site_url('registrasi/absen/pdf') ?>" data-default-date="<?= e($attendanceDefaultDate) ?>">
+                <div class="input-style has-borders no-icon input-style-always-active mb-3">
+                    <label for="registration-attendance-date" class="color-highlight">Tanggal</label>
+                    <input id="registration-attendance-date" name="attendance_date" type="date" value="<?= e($attendanceDefaultDate) ?>"<?= $attendanceMinDate !== '' ? ' min="' . e($attendanceMinDate) . '"' : '' ?><?= $attendanceMaxDate !== '' ? ' max="' . e($attendanceMaxDate) . '"' : '' ?> required>
+                    <em>*</em>
+                </div>
+                <div class="row mb-0">
+                    <div class="col-5"><button type="button" class="close-menu btn btn-s btn-full bg-theme color-theme border rounded-s font-600">Batal</button></div>
+                    <div class="col-7"><button type="submit" class="btn btn-s btn-full gradient-highlight rounded-s font-600"><i class="fa fa-eye me-1"></i>Pratinjau</button></div>
+                </div>
+            </form>
+        </div>
+    </div>
     <?php $this->load->view('reports/print_modal', array(
-        'printModalId' => 'registration-print-modal',
-        'printModalTitle' => 'Data Registrasi Peserta',
-        'printPreviewUrl' => site_url('registrasi/cetak'),
-        'printPdfUrl' => site_url('registrasi/pdf'),
+        'printModalId' => 'registration-attendance-print-modal',
+        'printModalTitle' => 'Cetak Absen',
+        'printPreviewUrl' => site_url('registrasi/absen/cetak'),
+        'printPdfUrl' => site_url('registrasi/absen/pdf'),
+        'printFormatLabel' => '',
+        'printPaperNote' => '',
+        'printIconOnly' => TRUE
+    )); ?>
+    <?php $this->load->view('reports/print_modal', array(
+        'printModalId' => 'registration-participant-print-modal',
+        'printModalTitle' => 'Cetak Data Peserta',
+        'printPreviewUrl' => site_url('registrasi/peserta/cetak'),
+        'printPdfUrl' => site_url('registrasi/peserta/pdf'),
         'printExcelUrl' => site_url('registrasi/excel'),
         'printExcelLabel' => 'Excel Mailing',
+        'printFormatLabel' => '',
+        'printPaperNote' => '',
+        'printIconOnly' => TRUE
+    )); ?>
+    <?php $this->load->view('reports/print_modal', array(
+        'printModalId' => 'registration-village-print-modal',
+        'printModalTitle' => 'Cetak Data Desa',
+        'printPreviewUrl' => site_url('registrasi/desa/cetak'),
+        'printPdfUrl' => site_url('registrasi/desa/pdf'),
         'printFormatLabel' => '',
         'printPaperNote' => '',
         'printIconOnly' => TRUE

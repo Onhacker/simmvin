@@ -300,10 +300,25 @@ select[multiple].form-select { height: auto !important; min-height: 150px; paddi
   gap: 10px;
 }
 
-.registration-index-actions > .btn {
+#page .registration-index-actions > .btn {
   width: 100%;
   margin: 0 !important;
-  white-space: nowrap;
+  white-space: normal;
+  padding-right: 9px !important;
+  padding-left: 9px !important;
+  font-size: 11px !important;
+  line-height: 1.2 !important;
+  min-height: 36px;
+}
+
+@media (max-width: 430px) {
+  .registration-index-actions {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+  }
+  #page .registration-index-actions > .btn {
+    font-size: 10px !important;
+  }
 }
 
 /* Registration cards use the same compact label | value rhythm as expense
@@ -364,6 +379,12 @@ select[multiple].form-select { height: auto !important; min-height: 150px; paddi
 #registration-index-content .registration-card-value .badge {
   display: inline-block;
   white-space: normal;
+}
+
+#page #registration-index-content .registration-card .btn-s {
+  min-height: 34px;
+  padding: 6px 12px !important;
+  font-size: 11px !important;
 }
 
 @media (max-width: 575.98px) {

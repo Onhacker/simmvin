@@ -6,6 +6,11 @@ $rows = isset($rows) && is_array($rows) ? $rows : array();
 $generatedAt = isset($generatedAt) ? $generatedAt : date('Y-m-d H:i:s');
 $isPdf = !empty($isPdf);
 $isArchive = !empty($isArchive);
+$reportMode = isset($reportMode) && in_array((string) $reportMode, array('attendance', 'participants', 'villages'), TRUE) ? (string) $reportMode : 'attendance';
+$attendanceDate = isset($attendanceDate) && is_scalar($attendanceDate) ? trim((string) $attendanceDate) : '';
+$isAttendance = $reportMode === 'attendance';
+$isParticipantDirectory = $reportMode === 'participants';
+$isVillageDirectory = $reportMode === 'villages';
 
 $logoDataUri = '';
 $logoPath = defined('FCPATH') ? FCPATH . 'assets/images/mvin-logo.jpg' : '';
@@ -57,9 +62,9 @@ foreach ($rows as $row) {
         $eventGroups[$eventId] = array('event'=>array(
             'id'=>(int)$eventId,
             'name'=>isset($row['event_name']) ? $row['event_name'] : 'Event Pelatihan',
-            'start_date'=>isset($row['start_date']) ? $row['start_date'] : '',
-            'end_date'=>isset($row['end_date']) ? $row['end_date'] : '',
-            'location'=>isset($row['location']) ? $row['location'] : ''
+            'start_date'=>isset($row['start_date']) ? $row['start_date'] : (isset($row['event_start_date']) ? $row['event_start_date'] : ''),
+            'end_date'=>isset($row['end_date']) ? $row['end_date'] : (isset($row['event_end_date']) ? $row['event_end_date'] : ''),
+            'location'=>isset($row['location']) ? $row['location'] : (isset($row['event_location']) ? $row['event_location'] : '')
         ), 'rows'=>array());
     }
     $eventGroups[$eventId]['rows'][] = $row;
@@ -91,14 +96,18 @@ foreach ($eventGroups as $group) {
             return ((int) (isset($left['participant_id']) ? $left['participant_id'] : 0)) <=> ((int) (isset($right['participant_id']) ? $right['participant_id'] : 0));
         });
 
-        $chunks = array_chunk($districtRows, 10);
+        /* Keep every F4 preview page within the same physical height.  The
+         * attendance sheet explicitly uses ten rows, and the two directory
+         * reports use the same limit so HTML preview and PDF never clip rows. */
+        $rowsPerPage = 10;
+        $chunks = array_chunk($districtRows, $rowsPerPage);
         $districtPageCount = count($chunks);
         foreach ($chunks as $chunkIndex => $chunkRows) {
             $pages[] = array(
                 'event'=>$event,
                 'district'=>$districtName,
                 'rows'=>$chunkRows,
-                'offset'=>$chunkIndex * 10,
+                'offset'=>$chunkIndex * $rowsPerPage,
                 'district_page'=>$chunkIndex + 1,
                 'district_pages'=>$districtPageCount,
                 'district_total'=>count($districtRows)
@@ -116,7 +125,7 @@ if (!$pages) {
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=10, user-scalable=yes">
-    <title>Daftar Registrasi | MVIN</title>
+    <title><?= $isAttendance ? 'Cetak Absen' : ($isParticipantDirectory ? 'Data Peserta' : 'Data Desa') ?> | MVIN</title>
     <style>
         @page { size: 330mm 210mm; margin: 0; }
         * { box-sizing: border-box; }
@@ -149,6 +158,14 @@ if (!$pages) {
         .report-table .col-signature { width: 13%; }
         .report-table .col-room { width: 6%; }
         .report-table .col-note { width: 5%; }
+        .report-table.directory-participants .col-district { width: 20%; }
+        .report-table.directory-participants .col-village { width: 20%; }
+        .report-table.directory-participants .col-name { width: 32%; }
+        .report-table.directory-participants .col-position { width: 15%; }
+        .report-table.directory-participants .col-contact { width: 13%; }
+        .report-table.directory-villages .col-district { width: 35%; }
+        .report-table.directory-villages .col-village { width: 45%; }
+        .report-table.directory-villages .col-count { width: 20%; }
         .report-table th { height: 5.6mm; padding: 1.1mm .8mm; border: 1px solid #111; background: #e8e8e8; color: #000; font-size: 9.1px; line-height: 1.12; text-align: center; text-transform: uppercase; }
         .report-table td { height: 10.5mm; padding: 1mm 1.2mm; border: 1px solid #111; vertical-align: middle; color: #000; font-size: 10.3px; line-height: 1.17; overflow-wrap: anywhere; word-wrap: break-word; }
         .report-table tr { page-break-inside: avoid; }
@@ -183,6 +200,18 @@ if (!$pages) {
             if ($eventName === '') $eventName = 'Event Pelatihan';
             $location = trim((string) (isset($event['location']) ? $event['location'] : ''));
             if ($location === '') $location = 'lokasi belum diatur';
+            $eventStartDate = trim((string) (isset($event['start_date']) ? $event['start_date'] : ''));
+            $selectedAttendanceParts = $dateParts($attendanceDate !== '' ? $attendanceDate : $eventStartDate);
+            $isInitialAttendance = !$isAttendance || $attendanceDate === '' || ($eventStartDate !== '' && $attendanceDate === $eventStartDate);
+            if ($isAttendance) {
+                $heading = $isInitialAttendance
+                    ? 'DATA REGISTRASI PESERTA ' . $upper($eventName)
+                    : 'ABSEN ' . $upper($eventName) . ($selectedAttendanceParts ? ' · ' . $upper($selectedAttendanceParts['day'] . ' ' . $selectedAttendanceParts['month_name'] . ' ' . $selectedAttendanceParts['year']) : '');
+            } elseif ($isParticipantDirectory) {
+                $heading = 'DATA PESERTA ' . $upper($eventName);
+            } else {
+                $heading = 'DATA DESA ' . $upper($eventName);
+            }
         ?>
             <section class="print-page">
                 <table class="attendance-head" role="presentation">
@@ -190,8 +219,8 @@ if (!$pages) {
                     <tr>
                         <td class="logo-cell"><?php if ($logoDataUri !== ''): ?><img src="<?= e($logoDataUri) ?>" alt="Logo MVIN"><?php endif; ?></td>
                         <td class="title-cell">
-                            <h1>DATA REGISTRASI PESERTA <?= e($upper($eventName)) ?></h1>
-                            <p>Tanggal <?= e($dateRange($event)) ?> di <?= e($location) ?></p>
+                            <h1><?= e($heading) ?></h1>
+                            <p><?= $isAttendance && !$isInitialAttendance && $selectedAttendanceParts ? 'Tanggal absen ' . e($selectedAttendanceParts['day'] . ' ' . $selectedAttendanceParts['month_name'] . ' ' . $selectedAttendanceParts['year']) : 'Tanggal ' . e($dateRange($event)) ?> di <?= e($location) ?></p>
                             <div class="organizer-name">MEDIAVERSE INOVASI NUSANTARA</div>
                         </td>
                         <td class="balance-cell"></td>
@@ -200,34 +229,54 @@ if (!$pages) {
 
                 <div class="district-bar">
                     <strong><?= $page['district'] !== '' ? 'KECAMATAN: ' . e($upper($page['district'])) : 'DAFTAR PESERTA' ?></strong>
-                    <span><?= number_format((int)$page['district_total'], 0, ',', '.') ?> peserta · Halaman <?= (int)$page['district_page'] ?> dari <?= (int)$page['district_pages'] ?></span>
+                    <span><?= number_format((int)$page['district_total'], 0, ',', '.') ?> <?= $isVillageDirectory ? 'desa' : 'peserta' ?> · Halaman <?= (int)$page['district_page'] ?> dari <?= (int)$page['district_pages'] ?></span>
                 </div>
 
-                <table class="report-table">
-                    <colgroup><col width="4%"><col width="14%"><col width="14%"><col width="19%"><col width="14%"><col width="11%"><col width="13%"><col width="6%"><col width="5%"></colgroup>
-                    <thead><tr><th class="col-number" width="4%">No.</th><th class="col-district" width="14%">Kecamatan</th><th class="col-village" width="14%">Desa</th><th class="col-name" width="19%">Nama Lengkap</th><th class="col-position" width="14%">Jabatan</th><th class="col-contact" width="11%">Kontak</th><th class="col-signature" width="13%">TTD</th><th class="col-room" width="6%">No. Kamar</th><th class="col-note" width="5%">Ket.</th></tr></thead>
+                <table class="report-table<?= $isParticipantDirectory ? ' directory-participants' : ($isVillageDirectory ? ' directory-villages' : '') ?>">
+                    <?php if ($isAttendance): ?>
+                        <colgroup><col width="4%"><col width="14%"><col width="14%"><col width="19%"><col width="14%"><col width="11%"><col width="13%"><col width="6%"><col width="5%"></colgroup>
+                        <thead><tr><th class="col-number" width="4%">No.</th><th class="col-district" width="14%">Kecamatan</th><th class="col-village" width="14%">Desa</th><th class="col-name" width="19%">Nama Lengkap</th><th class="col-position" width="14%">Jabatan</th><th class="col-contact" width="11%">Kontak</th><th class="col-signature" width="13%">TTD</th><th class="col-room" width="6%">No. Kamar</th><th class="col-note" width="5%">Ket.</th></tr></thead>
+                    <?php elseif ($isParticipantDirectory): ?>
+                        <colgroup><col width="20%"><col width="20%"><col width="32%"><col width="15%"><col width="13%"></colgroup>
+                        <thead><tr><th class="col-district" width="20%">Kecamatan</th><th class="col-village" width="20%">Desa</th><th class="col-name" width="32%">Nama Lengkap</th><th class="col-position" width="15%">Jabatan</th><th class="col-contact" width="13%">Kontak</th></tr></thead>
+                    <?php else: ?>
+                        <colgroup><col width="35%"><col width="45%"><col width="20%"></colgroup>
+                        <thead><tr><th class="col-district" width="35%">Kecamatan</th><th class="col-village" width="45%">Desa</th><th class="col-count" width="20%">Jumlah Peserta</th></tr></thead>
+                    <?php endif; ?>
                     <tbody>
                     <?php if (!$page['rows']): ?>
-                        <tr class="empty-row"><td colspan="9"><?= $isArchive ? 'Belum ada peserta aktif pada event ini.' : 'Belum ada peserta terdaftar pada event aktif.' ?></td></tr>
+                        <tr class="empty-row"><td colspan="<?= $isAttendance ? 9 : ($isParticipantDirectory ? 5 : 3) ?>"><?= $isVillageDirectory ? 'Belum ada desa terdaftar pada event aktif.' : ($isArchive ? 'Belum ada peserta aktif pada event ini.' : 'Belum ada peserta terdaftar pada event aktif.') ?></td></tr>
                     <?php else: ?>
                         <?php foreach ($page['rows'] as $index => $row): ?>
                             <tr>
-                                <td class="number col-number" width="4%"><?= (int)$page['offset'] + $index + 1 ?></td>
-                                <td class="col-district" width="14%"><?= e(isset($row['district_name']) ? $row['district_name'] : '-') ?></td>
-                                <td class="col-village" width="14%"><?= e(isset($row['village_name']) ? $row['village_name'] : '-') ?></td>
-                                <td class="col-name" width="19%"><strong><?= e(isset($row['full_name']) ? $row['full_name'] : '-') ?></strong></td>
-                                <td class="col-position" width="14%"><?= e(isset($row['position']) && trim((string)$row['position']) !== '' ? $row['position'] : '-') ?></td>
-                                <td class="contact col-contact" width="11%"><?= e(isset($row['phone']) && trim((string)$row['phone']) !== '' ? $row['phone'] : '-') ?></td>
-                                <td class="signature col-signature" width="13%"><span class="blank-line"></span></td>
-                                <td class="room col-room" width="6%"><span class="blank-line"></span></td>
-                                <td class="note col-note" width="5%"><span class="blank-line"></span></td>
+                                <?php if ($isAttendance): ?>
+                                    <td class="number col-number" width="4%"><?= (int)$page['offset'] + $index + 1 ?></td>
+                                    <td class="col-district" width="14%"><?= e(isset($row['district_name']) ? $row['district_name'] : '-') ?></td>
+                                    <td class="col-village" width="14%"><?= e(isset($row['village_name']) ? $row['village_name'] : '-') ?></td>
+                                    <td class="col-name" width="19%"><strong><?= e(isset($row['full_name']) ? $row['full_name'] : '-') ?></strong></td>
+                                    <td class="col-position" width="14%"><?= e(isset($row['position']) && trim((string)$row['position']) !== '' ? $row['position'] : '-') ?></td>
+                                    <td class="contact col-contact" width="11%"><?= e(isset($row['phone']) && trim((string)$row['phone']) !== '' ? $row['phone'] : '-') ?></td>
+                                    <td class="signature col-signature" width="13%"><span class="blank-line"></span></td>
+                                    <td class="room col-room" width="6%"><span class="blank-line"></span></td>
+                                    <td class="note col-note" width="5%"><span class="blank-line"></span></td>
+                                <?php elseif ($isParticipantDirectory): ?>
+                                    <td class="col-district" width="20%"><?= e(isset($row['district_name']) ? $row['district_name'] : '-') ?></td>
+                                    <td class="col-village" width="20%"><?= e(isset($row['village_name']) ? $row['village_name'] : '-') ?></td>
+                                    <td class="col-name" width="32%"><strong><?= e(isset($row['full_name']) ? $row['full_name'] : '-') ?></strong></td>
+                                    <td class="col-position" width="15%"><?= e(isset($row['position']) && trim((string)$row['position']) !== '' ? $row['position'] : '-') ?></td>
+                                    <td class="contact col-contact" width="13%"><?= e(isset($row['phone']) && trim((string)$row['phone']) !== '' ? $row['phone'] : '-') ?></td>
+                                <?php else: ?>
+                                    <td class="col-district" width="35%"><?= e(isset($row['district_name']) ? $row['district_name'] : '-') ?></td>
+                                    <td class="col-village" width="45%"><strong><?= e(isset($row['village_name']) ? $row['village_name'] : '-') ?></strong></td>
+                                    <td class="number col-count" width="20%"><?= number_format((int) (isset($row['participant_count']) ? $row['participant_count'] : 0), 0, ',', '.') ?> orang</td>
+                                <?php endif; ?>
                             </tr>
                         <?php endforeach; ?>
                     <?php endif; ?>
                     </tbody>
                 </table>
 
-                <table class="document-foot" role="presentation"><tr><td>TTD diisi peserta saat hadir. No. Kamar dan Ket. diisi petugas.</td><td>Dicetak <?= e(tanggal_id(substr((string)$generatedAt, 0, 10))) ?></td></tr></table>
+                <table class="document-foot" role="presentation"><tr><td><?= $isAttendance ? 'TTD diisi peserta saat hadir. No. Kamar dan Ket. diisi petugas.' : ($isParticipantDirectory ? 'Data peserta untuk kebutuhan administrasi.' : 'Rekap jumlah peserta per desa.') ?></td><td>Dicetak <?= e(tanggal_id(substr((string)$generatedAt, 0, 10))) ?></td></tr></table>
             </section>
         <?php endforeach; ?>
     </article>

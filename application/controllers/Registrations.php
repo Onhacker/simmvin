@@ -63,8 +63,9 @@ class Registrations extends App_Controller
     public function print_preview()
     {
         $this->require_permission('registrations.view');
-        $data = $this->registration_print_data();
+        $data = $this->registration_print_data($this->attendance_date_query());
         $data['isPdf'] = FALSE;
+        $data['reportMode'] = 'attendance';
         $html = $this->load->view('reports/registration_attendance', $data, TRUE);
         return $this->private_document_output('text/html', $html);
     }
@@ -73,8 +74,9 @@ class Registrations extends App_Controller
     public function pdf()
     {
         $this->require_permission('registrations.view');
-        $data = $this->registration_print_data();
+        $data = $this->registration_print_data($this->attendance_date_query());
         $data['isPdf'] = TRUE;
+        $data['reportMode'] = 'attendance';
         $html = $this->load->view('reports/registration_attendance', $data, TRUE);
 
         try {
@@ -88,6 +90,64 @@ class Registrations extends App_Controller
         } catch (Throwable $e) {
             log_message('error', 'Gagal membuat PDF daftar registrasi: ' . $e->getMessage());
             show_error('PDF daftar registrasi belum dapat dibuat. Silakan coba kembali.', 500, 'PDF Gagal Dibuat');
+        }
+    }
+
+    /** HTML preview for the participant directory (without attendance columns). */
+    public function participant_print_preview()
+    {
+        $this->require_permission('registrations.view');
+        $data = $this->registration_participant_print_data();
+        $data['isPdf'] = FALSE;
+        $data['reportMode'] = 'participants';
+        $html = $this->load->view('reports/registration_attendance', $data, TRUE);
+        return $this->private_document_output('text/html', $html);
+    }
+
+    /** Download the participant directory as Landscape F4 PDF. */
+    public function participant_pdf()
+    {
+        $this->require_permission('registrations.view');
+        $data = $this->registration_participant_print_data();
+        $data['isPdf'] = TRUE;
+        $data['reportMode'] = 'participants';
+        $html = $this->load->view('reports/registration_attendance', $data, TRUE);
+        try {
+            $this->load->library('Pdf_renderer');
+            $pdf = $this->pdf_renderer->render_f4_landscape($html);
+            return $this->private_document_output('application/pdf', $pdf, 'attachment; filename="data-peserta-' . date('Ymd-His') . '.pdf"');
+        } catch (Throwable $e) {
+            log_message('error', 'Gagal membuat PDF data peserta: ' . $e->getMessage());
+            show_error('PDF data peserta belum dapat dibuat. Silakan coba kembali.', 500, 'PDF Gagal Dibuat');
+        }
+    }
+
+    /** HTML preview for the village registration summary. */
+    public function village_print_preview()
+    {
+        $this->require_permission('registrations.view');
+        $data = $this->registration_village_print_data();
+        $data['isPdf'] = FALSE;
+        $data['reportMode'] = 'villages';
+        $html = $this->load->view('reports/registration_attendance', $data, TRUE);
+        return $this->private_document_output('text/html', $html);
+    }
+
+    /** Download the village registration summary as Landscape F4 PDF. */
+    public function village_pdf()
+    {
+        $this->require_permission('registrations.view');
+        $data = $this->registration_village_print_data();
+        $data['isPdf'] = TRUE;
+        $data['reportMode'] = 'villages';
+        $html = $this->load->view('reports/registration_attendance', $data, TRUE);
+        try {
+            $this->load->library('Pdf_renderer');
+            $pdf = $this->pdf_renderer->render_f4_landscape($html);
+            return $this->private_document_output('application/pdf', $pdf, 'attachment; filename="data-desa-' . date('Ymd-His') . '.pdf"');
+        } catch (Throwable $e) {
+            log_message('error', 'Gagal membuat PDF data desa: ' . $e->getMessage());
+            show_error('PDF data desa belum dapat dibuat. Silakan coba kembali.', 500, 'PDF Gagal Dibuat');
         }
     }
 
@@ -116,7 +176,9 @@ class Registrations extends App_Controller
     {
         $this->require_permission('registrations.view');
         $data = $this->event_registration_print_data((int) $eventId);
+        $data['attendanceDate'] = $this->attendance_date_query();
         $data['isPdf'] = FALSE;
+        $data['reportMode'] = 'attendance';
         $html = $this->load->view('reports/registration_attendance', $data, TRUE);
         return $this->private_document_output('text/html', $html);
     }
@@ -126,7 +188,9 @@ class Registrations extends App_Controller
     {
         $this->require_permission('registrations.view');
         $data = $this->event_registration_print_data((int) $eventId);
+        $data['attendanceDate'] = $this->attendance_date_query();
         $data['isPdf'] = TRUE;
+        $data['reportMode'] = 'attendance';
         $html = $this->load->view('reports/registration_attendance', $data, TRUE);
 
         try {
@@ -674,7 +738,7 @@ class Registrations extends App_Controller
         return new RuntimeException('Bukti transaksi tidak dapat diunggah.',0,$exception);
     }
 
-    private function registration_print_data()
+    private function registration_print_data($attendanceDate = NULL)
     {
         $activeEvents = $this->registration->events_for_registration();
         $eventIds = array_map(function ($event) {
@@ -684,8 +748,40 @@ class Registrations extends App_Controller
         return array(
             'activeEvents' => $activeEvents,
             'rows' => $this->registration->participants_for_print($eventIds),
+            'generatedAt' => date('Y-m-d H:i:s'),
+            'attendanceDate' => $attendanceDate
+        );
+    }
+
+    private function registration_participant_print_data()
+    {
+        $activeEvents = $this->registration->events_for_registration();
+        $eventIds = array_map(function ($event) { return (int) $event['id']; }, $activeEvents);
+        return array(
+            'activeEvents' => $activeEvents,
+            'rows' => $this->registration->participants_for_print($eventIds),
             'generatedAt' => date('Y-m-d H:i:s')
         );
+    }
+
+    private function registration_village_print_data()
+    {
+        $activeEvents = $this->registration->events_for_registration();
+        $eventIds = array_map(function ($event) { return (int) $event['id']; }, $activeEvents);
+        return array(
+            'activeEvents' => $activeEvents,
+            'rows' => $eventIds ? $this->registration->get_all(array('event_ids' => $eventIds, 'active_only' => TRUE)) : array(),
+            'generatedAt' => date('Y-m-d H:i:s')
+        );
+    }
+
+    private function attendance_date_query()
+    {
+        $raw = $this->input->get('attendance_date', TRUE);
+        if (!is_scalar($raw) || trim((string) $raw) === '') return NULL;
+        $value = trim((string) $raw);
+        $date = DateTime::createFromFormat('!Y-m-d', $value);
+        return $date && $date->format('Y-m-d') === $value ? $value : NULL;
     }
 
     /** Build print data for exactly one historical event. */
