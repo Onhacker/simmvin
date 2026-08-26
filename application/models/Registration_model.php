@@ -417,14 +417,22 @@ class Registration_model extends CI_Model
         }
     }
 
-    /** Insert several participants atomically, preserving the hybrid fee snapshot. */
-    public function add_participants($registration, array $participants, $actorId)
+    /** Insert participants and their optional first payments in one transaction. */
+    public function add_participants($registration, array $participants, $paymentGroups = array(), $actorId = 0, $autoVerifyPayments = FALSE)
     {
+        /* Keep the old three-argument model call compatible for any legacy
+         * controller or CLI job that still adds participants without payment. */
+        if (!is_array($paymentGroups)) {
+            $legacyActor = (int) $paymentGroups;
+            $paymentGroups = array();
+            $actorId = $legacyActor;
+            $autoVerifyPayments = FALSE;
+        }
         if (count($participants) > 20) throw new InvalidArgumentException('Maksimal 20 peserta dapat ditambahkan sekaligus.');
         $originalDbDebug=$this->db->db_debug; $this->db->db_debug=FALSE; $this->db->trans_begin();
         try {
             $lockedEvent = $this->db->query('SELECT id,status,billing_mode,participant_fee,included_participant_count FROM training_events WHERE id=? FOR UPDATE', array((int)$registration['event_id']))->row_array();
-            $locked = $this->db->query('SELECT id,event_id,status FROM registrations WHERE id=? FOR UPDATE', array((int)$registration['id']))->row_array();
+            $locked = $this->db->query('SELECT id,event_id,status,expected_amount,village_name FROM registrations WHERE id=? FOR UPDATE', array((int)$registration['id']))->row_array();
             if (!$lockedEvent || !$locked || (int)$locked['event_id'] !== (int)$lockedEvent['id'] || $locked['status'] !== 'active' || $lockedEvent['status'] !== 'open') throw new InvalidArgumentException('Peserta hanya dapat ditambah pada registrasi aktif dan event yang masih aktif.');
             $positionMap = $this->active_position_map(TRUE);
             if (!$positionMap) throw new InvalidArgumentException('Belum ada jabatan aktif. Tambahkan jabatan pada menu Master Jabatan terlebih dahulu.');
@@ -434,8 +442,8 @@ class Registration_model extends CI_Model
             $this->assert_unique_active_participant_names((int)$locked['id'], $items);
             $count = (int)$this->db->where(array('registration_id'=>$locked['id'],'is_active'=>1))->where('deleted_at IS NULL',NULL,FALSE)->count_all_results('participants');
             if ($count + count($items) > 20) throw new InvalidArgumentException('Maksimal 20 peserta untuk satu desa.');
-            $now=date('Y-m-d H:i:s'); $ids=array();
-            foreach($items as $item){
+            $now=date('Y-m-d H:i:s'); $ids=array(); $idMap=array(); $expectedMap=array();
+            foreach($items as $itemKey=>$item){
                 $item['registration_id']=(int)$locked['id'];
                 $item['expected_amount']=$lockedEvent['billing_mode']==='per_participant'
                     ?simp_money_decimal($lockedEvent['participant_fee'],TRUE)
@@ -443,25 +451,59 @@ class Registration_model extends CI_Model
                 $item['is_active']=1; $item['created_by']=(int)$actorId; $item['updated_by']=(int)$actorId;
                 $item['created_at']=$now; $item['updated_at']=$now;
                 if(!$this->db->insert('participants',$item))throw new RuntimeException('Peserta gagal ditambahkan.');
-                $ids[]=(int)$this->db->insert_id();
+                $participantId=(int)$this->db->insert_id();
+                $ids[]=$participantId;
+                $idMap[(string)$itemKey]=$participantId;
+                $expectedMap[(string)$itemKey]=simp_money_decimal($item['expected_amount'],TRUE);
                 if(simp_money_cents($item['expected_amount'])>0){
                     $this->db->set('expected_amount','expected_amount+'. $this->db->escape($item['expected_amount']),FALSE)->where('id',$locked['id'])->update('registrations');
                 }
                 $count++;
             }
+            $lockedAfter=$this->db->query('SELECT expected_amount FROM registrations WHERE id=? FOR UPDATE',array((int)$locked['id']))->row_array();
+            if(!$lockedAfter)throw new RuntimeException('Tagihan registrasi tidak tersedia.');
+            $paymentIds=array();
+            foreach($paymentGroups as $targetKey=>$payment){
+                if(!is_array($payment))throw new InvalidArgumentException('Data pembayaran tidak valid.');
+                $targetKey=(string)$targetKey;
+                if($lockedEvent['billing_mode']==='per_participant'){
+                    if($targetKey==='village'||!isset($idMap[$targetKey]))throw new InvalidArgumentException('Tujuan pembayaran peserta tidak valid.');
+                    $targetParticipantId=$idMap[$targetKey];
+                    $targetExpected=$expectedMap[$targetKey];
+                    $targetLabel='peserta baru';
+                }else{
+                    if($targetKey!=='village')throw new InvalidArgumentException('Pembayaran event ini harus dicatat pada tingkat desa.');
+                    $targetParticipantId=NULL;
+                    $targetExpected=simp_money_decimal($lockedAfter['expected_amount'],TRUE);
+                    $targetLabel=!empty($locked['village_name'])?$locked['village_name']:'desa';
+                }
+                $paymentIds[]=$this->insert_inline_payment_locked(
+                    $lockedEvent,(int)$locked['id'],$targetParticipantId,$targetExpected,$payment,
+                    (int)$actorId,(bool)$autoVerifyPayments,$now,$targetLabel
+                );
+            }
             if($this->db->trans_status()===FALSE)throw new RuntimeException('Peserta gagal ditambahkan.');
             if(!$this->db->trans_commit())throw new RuntimeException('Transaksi peserta gagal diselesaikan.');
-            $this->db->db_debug=$originalDbDebug; return $ids;
+            $this->db->db_debug=$originalDbDebug;
+            return array('participant_ids'=>$ids,'payment_ids'=>$paymentIds);
         }catch(Throwable $e){$this->db->trans_rollback();$this->db->db_debug=$originalDbDebug;throw $e;}
     }
 
     /**
-     * Update participant identity only.  Billing snapshots and payment rows
-     * are deliberately untouched so a typo correction can never alter the
-     * amount already committed to the event.
+     * Update participant identity and optional first payment atomically.
+     * Billing snapshots remain untouched so a typo correction can never alter
+     * the amount already committed to the event.
      */
-    public function update_participant($registrationId, $participantId, array $participant, $actorId)
+    public function update_participant($registrationId, $participantId, array $participant, $paymentGroups = array(), $actorId = 0, $autoVerifyPayments = FALSE)
     {
+        /* Backward-compatible identity-only signature: (id, participant,
+         * data, actorId). */
+        if (!is_array($paymentGroups)) {
+            $legacyActor = (int) $paymentGroups;
+            $paymentGroups = array();
+            $actorId = $legacyActor;
+            $autoVerifyPayments = FALSE;
+        }
         $registrationId = (int) $registrationId;
         $participantId = (int) $participantId;
         if ($registrationId < 1 || $participantId < 1) throw new InvalidArgumentException('Identitas peserta tidak valid.');
@@ -517,10 +559,30 @@ class Registration_model extends CI_Model
                 (int) $actorId,
                 $now
             );
+            $paymentIds=array();
+            foreach($paymentGroups as $targetKey=>$payment){
+                if(!is_array($payment))throw new InvalidArgumentException('Data pembayaran tidak valid.');
+                $targetKey=(string)$targetKey;
+                if($event['billing_mode']==='per_participant'){
+                    if($targetKey!==(string)$participantId)throw new InvalidArgumentException('Tujuan pembayaran peserta tidak valid.');
+                    $targetParticipantId=$participantId;
+                    $targetExpected=simp_money_decimal($before['expected_amount'],TRUE);
+                    $targetLabel=$after['full_name'];
+                }else{
+                    if($targetKey!=='village')throw new InvalidArgumentException('Pembayaran event ini harus dicatat pada tingkat desa.');
+                    $targetParticipantId=NULL;
+                    $targetExpected=simp_money_decimal($registration['expected_amount'],TRUE);
+                    $targetLabel=!empty($registration['village_name'])?$registration['village_name']:'desa';
+                }
+                $paymentIds[]=$this->insert_inline_payment_locked(
+                    $event,$registrationId,$targetParticipantId,$targetExpected,$payment,
+                    (int)$actorId,(bool)$autoVerifyPayments,$now,$targetLabel
+                );
+            }
             $this->assert_transaction_ok('Data peserta gagal diperbarui.');
             $this->commit_transaction_or_throw('Perubahan peserta gagal diselesaikan.');
             $this->db->db_debug = $originalDbDebug;
-            return array('before' => $before, 'after' => $after, 'registration_id' => $registrationId, 'participant_id' => $participantId);
+            return array('before' => $before, 'after' => $after, 'registration_id' => $registrationId, 'participant_id' => $participantId, 'payment_ids'=>$paymentIds);
         } catch (Throwable $e) {
             $this->db->trans_rollback();
             $this->db->db_debug = $originalDbDebug;
@@ -865,6 +927,66 @@ class Registration_model extends CI_Model
         $this->db->select_sum('amount')->where('registration_id',(int)$registrationId)->where_in('status',array('pending','verified'));
         $participantId===NULL ? $this->db->where('participant_id IS NULL',NULL,FALSE) : $this->db->where('participant_id',(int)$participantId);
         return simp_money_decimal($this->db->get('payments')->row()->amount ?: '0',TRUE);
+    }
+
+    /** Insert one payment while the caller already holds the event/target locks. */
+    private function insert_inline_payment_locked(array $event, $registrationId, $participantId, $expectedAmount, array $payment, $creatorId, $autoVerify, $now, $targetLabel)
+    {
+        $registrationId=(int)$registrationId;
+        $creatorId=(int)$creatorId;
+        $participantId=$participantId===NULL?NULL:(int)$participantId;
+        if(empty($event['id'])||empty($event['status'])||$event['status']!=='open')throw new InvalidArgumentException('Event sudah tidak aktif. Pembayaran tidak dapat dicatat.');
+        if(($event['billing_mode']==='per_participant')!==($participantId!==NULL)){
+            throw new InvalidArgumentException($event['billing_mode']==='per_participant'?'Pembayaran wajib ditujukan kepada peserta.':'Pembayaran wajib ditujukan kepada desa.');
+        }
+
+        $amount=isset($payment['amount'])&&is_scalar($payment['amount'])?simp_money_decimal((string)$payment['amount'],FALSE):NULL;
+        $expected=simp_money_decimal($expectedAmount,TRUE);
+        $committed=$this->committed_payment($registrationId,$participantId);
+        $amountCents=simp_money_cents($amount);
+        $expectedCents=simp_money_cents($expected);
+        $committedCents=simp_money_cents($committed);
+        if($amount===NULL||$amountCents===NULL||$expectedCents===NULL||$committedCents===NULL||$amountCents>$expectedCents-$committedCents){
+            throw new InvalidArgumentException('Nominal pembayaran untuk '.$targetLabel.' tidak valid atau melebihi sisa tagihan.');
+        }
+
+        $method=isset($payment['method'])&&is_scalar($payment['method'])?(string)$payment['method']:'';
+        $allowedTypes=array('cash'=>array('cash'),'transfer'=>array('bank','personal'),'qris'=>array('qris'));
+        if(!isset($allowedTypes[$method]))throw new InvalidArgumentException('Metode pembayaran tidak valid.');
+        $rawAccountId=isset($payment['account_id'])&&is_scalar($payment['account_id'])?(string)$payment['account_id']:'';
+        if(!ctype_digit($rawAccountId)||(int)$rawAccountId<1)throw new InvalidArgumentException('Akun penerima pembayaran tidak valid.');
+        $accountId=(int)$rawAccountId;
+        $account=$this->db->query('SELECT id,type,is_active FROM fund_accounts WHERE id=? FOR UPDATE',array($accountId))->row_array();
+        if(!$account||!(int)$account['is_active']||!in_array($account['type'],$allowedTypes[$method],TRUE)){
+            throw new InvalidArgumentException('Akun penerima tidak aktif atau tidak sesuai dengan metode pembayaran.');
+        }
+
+        $paymentDate=isset($payment['payment_date'])&&is_scalar($payment['payment_date'])?(string)$payment['payment_date']:'';
+        if(!$this->valid_date($paymentDate))throw new InvalidArgumentException('Tanggal pembayaran tidak valid.');
+        $proofPath=isset($payment['proof_path'])&&is_scalar($payment['proof_path'])&&trim((string)$payment['proof_path'])!==''?(string)$payment['proof_path']:NULL;
+        if($proofPath!==NULL&&!$this->valid_upload_path($proofPath,'payments'))throw new InvalidArgumentException('Bukti pembayaran tidak valid.');
+        if($proofPath!==NULL&&$this->db->where('proof_path',$proofPath)->count_all_results('payments'))throw new InvalidArgumentException('Bukti pembayaran sudah digunakan oleh transaksi lain.');
+        if($method!=='cash'&&$proofPath===NULL)throw new InvalidArgumentException('Bukti transfer atau QRIS wajib diunggah.');
+        if(isset($payment['note'])&&!is_scalar($payment['note']))throw new InvalidArgumentException('Catatan pembayaran tidak valid.');
+        $note=isset($payment['note'])?trim((string)$payment['note']):'';
+        if(strlen($note)>2000)throw new InvalidArgumentException('Catatan pembayaran maksimal 2.000 karakter.');
+
+        $paymentRow=array(
+            'receipt_no'=>$this->receipt_no(),'event_id'=>(int)$event['id'],'registration_id'=>$registrationId,
+            'participant_id'=>$participantId,'account_id'=>$accountId,'payment_date'=>$paymentDate,'method'=>$method,
+            'amount'=>$amount,'status'=>$autoVerify?'verified':'pending','proof_path'=>$proofPath,'note'=>$note!==''?$note:NULL,
+            'created_by'=>$creatorId,'verified_by'=>$autoVerify?$creatorId:NULL,'verified_at'=>$autoVerify?$now:NULL,
+            'created_at'=>$now,'updated_at'=>$now
+        );
+        if(!$this->db->insert('payments',$paymentRow))throw new RuntimeException('Pembayaran gagal disimpan.');
+        $paymentId=(int)$this->db->insert_id();
+        $this->record_payment_status_history($paymentId,NULL,$paymentRow['status'],$creatorId,$now,'Pembayaran dicatat bersama data peserta.');
+        if($autoVerify&&!$this->db->insert('ledger_entries',array(
+            'account_id'=>$accountId,'entry_date'=>$paymentDate,'direction'=>'in','amount'=>$amount,
+            'source_type'=>'payment','source_id'=>$paymentId,'description'=>'Penerimaan '.$paymentRow['receipt_no'],
+            'created_by'=>$creatorId,'created_at'=>$now
+        )))throw new RuntimeException('Buku besar pembayaran gagal disimpan.');
+        return $paymentId;
     }
 
     public function create_payment($data, $isVerified, $expectedAmount)

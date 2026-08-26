@@ -1488,6 +1488,15 @@
       var next = parsed.getElementById(id);
       if (!current || !next) throw new Error('Tampilan registrasi gagal diperbarui.');
       current.replaceWith(document.importNode(next, true));
+      /* Modal forms live outside the refreshed content fragment.  Refresh the
+       * billing snapshots they use for the next one-click add/edit without
+       * replacing their event listeners or clearing an open modal. */
+      ['registration-participant-form', 'registration-inline-payment-config'].forEach(function (elementId) {
+        var currentElement = document.getElementById(elementId);
+        var nextElement = parsed.getElementById(elementId);
+        if (!currentElement || !nextElement) return;
+        Object.keys(nextElement.dataset || {}).forEach(function (key) { currentElement.dataset[key] = nextElement.dataset[key]; });
+      });
     });
   }
   function finishRegistrationMutation(payload, fragmentId, successTitle) {
@@ -1511,20 +1520,168 @@
     return '<div class="input-style has-borders no-icon input-style-always-active mb-3"><input class="form-control" type="' + type + '" id="' + id + '" name="' + name + '" ' + (required ? 'required ' : '') + 'maxlength="' + maxLength + '" placeholder="' + (placeholder || '') + '"><label for="' + id + '" class="color-highlight">' + label + '</label><i class="fa fa-times disabled invalid color-red-dark"></i><i class="fa fa-check disabled valid color-green-dark"></i><em>' + (required ? '*' : '') + '</em></div>';
   }
 
+  /* Reusable payment fields for the compact registration modals.  The full
+   * registration page has its own richer builder; these fields intentionally
+   * use the same `payments[village][target]` contract so both paths share the
+   * controller/model validation and ledger transaction. */
+  var inlinePaymentCounter = 0;
+  function inlinePaymentToken() {
+    inlinePaymentCounter += 1;
+    return 'modalpay' + Date.now().toString(36) + inlinePaymentCounter;
+  }
+  function inlinePaymentAccounts(form) {
+    var value = form && form.dataset ? form.dataset.accounts : '';
+    if (!value) {
+      var config = document.getElementById('registration-inline-payment-config');
+      value = config && config.dataset ? config.dataset.accounts : '';
+    }
+    return modalJson(value, []);
+  }
+  function inlineAccountOptions(accounts) {
+    return '<option value="">Pilih akun dana</option>' + (Array.isArray(accounts) ? accounts : []).map(function (account) {
+      return '<option value="' + esc(account.id) + '" data-type="' + esc(account.type || '') + '">' + esc(account.name || '') + '</option>';
+    }).join('');
+  }
+  function inlinePaymentMarkup(villageId, targetKey, targetAmount, targetLabel, accounts) {
+    var token = inlinePaymentToken();
+    var prefix = 'payments[' + esc(villageId) + '][' + esc(targetKey) + ']';
+    var id = function (name) { return 'modal-payment-' + name + '-' + token; };
+    var amount = canonicalMoney(targetAmount);
+    return [
+      '<div class="rounded-s bg-gray-light p-3 mt-3" data-inline-payment-block data-payment-token="', esc(token), '" data-target-amount="', esc(amount), '">',
+        '<div class="d-flex align-items-start"><span class="icon icon-s rounded-xl bg-green-light color-green-dark me-3 flex-shrink-0"><i class="fa fa-money-bill-wave"></i></span><div class="min-width-zero"><h5 class="font-13 mb-n1">Pembayaran awal</h5><p class="font-10 opacity-60 mb-0">', esc(targetLabel || 'Target pembayaran'), ' · sisa <span data-inline-payment-maximum>', formatCurrency(amount), '</span></p></div></div>',
+        '<div class="form-check icon-check mt-3 mb-1"><input class="form-check-input" type="checkbox" name="', prefix, '[enabled]" value="1" id="', id('enabled'), '" data-inline-payment-toggle><label class="form-check-label font-12 font-600" for="', id('enabled'), '">Catat pembayaran sekarang</label><i class="icon-check-1 far fa-square color-gray-dark font-16"></i><i class="icon-check-2 far fa-check-square color-highlight font-16"></i></div>',
+        '<div class="mt-3 d-none" data-inline-payment-fields>',
+          '<input type="hidden" name="', prefix, '[token]" value="', esc(token), '">',
+          '<div class="row mb-0">',
+            '<div class="col-12 col-md-6"><div class="input-style has-borders no-icon input-style-always-active mb-3"><input type="date" class="form-control" name="', prefix, '[payment_date]" value="', todayValue(), '" required data-inline-payment-required data-inline-payment-input><label class="color-highlight">Tanggal</label><em>*</em></div></div>',
+            '<div class="col-12 col-md-6"><div class="input-style has-borders no-icon input-style-always-active mb-3"><label class="color-highlight">Metode</label><select name="', prefix, '[method]" required data-inline-payment-method data-inline-payment-required data-inline-payment-input><option value="cash">Tunai</option><option value="transfer">Transfer</option><option value="qris">QRIS</option></select><span><i class="fa fa-chevron-down"></i></span><em>*</em></div></div>',
+            '<div class="col-12 col-md-6"><div class="input-style has-borders no-icon input-style-always-active mb-3"><label class="color-highlight">Akun penerima</label><select name="', prefix, '[account_id]" required data-inline-payment-account data-inline-payment-required data-inline-payment-input>', inlineAccountOptions(accounts), '</select><span><i class="fa fa-chevron-down"></i></span><em>*</em></div></div>',
+            '<div class="col-12 col-md-6"><div class="input-style has-borders no-icon input-style-always-active mb-1"><input type="number" data-money min="1" step="1" class="form-control" name="', prefix, '[amount]" placeholder="Rp 0" required data-inline-payment-amount data-inline-payment-input><label class="color-highlight">Nominal</label><em>*</em></div><div class="text-end mb-3"><button type="button" class="btn btn-xxs border-green-dark color-green-dark rounded-s font-600" data-inline-payment-fill><i class="fa fa-check-circle me-1"></i>Isi Lunas</button></div></div>',
+            '<div class="col-12"><div class="input-style has-borders no-icon input-style-always-active mb-1"><input type="file" class="form-control" name="payment_proof_', esc(token), '" accept="image/jpeg,image/png,application/pdf" style="padding-top:13px;" data-inline-payment-proof data-inline-payment-input><label class="color-highlight">Bukti pembayaran</label><em data-inline-proof-label></em></div><p class="font-10 opacity-60 mb-3">Bukti diperlukan untuk transfer atau QRIS.</p></div>',
+            '<div class="col-12"><div class="input-style has-borders no-icon input-style-always-active mb-1"><textarea class="form-control" name="', prefix, '[note]" rows="2" maxlength="2000" placeholder="Catatan pembayaran" data-inline-payment-input></textarea><label class="color-highlight">Catatan pembayaran</label><em></em></div></div>',
+          '</div>',
+        '</div>',
+      '</div>'
+    ].join('');
+  }
+  function inlinePaymentCompatible(method, type) {
+    if (method === 'cash') return type === 'cash';
+    if (method === 'transfer') return type === 'bank' || type === 'personal';
+    if (method === 'qris') return type === 'qris';
+    return false;
+  }
+  function inlinePaymentFilterAccounts(block) {
+    var method = block.querySelector('[data-inline-payment-method]');
+    var account = block.querySelector('[data-inline-payment-account]');
+    if (!method || !account) return;
+    var value = account.value;
+    Array.prototype.forEach.call(account.options, function (option) {
+      if (!option.value) { option.hidden = false; option.disabled = false; return; }
+      var compatible = inlinePaymentCompatible(method.value, option.dataset.type || '');
+      option.hidden = !compatible;
+      option.disabled = !compatible;
+    });
+    if (value && account.querySelector('option[value="' + value.replace(/"/g, '\\"') + '"]') && !inlinePaymentCompatible(method.value, account.querySelector('option[value="' + value.replace(/"/g, '\\"') + '"]').dataset.type || '')) account.value = '';
+  }
+  function inlinePaymentSync(block, fillAmount) {
+    var toggle = block.querySelector('[data-inline-payment-toggle]');
+    var fields = block.querySelector('[data-inline-payment-fields]');
+    var amount = block.querySelector('[data-inline-payment-amount]');
+    if (!toggle || !fields) return;
+    var enabled = !!toggle.checked;
+    var target = canonicalMoney(block.dataset.targetAmount || '0');
+    if (enabled && moneyCents(target) <= 0n) { toggle.checked = false; enabled = false; }
+    fields.classList.toggle('d-none', !enabled);
+    Array.prototype.forEach.call(fields.querySelectorAll('[data-inline-payment-input]'), function (input) {
+      input.disabled = !enabled;
+      input.required = enabled && input.hasAttribute('data-inline-payment-required');
+      if (input === amount) input.required = enabled;
+    });
+    inlinePaymentFilterAccounts(block);
+    var method = block.querySelector('[data-inline-payment-method]');
+    var proof = block.querySelector('[data-inline-payment-proof]');
+    var proofLabel = block.querySelector('[data-inline-proof-label]');
+    if (proof) { proof.required = enabled && method && method.value !== 'cash'; if (proofLabel) proofLabel.textContent = proof.required ? '*' : ''; }
+    if (amount) {
+      var old = canonicalMoney(block.dataset.targetAmount || '0');
+      var current = moneyValue(amount);
+      var full = current !== '' && compareMoney(current, old) === 0;
+      setMoneyControl(amount, {max: target, disabled: !enabled, required: enabled});
+      if (fillAmount && enabled && (current === '' || full)) setMoney(amount, moneyCents(target) > 0n ? target : '');
+      if (current !== '' && compareMoney(current, target) > 0) setMoneyValidity(amount, 'Nominal melebihi sisa tagihan.'); else setMoneyValidity(amount, '');
+    }
+    var maximum = block.querySelector('[data-inline-payment-maximum]');
+    if (maximum) maximum.textContent = formatCurrency(target);
+  }
+  function inlinePaymentSetTarget(block, targetAmount, fillAmount) {
+    if (!block) return;
+    block.dataset.targetAmount = canonicalMoney(targetAmount);
+    inlinePaymentSync(block, !!fillAmount);
+  }
+  function initializeInlinePayments(scope) {
+    if (!scope) return;
+    if (window.SimpMoney && typeof window.SimpMoney.init === 'function') window.SimpMoney.init(scope);
+    Array.prototype.forEach.call(scope.querySelectorAll('[data-inline-payment-block]'), function (block) { inlinePaymentSync(block, false); });
+  }
+  document.addEventListener('change', function (event) {
+    var block = event.target.closest && event.target.closest('[data-inline-payment-block]');
+    if (!block) return;
+    if (event.target.matches('[data-inline-payment-method]')) inlinePaymentFilterAccounts(block);
+    if (event.target.matches('[data-inline-payment-toggle], [data-inline-payment-method]')) inlinePaymentSync(block, event.target.matches('[data-inline-payment-toggle]'));
+  });
+  document.addEventListener('click', function (event) {
+    var fill = event.target.closest && event.target.closest('[data-inline-payment-fill]');
+    if (!fill) return;
+    var block = fill.closest('[data-inline-payment-block]');
+    if (block) { var toggle = block.querySelector('[data-inline-payment-toggle]'); if (toggle) toggle.checked = true; inlinePaymentSync(block, true); }
+  });
+
   var modalParticipantLimit = 20;
 
   var registrationAddForm = document.getElementById('registration-add-form');
   if (registrationAddForm) {
     var addEvents = modalJson(registrationAddForm.dataset.events, []);
     var addPositions = modalJson(registrationAddForm.dataset.positions, []);
+    var addAccounts = modalJson(registrationAddForm.dataset.accounts, []);
+    var addCanRecordPayment = registrationAddForm.dataset.canRecordPayment === '1';
     var addEvent = document.getElementById('registration-add-event');
     var addDistrict = document.getElementById('registration-add-district');
     var addVillage = document.getElementById('registration-add-village');
     var addParticipants = document.getElementById('registration-add-participants');
+    var addVillagePayment = document.getElementById('registration-add-village-payment');
     var addRowCounter = 0;
     var addDistrictRequest = 0;
     var addVillageRequest = 0;
     function selectedAddEvent() { return addEvents.filter(function (event) { return String(event.id) === String(addEvent && addEvent.value); })[0] || null; }
+    function addBillingMode() { var event = selectedAddEvent(); return event && event.billing_mode ? String(event.billing_mode) : ''; }
+    function addExpectedAmount(count) {
+      var event = selectedAddEvent();
+      if (!event) return '0.00';
+      var village = canonicalMoney(event.village_fee), participant = canonicalMoney(event.participant_fee), included = Math.max(0, parseInt(event.included_participant_count, 10) || 0), n = Math.max(0, parseInt(count, 10) || 0);
+      if (event.billing_mode === 'per_participant') return multiplyMoney(participant, n);
+      if (event.billing_mode === 'per_village_extra') return addMoney(village, multiplyMoney(participant, Math.max(0, n - included)));
+      return village;
+    }
+    function refreshAddPaymentBlocks() {
+      var event = selectedAddEvent(), villageId = addVillage && addVillage.value ? String(addVillage.value) : '', mode = event && event.billing_mode ? String(event.billing_mode) : '';
+      Array.prototype.forEach.call(addParticipants.querySelectorAll('[data-add-payment-slot]'), function (slot) {
+        var row = slot.closest('[data-add-participant-row]'), key = row && row.dataset.addParticipantRow;
+        if (!addCanRecordPayment || mode !== 'per_participant' || !villageId || !key) { slot.innerHTML = ''; return; }
+        if (slot.dataset.paymentVillage === villageId && slot.dataset.paymentKey === key && slot.querySelector('[data-inline-payment-block]')) return;
+        slot.innerHTML = inlinePaymentMarkup(villageId, key, canonicalMoney(event.participant_fee), 'Pembayaran peserta', addAccounts);
+        slot.dataset.paymentVillage = villageId; slot.dataset.paymentKey = key;
+        initializeInlinePayments(slot);
+      });
+      if (!addVillagePayment) return;
+      if (!addCanRecordPayment || mode === 'per_participant' || !villageId) { addVillagePayment.innerHTML = ''; return; }
+      var block = addVillagePayment.querySelector('[data-inline-payment-block]');
+      if (!block || addVillagePayment.dataset.paymentVillage !== villageId) {
+        addVillagePayment.innerHTML = inlinePaymentMarkup(villageId, 'village', addExpectedAmount(addParticipants.children.length), 'Pembayaran tingkat desa', addAccounts);
+        addVillagePayment.dataset.paymentVillage = villageId;
+        initializeInlinePayments(addVillagePayment);
+      } else inlinePaymentSetTarget(block, addExpectedAmount(addParticipants.children.length), false);
+    }
     function addParticipantRow() {
       if (addParticipants.children.length >= modalParticipantLimit) {
         modalAlert('registration-add-modal', 'Maksimal ' + modalParticipantLimit + ' peserta dapat ditambahkan sekaligus.', {title: 'Batas Peserta', tone: 'warning'});
@@ -1534,12 +1691,13 @@
       var row = document.createElement('div');
       row.className = 'card bg-theme border rounded-s shadow-0 mb-3';
       row.dataset.addParticipantRow = key;
-      row.innerHTML = '<div class="content my-3"><div class="d-flex align-items-center mb-2"><strong class="font-13">Peserta ' + addRowCounter + '</strong><button type="button" class="btn btn-xxs border-red-dark color-red-dark rounded-s ms-auto" data-remove-modal-participant><i class="fa fa-times"></i></button></div><div class="row mb-0"><div class="col-12">' + modalInput('Nama lengkap', 'registration-add-name-' + key, prefix + '[full_name]', 'text', true, 'Nama lengkap peserta') + '</div><div class="col-12">' + positionPickerMarkup(addPositions, '', 'registration-add-position-' + key, prefix + '[position_id]') + '</div><div class="col-12">' + modalInput('No. HP', 'registration-add-phone-' + key, prefix + '[phone]', 'tel', false, '08xxxxxxxxxx') + '</div></div></div>';
+      row.innerHTML = '<div class="content my-3"><div class="d-flex align-items-center mb-2"><strong class="font-13">Peserta ' + addRowCounter + '</strong><button type="button" class="btn btn-xxs border-red-dark color-red-dark rounded-s ms-auto" data-remove-modal-participant><i class="fa fa-times"></i></button></div><div class="row mb-0"><div class="col-12">' + modalInput('Nama lengkap', 'registration-add-name-' + key, prefix + '[full_name]', 'text', true, 'Nama lengkap peserta') + '</div><div class="col-12">' + positionPickerMarkup(addPositions, '', 'registration-add-position-' + key, prefix + '[position_id]') + '</div><div class="col-12">' + modalInput('No. HP', 'registration-add-phone-' + key, prefix + '[phone]', 'tel', false, '08xxxxxxxxxx') + '</div></div><div data-add-payment-slot></div></div>';
       addParticipants.appendChild(row);
       if (addParticipants.children.length === 1) row.querySelector('[data-remove-modal-participant]').classList.add('d-none');
+      refreshAddPaymentBlocks();
       return true;
     }
-    function resetAddParticipants() { addParticipants.innerHTML = ''; addRowCounter = 0; addParticipantRow(); }
+    function resetAddParticipants() { addParticipants.innerHTML = ''; addRowCounter = 0; if (addVillagePayment) { addVillagePayment.innerHTML = ''; addVillagePayment.dataset.paymentVillage = ''; } addParticipantRow(); }
     function loadAddDistricts() {
       var event = selectedAddEvent(), token = ++addDistrictRequest; addVillageRequest++;
       addDistrict.innerHTML = '<option value="">Memuat kecamatan...</option>'; addDistrict.disabled = true; addVillage.innerHTML = '<option value="">Pilih kecamatan dahulu</option>'; addVillage.disabled = true;
@@ -1555,11 +1713,12 @@
       requestJson(registrationAddForm.dataset.villagesUrl + '?district_ids[]=' + encodeURIComponent(districtId)).then(function (payload) { if (token !== addVillageRequest) return; addVillage.innerHTML = '<option value="">Pilih desa</option>' + (payload.data || []).map(function (village) { return '<option value="' + esc(village.id) + '">' + esc(village.name) + '</option>'; }).join(''); addVillage.disabled = false; }).catch(function (error) { if (token !== addVillageRequest) return; addVillage.innerHTML = '<option value="">Gagal memuat</option>'; return modalAlert('registration-add-modal', error.message, {title: 'Desa Gagal Dimuat', tone: 'danger'}); });
     }
     addDistrict.addEventListener('change', loadAddVillages);
-    if (addEvent && !addEvent.type.match(/^hidden$/i)) addEvent.addEventListener('change', loadAddDistricts);
+    addVillage.addEventListener('change', refreshAddPaymentBlocks);
+    if (addEvent && !addEvent.type.match(/^hidden$/i)) addEvent.addEventListener('change', function () { resetAddParticipants(); loadAddDistricts(); });
     document.addEventListener('click', function (event) {
       if (event.target.closest('[data-registration-add-open]')) { event.preventDefault(); resetAddParticipants(); loadAddDistricts(); modalOpen('registration-add-modal'); }
       var addButton = event.target.closest('[data-add-modal-participant]'); if (addButton && addButton.closest('#registration-add-form')) { event.preventDefault(); addParticipantRow(); }
-      var removeButton = event.target.closest('[data-remove-modal-participant]'); if (removeButton && removeButton.closest('#registration-add-form')) { var row = removeButton.closest('[data-add-participant-row]'); if (addParticipants.children.length > 1) row.remove(); }
+      var removeButton = event.target.closest('[data-remove-modal-participant]'); if (removeButton && removeButton.closest('#registration-add-form')) { var row = removeButton.closest('[data-add-participant-row]'); if (addParticipants.children.length > 1) { row.remove(); refreshAddPaymentBlocks(); } }
     });
     registrationAddForm.addEventListener('submit', function (event) {
       event.preventDefault();
@@ -1568,6 +1727,8 @@
       var duplicateParticipant = validateUniqueParticipantNames(addParticipants, []);
       if (duplicateParticipant) { modalAlert('registration-add-modal', duplicateParticipant.message, {title: 'Nama Peserta Ganda', tone: 'warning'}); return; }
       syncPositionPickers(registrationAddForm);
+      refreshAddPaymentBlocks();
+      refreshMoney(registrationAddForm);
       if (!registrationAddForm.checkValidity()) { registrationAddForm.reportValidity(); return; }
       var submit = registrationAddForm.querySelector('[data-registration-add-submit]'); if (submit) { submit.disabled = true; submit.dataset.originalText = submit.innerHTML; submit.innerHTML = '<i class="fa fa-spinner fa-spin me-1"></i>Menyimpan...'; }
       postModalForm(registrationAddForm).then(function (payload) {
@@ -1586,6 +1747,32 @@
   var participantForm = document.getElementById('registration-participant-form');
   if (participantForm) {
     var detailPositions = modalJson(participantForm.dataset.positions, []), detailRows = document.getElementById('registration-participant-rows'), detailCounter = 0;
+    var detailAccounts = modalJson(participantForm.dataset.accounts, []), detailCanRecordPayment = participantForm.dataset.canRecordPayment === '1';
+    var detailVillagePayment = document.getElementById('registration-participant-village-payment');
+    function detailBillingMode() { return String(participantForm.dataset.billingMode || 'per_village'); }
+    function detailExpectedPayment() {
+      var mode = detailBillingMode(), current = Math.max(0, parseInt(participantForm.dataset.currentParticipantCount, 10) || 0), included = Math.max(0, parseInt(participantForm.dataset.includedParticipantCount, 10) || 0), fee = canonicalMoney(participantForm.dataset.participantFee || '0'), rows = detailRows.querySelectorAll('[data-detail-participant-row]').length;
+      var baseRemaining = canonicalMoney(participantForm.dataset.villageRemaining || '0');
+      if (mode !== 'per_village_extra') return baseRemaining;
+      var beforeExtra = Math.max(0, current - included), afterExtra = Math.max(0, current + rows - included);
+      return addMoney(baseRemaining, multiplyMoney(fee, afterExtra - beforeExtra));
+    }
+    function refreshDetailPaymentBlocks() {
+      var villageId = String(participantForm.dataset.villageId || ''), mode = detailBillingMode();
+      Array.prototype.forEach.call(detailRows.querySelectorAll('[data-detail-payment-slot]'), function (slot) {
+        var row = slot.closest('[data-detail-participant-row]'), key = row && row.dataset.detailParticipantRow;
+        if (!detailCanRecordPayment || mode !== 'per_participant' || !villageId || !key) { slot.innerHTML = ''; return; }
+        if (slot.dataset.paymentKey === key && slot.querySelector('[data-inline-payment-block]')) return;
+        slot.innerHTML = inlinePaymentMarkup(villageId, key, canonicalMoney(participantForm.dataset.participantFee || '0'), 'Pembayaran peserta', detailAccounts);
+        slot.dataset.paymentKey = key;
+        initializeInlinePayments(slot);
+      });
+      if (!detailVillagePayment) return;
+      if (!detailCanRecordPayment || mode === 'per_participant' || !villageId) { detailVillagePayment.innerHTML = ''; return; }
+      var block = detailVillagePayment.querySelector('[data-inline-payment-block]');
+      if (!block) { detailVillagePayment.innerHTML = inlinePaymentMarkup(villageId, 'village', detailExpectedPayment(), 'Pembayaran tingkat desa', detailAccounts); initializeInlinePayments(detailVillagePayment); }
+      else inlinePaymentSetTarget(block, detailExpectedPayment(), false);
+    }
     function addDetailRow() {
       if (detailRows.children.length >= modalParticipantLimit) {
         modalAlert('registration-participant-modal', 'Maksimal ' + modalParticipantLimit + ' peserta dapat ditambahkan sekaligus.', {title: 'Batas Peserta', tone: 'warning'});
@@ -1594,19 +1781,22 @@
       var key = 'p' + (++detailCounter), prefix = 'participants[' + key + ']', row = document.createElement('div');
       row.className = 'card bg-theme border rounded-s shadow-0 mb-3';
       row.dataset.detailParticipantRow = key;
-      row.innerHTML = '<div class="content my-3"><div class="d-flex align-items-center mb-2"><strong class="font-13">Peserta ' + detailCounter + '</strong><button type="button" class="btn btn-xxs border-red-dark color-red-dark rounded-s ms-auto" data-remove-detail-row><i class="fa fa-times"></i></button></div>' + modalInput('Nama lengkap', 'detail-name-' + key, prefix + '[full_name]', 'text', true, 'Nama lengkap peserta') + positionPickerMarkup(detailPositions, '', 'detail-position-' + key, prefix + '[position_id]') + modalInput('No. HP', 'detail-phone-' + key, prefix + '[phone]', 'tel', false, '08xxxxxxxxxx') + '</div>';
+      row.innerHTML = '<div class="content my-3"><div class="d-flex align-items-center mb-2"><strong class="font-13">Peserta ' + detailCounter + '</strong><button type="button" class="btn btn-xxs border-red-dark color-red-dark rounded-s ms-auto" data-remove-detail-row><i class="fa fa-times"></i></button></div>' + modalInput('Nama lengkap', 'detail-name-' + key, prefix + '[full_name]', 'text', true, 'Nama lengkap peserta') + positionPickerMarkup(detailPositions, '', 'detail-position-' + key, prefix + '[position_id]') + modalInput('No. HP', 'detail-phone-' + key, prefix + '[phone]', 'tel', false, '08xxxxxxxxxx') + '<div data-detail-payment-slot></div></div>';
       detailRows.appendChild(row);
       if (detailRows.children.length === 1) row.querySelector('[data-remove-detail-row]').classList.add('d-none');
+      refreshDetailPaymentBlocks();
       return true;
     }
     addDetailRow();
-    document.addEventListener('click', function (event) { if (event.target.closest('[data-registration-participant-open]')) { event.preventDefault(); detailRows.innerHTML = ''; detailCounter = 0; addDetailRow(); modalOpen('registration-participant-modal'); } if (event.target.closest('[data-detail-add-row]')) addDetailRow(); var remove = event.target.closest('[data-remove-detail-row]'); if (remove && detailRows.children.length > 1) remove.closest('[data-detail-participant-row]').remove(); });
+    document.addEventListener('click', function (event) { if (event.target.closest('[data-registration-participant-open]')) { event.preventDefault(); detailRows.innerHTML = ''; detailCounter = 0; if (detailVillagePayment) detailVillagePayment.innerHTML = ''; addDetailRow(); modalOpen('registration-participant-modal'); } if (event.target.closest('[data-detail-add-row]')) addDetailRow(); var remove = event.target.closest('[data-remove-detail-row]'); if (remove && detailRows.children.length > 1) { remove.closest('[data-detail-participant-row]').remove(); refreshDetailPaymentBlocks(); } });
     participantForm.addEventListener('submit', function (event) {
       event.preventDefault();
       if (detailRows.querySelectorAll('[data-detail-participant-row]').length > modalParticipantLimit) { modalAlert('registration-participant-modal', 'Maksimal ' + modalParticipantLimit + ' peserta dapat ditambahkan sekaligus.', {title: 'Batas Peserta', tone: 'warning'}); return; }
       var duplicateParticipant = validateUniqueParticipantNames(detailRows, activeParticipantNames(''));
       if (duplicateParticipant) { modalAlert('registration-participant-modal', duplicateParticipant.message, {title: 'Nama Peserta Ganda', tone: 'warning'}); return; }
       syncPositionPickers(participantForm);
+      refreshDetailPaymentBlocks();
+      refreshMoney(participantForm);
       if (!participantForm.checkValidity()) { participantForm.reportValidity(); return; }
       var submit = participantForm.querySelector('[data-detail-add-submit]');
       if (submit) { submit.disabled = true; submit.dataset.originalText = submit.innerHTML; submit.innerHTML = '<i class="fa fa-spinner fa-spin me-1"></i>Menyimpan...'; }
@@ -1698,6 +1888,27 @@
    * deactivation can each apply their own audit and billing safeguards.
    */
   var participantMutationForm = document.getElementById('registration-participant-mutation-form');
+  var mutationPaymentConfig = document.getElementById('registration-inline-payment-config');
+  if (participantMutationForm) {
+    participantMutationForm.enctype = 'multipart/form-data';
+    participantMutationForm.classList.add('registration-inline-payment-form');
+    var mutationPaymentWrap = document.createElement('div');
+    mutationPaymentWrap.setAttribute('data-mutation-payment-wrap', '');
+    var mutationReasonWrap = participantMutationForm.querySelector('#registration-participant-replace-reason-wrap');
+    participantMutationForm.insertBefore(mutationPaymentWrap, mutationReasonWrap || participantMutationForm.querySelector('.row.mb-0'));
+    function refreshMutationPayment(trigger, mode) {
+      mutationPaymentWrap.innerHTML = '';
+      if (mode !== 'ubah' || !mutationPaymentConfig || mutationPaymentConfig.dataset.canRecordPayment !== '1') return;
+      var villageId = mutationPaymentConfig.dataset.villageId || '';
+      var billing = mutationPaymentConfig.dataset.billingMode || 'per_village';
+      var targetKey = billing === 'per_participant' ? String(trigger.dataset.participantId || '') : 'village';
+      var amount = billing === 'per_participant' ? canonicalMoney(trigger.dataset.participantRemaining || '0') : canonicalMoney(mutationPaymentConfig.dataset.villageRemaining || '0');
+      var label = billing === 'per_participant' ? (trigger.dataset.participantName || 'Peserta') : 'Pembayaran tingkat desa';
+      if (!villageId || !targetKey) return;
+      mutationPaymentWrap.innerHTML = inlinePaymentMarkup(villageId, targetKey, amount, label, inlinePaymentAccounts(participantMutationForm));
+      initializeInlinePayments(mutationPaymentWrap);
+    }
+  }
   var participantDeactivateForm = document.getElementById('registration-participant-deactivate-form');
   var registrationCancelForm = document.getElementById('registration-cancel-form');
   var registrationRestoreForm = document.getElementById('registration-restore-form');
@@ -1744,6 +1955,7 @@
 
   function submitRegistrationMutation(form, modalId, successTitle, errorTitle, fallbackText) {
     if (!form || form.dataset.mutationSubmitting === '1') return;
+    refreshMoney(form);
     if (!form.checkValidity()) {
       form.reportValidity();
       return;
@@ -1805,6 +2017,7 @@
         reason.value = '';
       }
       if (reasonLabel) reasonLabel.textContent = mode === 'ganti' ? '*' : '';
+      refreshMutationPayment(trigger, mode);
       modalOpen('registration-participant-mutation-modal');
     });
 

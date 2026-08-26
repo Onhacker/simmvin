@@ -15,9 +15,13 @@ class Registrations extends App_Controller
         $registrations = $activeEventIds
             ? $this->registration->get_all(array('event_ids' => $activeEventIds, 'active_only' => TRUE))
             : array();
+        $canRecordPayment = $this->Auth_model->can('payments.create');
         $this->render('registrations/index',array('pageTitle'=>'Registrasi',
             'registrations'=>$registrations,'activeEvents'=>$activeEvents,
-            'positions'=>$this->positions->active(),'pageScripts'=>array('registrations.js','finance.js')));
+            'positions'=>$this->positions->active(),
+            'accounts'=>$canRecordPayment ? $this->registration->accounts() : array(),
+            'canRecordPayment'=>$canRecordPayment,
+            'pageScripts'=>array('registrations.js','finance.js')));
     }
 
     /**
@@ -185,6 +189,8 @@ class Registrations extends App_Controller
     {
         $this->require_permission('registrations.create');
         $this->require_post();
+        $uploadedFiles = array();
+        $result = NULL;
         try {
             $eventId = $this->input->post('event_id', TRUE);
             if (!is_scalar($eventId) || !ctype_digit((string) $eventId)) throw new InvalidArgumentException('Event aktif tidak valid.');
@@ -196,11 +202,24 @@ class Registrations extends App_Controller
             $participants = $this->input->post('participants');
             if (!is_array($participants)) throw new InvalidArgumentException('Isi minimal satu peserta.');
             $groups = array((string) $villageId => $participants);
-            $result = $this->registration->create_batch($event, $villages, $groups, array(), array(),
+            $postedPayments = $this->input->post('payments');
+            if ($postedPayments !== NULL && !is_array($postedPayments)) throw new InvalidArgumentException('Data pembayaran awal tidak valid.');
+            $paymentGroups = $this->prepare_inline_payments(
+                is_array($postedPayments) ? $postedPayments : array(),
+                $this->Auth_model->can('payments.create'),
+                $uploadedFiles,
+                $villages,
+                $groups,
+                (string) $event['billing_mode']
+            );
+            $result = $this->registration->create_batch($event, $villages, $groups, array(), $paymentGroups,
                 (int) $this->currentUser['id'], $this->Auth_model->can('payments.verify'));
-            try { $this->Audit_model->log('registrations_created', 'training_event', $event['id'], array('registration_ids'=>$result['registration_ids'])); } catch (Throwable $ignored) {}
-            return $this->json(array('success'=>TRUE,'message'=>'Registrasi berhasil ditambahkan.','registration_ids'=>$result['registration_ids']));
+            try { $this->Audit_model->log('registrations_created', 'training_event', $event['id'], array('registration_ids'=>$result['registration_ids'],'payment_ids'=>$result['payment_ids'])); } catch (Throwable $ignored) {}
+            $message = 'Registrasi berhasil ditambahkan.';
+            if ($result['payment_ids']) $message .= ' '.count($result['payment_ids']).' pembayaran berhasil dicatat'.($this->Auth_model->can('payments.verify') ? '.' : ' dan menunggu verifikasi.');
+            return $this->json(array('success'=>TRUE,'message'=>$message,'registration_ids'=>$result['registration_ids'],'payment_ids'=>$result['payment_ids']));
         } catch (Throwable $e) {
+            if ($result === NULL) $this->cleanup_uploaded_files($uploadedFiles);
             return $this->ajax_exception_response($e, 'Registrasi belum dapat disimpan. Silakan coba kembali.', 'create');
         }
     }
@@ -286,6 +305,8 @@ class Registrations extends App_Controller
     {
         $this->require_permission('registrations.edit');
         $this->require_post();
+        $uploadedFiles = array();
+        $result = NULL;
         try {
             $row = $this->registration->get($id);
             if (!$row) throw new InvalidArgumentException('Registrasi tidak ditemukan.');
@@ -294,12 +315,33 @@ class Registrations extends App_Controller
             if ($villageId !== NULL && (string)$villageId !== (string)$row['village_id']) throw new InvalidArgumentException('Desa tidak sesuai dengan registrasi.');
             $participants = $this->input->post('participants');
             if (!is_array($participants)) throw new InvalidArgumentException('Isi minimal satu peserta.');
-            $ids = $this->registration->add_participants($row, $participants, (int) $this->currentUser['id']);
+            $postedPayments = $this->input->post('payments');
+            if ($postedPayments !== NULL && !is_array($postedPayments)) throw new InvalidArgumentException('Data pembayaran tidak valid.');
+            $villageKey = (string) $row['village_id'];
+            $paymentGroups = $this->prepare_inline_payments(
+                is_array($postedPayments) ? $postedPayments : array(),
+                $this->Auth_model->can('payments.create'),
+                $uploadedFiles,
+                array(array('village_id'=>$villageKey)),
+                array($villageKey=>$participants),
+                (string) $row['billing_mode']
+            );
+            $result = $this->registration->add_participants(
+                $row,
+                $participants,
+                isset($paymentGroups[$villageKey]) ? $paymentGroups[$villageKey] : array(),
+                (int) $this->currentUser['id'],
+                $this->Auth_model->can('payments.verify')
+            );
+            $ids = $result['participant_ids'];
             foreach ($ids as $participantId) {
                 try { $this->Audit_model->log('participant_added','participant',$participantId,array('registration_id'=>(int)$id)); } catch (Throwable $ignored) {}
             }
-            return $this->json(array('success'=>TRUE,'message'=>count($ids).' peserta berhasil ditambahkan.','participant_ids'=>$ids));
+            $message = count($ids).' peserta berhasil ditambahkan.';
+            if ($result['payment_ids']) $message .= ' '.count($result['payment_ids']).' pembayaran berhasil dicatat'.($this->Auth_model->can('payments.verify') ? '.' : ' dan menunggu verifikasi.');
+            return $this->json(array('success'=>TRUE,'message'=>$message,'participant_ids'=>$ids,'payment_ids'=>$result['payment_ids']));
         } catch (Throwable $e) {
+            if ($result === NULL) $this->cleanup_uploaded_files($uploadedFiles);
             return $this->ajax_exception_response($e, 'Peserta belum dapat ditambahkan. Silakan coba kembali.', 'add participants #'.(int)$id);
         }
     }
@@ -309,6 +351,8 @@ class Registrations extends App_Controller
     {
         $this->require_permission('registrations.edit');
         $this->require_post();
+        $uploadedFiles = array();
+        $result = NULL;
         try {
             $fullName = $this->input->post('full_name', TRUE);
             $positionId = $this->input->post('position_id', TRUE);
@@ -316,20 +360,46 @@ class Registrations extends App_Controller
             if (!is_scalar($fullName) || !is_scalar($positionId) || ($phone !== NULL && !is_scalar($phone))) {
                 throw new InvalidArgumentException('Data peserta tidak valid.');
             }
-            $result = $this->registration->update_participant((int) $registrationId, (int) $participantId, array(
+            $row = $this->registration->get((int) $registrationId);
+            if (!$row || (int) $row['id'] !== (int) $registrationId) throw new InvalidArgumentException('Registrasi tidak ditemukan.');
+            $participantInput = array(
                 'full_name' => $fullName,
                 'position_id' => $positionId,
                 'phone' => $phone === NULL ? '' : $phone
-            ), (int) $this->currentUser['id']);
+            );
+            $postedPayments = $this->input->post('payments');
+            if ($postedPayments !== NULL && !is_array($postedPayments)) throw new InvalidArgumentException('Data pembayaran tidak valid.');
+            $villageKey = (string) $row['village_id'];
+            $participantKey = (string) (int) $participantId;
+            $paymentGroups = $this->prepare_inline_payments(
+                is_array($postedPayments) ? $postedPayments : array(),
+                $this->Auth_model->can('payments.create'),
+                $uploadedFiles,
+                array(array('village_id'=>$villageKey)),
+                array($villageKey=>array($participantKey=>$participantInput)),
+                (string) $row['billing_mode']
+            );
+            $result = $this->registration->update_participant(
+                (int) $registrationId,
+                (int) $participantId,
+                $participantInput,
+                isset($paymentGroups[$villageKey]) ? $paymentGroups[$villageKey] : array(),
+                (int) $this->currentUser['id'],
+                $this->Auth_model->can('payments.verify')
+            );
             try {
                 $this->Audit_model->log('participant_updated', 'participant', (int) $participantId, array(
                     'registration_id' => (int) $registrationId,
                     'before' => $result['before'],
-                    'after' => $result['after']
+                    'after' => $result['after'],
+                    'payment_ids' => $result['payment_ids']
                 ));
             } catch (Throwable $ignored) {}
-            return $this->json(array('success' => TRUE, 'message' => 'Data peserta berhasil diperbarui.', 'participant_id' => (int) $participantId));
+            $message = 'Data peserta berhasil diperbarui.';
+            if ($result['payment_ids']) $message .= ' Pembayaran berhasil dicatat'.($this->Auth_model->can('payments.verify') ? '.' : ' dan menunggu verifikasi.');
+            return $this->json(array('success' => TRUE, 'message' => $message, 'participant_id' => (int) $participantId, 'payment_ids'=>$result['payment_ids']));
         } catch (Throwable $e) {
+            if ($result === NULL) $this->cleanup_uploaded_files($uploadedFiles);
             return $this->ajax_exception_response($e, 'Data peserta belum dapat diperbarui. Silakan coba kembali.', 'update participant #'.(int)$participantId);
         }
     }

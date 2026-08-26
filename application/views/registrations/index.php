@@ -8,6 +8,8 @@ $totalParticipants = 0;
 foreach ($registrations as $registration) $totalParticipants += (int) $registration['participant_count'];
 $canCreate = $this->Auth_model->can('registrations.create');
 $canPrint = $this->Auth_model->can('registrations.view');
+$canRecordPayment = !empty($canRecordPayment);
+$accounts = isset($accounts) && is_array($accounts) ? $accounts : array();
 $positionPayload = array();
 foreach ($positions as $position) {
     $positionPayload[] = array(
@@ -16,6 +18,8 @@ foreach ($positions as $position) {
         'category' => isset($position['category_label']) ? $position['category_label'] : (isset($position['category']) ? $position['category'] : 'Lainnya')
     );
 }
+$accountPayload = array();
+foreach ($accounts as $account) $accountPayload[] = array('id'=>(int)$account['id'],'name'=>$account['name'],'type'=>$account['type']);
 ?>
 
 <div id="registration-index-content">
@@ -100,14 +104,14 @@ foreach ($positions as $position) {
     <?php
     $eventPayload = array();
     foreach ($activeEvents as $event) {
-        $eventPayload[] = array('id'=>(int)$event['id'],'name'=>$event['name'],'code'=>$event['code'],'billing_mode'=>$event['billing_mode'],'regencies'=>isset($event['regencies'])?$event['regencies']:array());
+        $eventPayload[] = array('id'=>(int)$event['id'],'name'=>$event['name'],'code'=>$event['code'],'billing_mode'=>$event['billing_mode'],'village_fee'=>isset($event['village_fee'])?$event['village_fee']:'0.00','participant_fee'=>isset($event['participant_fee'])?$event['participant_fee']:'0.00','included_participant_count'=>isset($event['included_participant_count'])?$event['included_participant_count']:0,'regencies'=>isset($event['regencies'])?$event['regencies']:array());
     }
     ?>
     <a id="registration-add-opener" href="#" class="d-none" data-menu="registration-add-modal" aria-hidden="true" tabindex="-1"></a>
     <div id="registration-add-modal" class="menu menu-box-modal rounded-m simp-full-form-modal" data-menu-width="980" data-menu-height="820" role="dialog" aria-modal="true" aria-labelledby="registration-add-title">
         <div class="content mb-0">
             <div class="d-flex align-items-start mb-3"><div class="min-width-zero pe-3"><p class="font-600 color-highlight mb-n1">Registrasi baru</p><h3 id="registration-add-title" class="font-20 mb-0">Tambah Peserta</h3></div><button type="button" class="close-menu btn btn-xxs bg-theme color-theme border rounded-s ms-auto flex-shrink-0" aria-label="Tutup"><i class="fa fa-times"></i></button></div>
-            <form id="registration-add-form" method="post" action="<?= site_url('registrasi/ajax/tambah') ?>" data-events="<?= e(json_encode($eventPayload, JSON_HEX_TAG|JSON_HEX_APOS|JSON_HEX_AMP|JSON_HEX_QUOT)) ?>" data-positions="<?= e(json_encode($positionPayload, JSON_HEX_TAG|JSON_HEX_APOS|JSON_HEX_AMP|JSON_HEX_QUOT)) ?>" data-districts-url="<?= site_url('wilayah/kecamatan') ?>" data-villages-url="<?= site_url('wilayah/desa') ?>">
+            <form id="registration-add-form" method="post" enctype="multipart/form-data" action="<?= site_url('registrasi/ajax/tambah') ?>" data-events="<?= e(json_encode($eventPayload, JSON_HEX_TAG|JSON_HEX_APOS|JSON_HEX_AMP|JSON_HEX_QUOT)) ?>" data-positions="<?= e(json_encode($positionPayload, JSON_HEX_TAG|JSON_HEX_APOS|JSON_HEX_AMP|JSON_HEX_QUOT)) ?>" data-accounts="<?= e(json_encode($accountPayload, JSON_HEX_TAG|JSON_HEX_APOS|JSON_HEX_AMP|JSON_HEX_QUOT)) ?>" data-can-record-payment="<?= $canRecordPayment ? '1' : '0' ?>" data-districts-url="<?= site_url('wilayah/kecamatan') ?>" data-villages-url="<?= site_url('wilayah/desa') ?>">
                 <?= csrf_field() ?>
                 <?php if (count($activeEvents) === 1): $onlyEvent = $activeEvents[0]; ?>
                     <input type="hidden" name="event_id" id="registration-add-event" value="<?= (int)$onlyEvent['id'] ?>"><div class="d-flex align-items-center rounded-s bg-blue-light px-3 py-2 mb-3"><span class="icon icon-s rounded-xl bg-blue-dark color-white me-3"><i class="fa fa-calendar-check"></i></span><div class="min-width-zero"><p class="font-10 color-blue-dark font-600 mb-n1">Event aktif</p><p class="font-12 font-600 mb-0 text-break"><?= e($onlyEvent['name']) ?></p></div></div>
@@ -117,6 +121,7 @@ foreach ($positions as $position) {
                 <div class="row mb-0"><div class="col-12"><div class="input-style has-borders no-icon input-style-always-active registration-cascade-select-wrap mb-3"><label for="registration-add-district" class="color-highlight">Kecamatan</label><select id="registration-add-district" class="registration-cascade-select" required disabled><option value="">Pilih event dahulu</option></select><i class="fa fa-check d-none disabled valid color-green-dark"></i><i class="fa fa-times d-none disabled invalid color-red-dark"></i><em>*</em></div></div><div class="col-12"><div class="input-style has-borders no-icon input-style-always-active registration-cascade-select-wrap mb-3"><label for="registration-add-village" class="color-highlight">Desa</label><select id="registration-add-village" class="registration-cascade-select" name="village_id" required disabled><option value="">Pilih kecamatan dahulu</option></select><i class="fa fa-check d-none disabled valid color-green-dark"></i><i class="fa fa-times d-none disabled invalid color-red-dark"></i><em>*</em></div></div></div>
                 <div class="d-flex align-items-center mb-2"><p class="font-600 color-highlight mb-0">Data peserta</p><button type="button" class="btn btn-xxs border-blue-dark color-blue-dark rounded-s ms-auto" data-add-modal-participant><i class="fa fa-plus me-1"></i> Peserta</button></div>
                 <div id="registration-add-participants"></div>
+                <?php if ($canRecordPayment): ?><div id="registration-add-village-payment"></div><?php endif; ?>
                 <button type="submit" class="btn btn-full btn-m gradient-highlight rounded-s font-600 mt-3" data-registration-add-submit><i class="fa fa-save me-1"></i> Simpan Registrasi</button>
             </form>
         </div>
