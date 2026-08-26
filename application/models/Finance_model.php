@@ -1285,6 +1285,9 @@ class Finance_model extends CI_Model
      *
      *   ending included balance = period opening balance + net movement
      *
+     * Manual adjustment ledger entries are included in net movement as a
+     * separate component, never mixed into operational income.
+     *
      * The *_cents fields are the canonical values for arithmetic.  The
      * decimal string fields are kept for the existing dashboard/report views.
      */
@@ -1318,6 +1321,20 @@ class Finance_model extends CI_Model
         if ($to !== '') $this->db->where('x.expense_date <=', $to);
         $expenseCents = $this->money_cents($this->db->get()->row()->total);
 
+        // Manual saldo adjustments are ledger movements too.  Keep them
+        // separate from pemasukan/pengeluaran operational so the report can
+        // explain an opening/ending balance difference without breaking the
+        // reconciliation invariant.
+        $this->db->select(
+            "COALESCE(SUM(CASE WHEN l.direction='in' THEN l.amount ELSE 0 END),0) adjustment_in,
+             COALESCE(SUM(CASE WHEN l.direction='out' THEN l.amount ELSE 0 END),0) adjustment_out",
+            FALSE
+        )->from('ledger_entries l')->join('fund_accounts a', 'a.id=l.account_id')
+            ->where(array('l.source_type' => 'adjustment', 'a.include_in_total' => 1));
+        if ($from !== '') $this->db->where('l.entry_date >=', $from);
+        if ($to !== '') $this->db->where('l.entry_date <=', $to);
+        $adjustment = $this->db->get()->row_array();
+
         // Principal crossing into/out of the included pool.  Included to
         // included is an internal move (principal nets to zero), while
         // excluded to excluded is outside the pool entirely.
@@ -1337,11 +1354,15 @@ class Finance_model extends CI_Model
         $principalOutCents = $this->money_cents(isset($transfer['principal_out']) ? $transfer['principal_out'] : '0');
         $principalInCents = $this->money_cents(isset($transfer['principal_in']) ? $transfer['principal_in'] : '0');
         $feeCents = $this->money_cents(isset($transfer['fees_out']) ? $transfer['fees_out'] : '0');
+        $adjustmentInCents = $this->money_cents(isset($adjustment['adjustment_in']) ? $adjustment['adjustment_in'] : '0');
+        $adjustmentOutCents = $this->money_cents(isset($adjustment['adjustment_out']) ? $adjustment['adjustment_out'] : '0');
         if ($incomeCents === NULL) $incomeCents = 0;
         if ($expenseCents === NULL) $expenseCents = 0;
         if ($principalOutCents === NULL) $principalOutCents = 0;
         if ($principalInCents === NULL) $principalInCents = 0;
         if ($feeCents === NULL) $feeCents = 0;
+        if ($adjustmentInCents === NULL) $adjustmentInCents = 0;
+        if ($adjustmentOutCents === NULL) $adjustmentOutCents = 0;
 
         $endingAccounts = $this->accounts(FALSE, $to !== '' ? $to : NULL);
         $endingIncludedCents = 0;
@@ -1373,8 +1394,8 @@ class Finance_model extends CI_Model
             }
         }
 
-        $outgoingCents = $expenseCents + $principalOutCents + $feeCents;
-        $netCents = $incomeCents + $principalInCents - $expenseCents - $principalOutCents - $feeCents;
+        $outgoingCents = $expenseCents + $principalOutCents + $feeCents + $adjustmentOutCents;
+        $netCents = $incomeCents + $principalInCents + $adjustmentInCents - $expenseCents - $principalOutCents - $feeCents - $adjustmentOutCents;
         $reconciledCents = $endingIncludedCents - $openingIncludedCents;
 
         // Keep the account list used by the existing report unchanged (active
@@ -1385,6 +1406,9 @@ class Finance_model extends CI_Model
             'income_cents' => $incomeCents,
             'expenses_cents' => $expenseCents,
             'transfer_fees_cents' => $feeCents,
+            'adjustment_in_cents' => $adjustmentInCents,
+            'adjustment_out_cents' => $adjustmentOutCents,
+            'adjustment_cents' => $adjustmentInCents - $adjustmentOutCents,
             'transfer_in_cents' => $principalInCents,
             'transfer_out_cents' => $principalOutCents,
             'outgoing_cents' => $outgoingCents,
@@ -1398,6 +1422,9 @@ class Finance_model extends CI_Model
             'income' => $this->cents_to_decimal($incomeCents),
             'expenses' => $this->cents_to_decimal($expenseCents),
             'transfer_fees' => $this->cents_to_decimal($feeCents),
+            'adjustment_in' => $this->cents_to_decimal($adjustmentInCents),
+            'adjustment_out' => $this->cents_to_decimal($adjustmentOutCents),
+            'adjustment' => $this->cents_to_decimal($adjustmentInCents - $adjustmentOutCents),
             'transfer_in' => $this->cents_to_decimal($principalInCents),
             'transfer_out' => $this->cents_to_decimal($principalOutCents),
             'outgoing' => $this->cents_to_decimal($outgoingCents),
@@ -1426,6 +1453,192 @@ class Finance_model extends CI_Model
         // decimal strings while exposing cents and the period reconciliation
         // fields for callers that need exact arithmetic.
         return $report;
+    }
+
+    /**
+     * Build the operational detail used by the combined financial report.
+     *
+     * Amounts deliberately follow included_fund_flow(): only verified
+     * transactions posted to accounts marked include_in_total=1 are shown.
+     * This keeps the category and payment-method subtotals reconcilable with
+     * the cash-flow summary and ending balance on the same document.
+     */
+    public function finance_breakdown(array $filters = array())
+    {
+        $eventMap = array();
+
+        $this->db->select(
+            "e.id,e.code,e.name,e.start_date,e.end_date,e.status,e.billing_mode,e.included_participant_count,
+             COALESCE(SUM(p.amount),0) income,
+             COALESCE(SUM(CASE WHEN p.method='cash' THEN p.amount ELSE 0 END),0) cash_total,
+             COALESCE(SUM(CASE WHEN p.method='transfer' THEN p.amount ELSE 0 END),0) transfer_total,
+             COALESCE(SUM(CASE WHEN p.method='qris' THEN p.amount ELSE 0 END),0) qris_total",
+            FALSE
+        )->from('payments p')
+            ->join('training_events e', 'e.id=p.event_id')
+            ->join('fund_accounts a', 'a.id=p.account_id')
+            ->where(array('p.status' => 'verified', 'a.include_in_total' => 1));
+        if (!empty($filters['date_from'])) $this->db->where('p.payment_date >=', $filters['date_from']);
+        if (!empty($filters['date_to'])) $this->db->where('p.payment_date <=', $filters['date_to']);
+        $paymentEvents = $this->db
+            ->group_by(array('e.id','e.code','e.name','e.start_date','e.end_date','e.status','e.billing_mode','e.included_participant_count'))
+            ->get()->result_array();
+
+        foreach ($paymentEvents as $event) {
+            $eventMap[(int)$event['id']] = $this->finance_breakdown_event($event);
+        }
+
+        // Keep currently active events visible even when the selected period
+        // has no receipt yet, so registration counts do not disappear from a
+        // zero-income report.
+        $activeEvents = $this->db
+            ->select('id,code,name,start_date,end_date,status,billing_mode,included_participant_count')
+            ->from('training_events')->where('status', 'open')
+            ->order_by('start_date', 'DESC')->order_by('id', 'DESC')
+            ->get()->result_array();
+        foreach ($activeEvents as $event) {
+            $eventId = (int)$event['id'];
+            if (!isset($eventMap[$eventId])) $eventMap[$eventId] = $this->finance_breakdown_event($event);
+        }
+
+        $eventIds = array_keys($eventMap);
+        if ($eventIds) {
+            $participantSelect = "r.id,r.event_id,
+                (SELECT COUNT(*) FROM participants pt
+                 WHERE pt.registration_id=r.id AND pt.is_active=1 AND pt.deleted_at IS NULL) participant_count,
+                (SELECT COUNT(*) FROM participants pt
+                 WHERE pt.registration_id=r.id AND pt.is_active=1 AND pt.deleted_at IS NULL
+                   AND pt.expected_amount>0) priced_participant_count";
+            $registrations = $this->db->select($participantSelect, FALSE)
+                ->from('registrations r')->where('r.status', 'active')
+                ->where_in('r.event_id', $eventIds)->get()->result_array();
+            foreach ($registrations as $registration) {
+                $eventId = (int)$registration['event_id'];
+                if (!isset($eventMap[$eventId])) continue;
+                $participantCount = (int)$registration['participant_count'];
+                $eventMap[$eventId]['villages']++;
+                $eventMap[$eventId]['participants'] += $participantCount;
+                if ($eventMap[$eventId]['billing_mode'] === 'per_village_extra') {
+                    // Hybrid registration pricing marks only chargeable extra
+                    // participants with expected_amount > 0.  Reading that
+                    // stored result is safer than recalculating from row order.
+                    $eventMap[$eventId]['additional_participants'] += (int)$registration['priced_participant_count'];
+                }
+            }
+        }
+
+        $events = array_values($eventMap);
+        usort($events, function ($left, $right) {
+            $dateCompare = strcmp((string)$right['start_date'], (string)$left['start_date']);
+            if ($dateCompare !== 0) return $dateCompare;
+            return strcasecmp((string)$left['name'], (string)$right['name']);
+        });
+
+        $incomeCents = 0;
+        $cashCents = 0;
+        $transferCents = 0;
+        $qrisCents = 0;
+        $villageCount = 0;
+        $participantCount = 0;
+        $additionalParticipantCount = 0;
+        foreach ($events as $event) {
+            $incomeCents += (int)$event['income_cents'];
+            $cashCents += (int)$event['cash_total_cents'];
+            $transferCents += (int)$event['transfer_total_cents'];
+            $qrisCents += (int)$event['qris_total_cents'];
+            $villageCount += (int)$event['villages'];
+            $participantCount += (int)$event['participants'];
+            $additionalParticipantCount += (int)$event['additional_participants'];
+        }
+
+        $this->db->select(
+            "c.id,c.name,COUNT(x.id) transaction_count,
+             COALESCE(SUM(x.amount),0) amount,
+             COALESCE(SUM(x.admin_fee),0) admin_fee,
+             COALESCE(SUM(x.amount+x.admin_fee),0) total",
+            FALSE
+        )->from('expenses x')
+            ->join('expense_categories c', 'c.id=x.category_id')
+            ->join('fund_accounts a', 'a.id=x.account_id')
+            ->where(array('x.status' => 'verified', 'a.include_in_total' => 1));
+        if (!empty($filters['date_from'])) $this->db->where('x.expense_date >=', $filters['date_from']);
+        if (!empty($filters['date_to'])) $this->db->where('x.expense_date <=', $filters['date_to']);
+        $expenseRows = $this->db
+            ->group_by(array('c.id','c.name'))->order_by('c.name', 'ASC')
+            ->get()->result_array();
+
+        $expenseCategories = array();
+        foreach ($expenseRows as $row) {
+            $amountCents = $this->money_cents($row['amount']);
+            $adminFeeCents = $this->money_cents($row['admin_fee']);
+            $totalCents = $this->money_cents($row['total']);
+            if ($amountCents === NULL) $amountCents = 0;
+            if ($adminFeeCents === NULL) $adminFeeCents = 0;
+            if ($totalCents === NULL) $totalCents = 0;
+            $expenseCategories[] = array(
+                'id' => (int)$row['id'],
+                'name' => (string)$row['name'],
+                'transaction_count' => (int)$row['transaction_count'],
+                'amount_cents' => $amountCents,
+                'admin_fee_cents' => $adminFeeCents,
+                'total_cents' => $totalCents,
+                'amount' => $this->cents_to_decimal($amountCents),
+                'admin_fee' => $this->cents_to_decimal($adminFeeCents),
+                'total' => $this->cents_to_decimal($totalCents)
+            );
+        }
+
+        return array(
+            'income' => array(
+                'event_count' => count($events),
+                'villages' => $villageCount,
+                'participants' => $participantCount,
+                'additional_participants' => $additionalParticipantCount,
+                'income_cents' => $incomeCents,
+                'cash_total_cents' => $cashCents,
+                'transfer_total_cents' => $transferCents,
+                'qris_total_cents' => $qrisCents,
+                'income' => $this->cents_to_decimal($incomeCents),
+                'cash_total' => $this->cents_to_decimal($cashCents),
+                'transfer_total' => $this->cents_to_decimal($transferCents),
+                'qris_total' => $this->cents_to_decimal($qrisCents),
+                'events' => $events
+            ),
+            'expense_categories' => $expenseCategories
+        );
+    }
+
+    private function finance_breakdown_event(array $event)
+    {
+        $incomeCents = $this->money_cents(isset($event['income']) ? $event['income'] : '0');
+        $cashCents = $this->money_cents(isset($event['cash_total']) ? $event['cash_total'] : '0');
+        $transferCents = $this->money_cents(isset($event['transfer_total']) ? $event['transfer_total'] : '0');
+        $qrisCents = $this->money_cents(isset($event['qris_total']) ? $event['qris_total'] : '0');
+        if ($incomeCents === NULL) $incomeCents = 0;
+        if ($cashCents === NULL) $cashCents = 0;
+        if ($transferCents === NULL) $transferCents = 0;
+        if ($qrisCents === NULL) $qrisCents = 0;
+        return array(
+            'id' => (int)$event['id'],
+            'code' => (string)$event['code'],
+            'name' => (string)$event['name'],
+            'start_date' => (string)$event['start_date'],
+            'end_date' => (string)$event['end_date'],
+            'status' => (string)$event['status'],
+            'billing_mode' => (string)$event['billing_mode'],
+            'included_participant_count' => (int)$event['included_participant_count'],
+            'villages' => 0,
+            'participants' => 0,
+            'additional_participants' => 0,
+            'income_cents' => $incomeCents,
+            'cash_total_cents' => $cashCents,
+            'transfer_total_cents' => $transferCents,
+            'qris_total_cents' => $qrisCents,
+            'income' => $this->cents_to_decimal($incomeCents),
+            'cash_total' => $this->cents_to_decimal($cashCents),
+            'transfer_total' => $this->cents_to_decimal($transferCents),
+            'qris_total' => $this->cents_to_decimal($qrisCents)
+        );
     }
 
     public function ledger($accountId, $limit = 100)

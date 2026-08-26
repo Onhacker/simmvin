@@ -1,4 +1,10 @@
-<?php defined('BASEPATH') OR exit('No direct script access allowed'); ?>
+<?php defined('BASEPATH') OR exit('No direct script access allowed');
+$financeQuery = http_build_query(array_filter(array(
+    'date_from' => isset($filters['date_from']) ? $filters['date_from'] : '',
+    'date_to' => isset($filters['date_to']) ? $filters['date_to'] : ''
+), function ($value) { return $value !== ''; }));
+$financeQuerySuffix = $financeQuery !== '' ? '?' . $financeQuery : '';
+?>
 
 <div class="card card-style d-print-none">
     <div class="content mb-0">
@@ -7,9 +13,9 @@
                 <p class="font-600 color-highlight mb-n1">Arus dana terverifikasi</p>
                 <h2 class="mb-0">Periode Laporan</h2>
             </div>
-            <button class="btn btn-s font-13 font-600 bg-theme color-theme border rounded-s ms-auto" type="button" onclick="window.print()">
+            <a class="btn btn-s font-13 font-600 bg-theme color-theme border rounded-s ms-auto" href="<?= e(site_url('laporan/keuangan/cetak') . $financeQuerySuffix) ?>" data-report-preview-open="finance-print-modal">
                 <i class="fas fa-print me-1 color-highlight"></i> Cetak
-            </button>
+            </a>
         </div>
 
         <form method="get">
@@ -39,6 +45,13 @@
         </form>
     </div>
 </div>
+
+<?php $this->load->view('reports/print_modal', array(
+    'printModalId' => 'finance-print-modal',
+    'printModalTitle' => 'Cetak Laporan Keuangan',
+    'printPreviewUrl' => site_url('laporan/keuangan/cetak') . $financeQuerySuffix,
+    'printPdfUrl' => site_url('laporan/keuangan/pdf') . $financeQuerySuffix
+)); ?>
 
 <div class="content mb-0 mt-n2">
     <div class="row mb-0">
@@ -76,11 +89,14 @@
 <div class="card card-style mx-3 mb-3 bg-blue-light shadow-0">
     <div class="content py-2 mb-0">
         <div class="d-flex flex-wrap align-items-center">
-            <span class="font-11 color-blue-dark me-3"><i class="fas fa-info-circle me-1"></i>Net transaksi sudah memperhitungkan transfer lintas akun (masuk/keluar) dan tidak memasukkan saldo awal.</span>
+            <span class="font-11 color-blue-dark me-3"><i class="fas fa-info-circle me-1"></i>Net transaksi memperhitungkan transfer lintas akun dan jurnal penyesuaian; saldo awal ditampilkan terpisah.</span>
             <span class="font-11 color-blue-dark ms-auto">Saldo awal periode: <strong><?= rupiah($report['period_opening_balance']) ?></strong> · Saldo akhir: <strong><?= rupiah($report['period_ending_balance']) ?></strong></span>
         </div>
         <?php if ((int)$report['transfer_in_cents'] > 0 || (int)$report['transfer_out_cents'] > 0): ?>
             <div class="font-10 color-blue-dark mt-2">Transfer masuk dari akun dikecualikan: <strong><?= rupiah($report['transfer_in']) ?></strong> · Transfer keluar ke akun dikecualikan: <strong><?= rupiah($report['transfer_out']) ?></strong></div>
+        <?php endif; ?>
+        <?php if (isset($report['adjustment_cents']) && (int)$report['adjustment_cents'] !== 0): ?>
+            <div class="font-10 color-blue-dark mt-2">Penyesuaian saldo jurnal: <strong><?= rupiah($report['adjustment']) ?></strong></div>
         <?php endif; ?>
     </div>
 </div>

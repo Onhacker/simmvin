@@ -86,9 +86,53 @@ class Reports extends App_Controller
             $filters = $this->date_filters();
         } catch (InvalidArgumentException $e) {
             $this->session->set_flashdata('error', $e->getMessage());
-            $filters = array('date_from'=>'','date_to'=>'');
+            $filters = array('date_from'=>date('Y-m-d'),'date_to'=>date('Y-m-d'));
         }
-        $this->render('reports/finance',array('pageTitle'=>'Laporan Keuangan','report'=>$this->finance->finance_report($filters),'filters'=>$filters,'pageScript'=>'finance.js'));
+        $this->render('reports/finance', array(
+            'pageTitle' => 'Laporan Keuangan',
+            'report' => $this->finance->finance_report($filters),
+            'breakdown' => $this->finance->finance_breakdown($filters),
+            'filters' => $filters,
+            'pageScript' => 'finance.js'
+        ));
+    }
+
+    public function finance_print()
+    {
+        $this->require_permission('reports.finance');
+        try {
+            $data = $this->finance_document_data();
+            $data['isPdf'] = FALSE;
+            $html = $this->load->view('reports/finance_print', $data, TRUE);
+            return $this->private_document_output('text/html', $html);
+        } catch (InvalidArgumentException $e) {
+            show_error($e->getMessage(), 400, 'Laporan Tidak Valid');
+        } catch (Throwable $e) {
+            log_message('error', 'Gagal menyiapkan pratinjau laporan keuangan: ' . $e->getMessage());
+            show_error('Pratinjau laporan keuangan belum dapat dibuat. Silakan coba kembali.', 500, 'Laporan Gagal Dibuat');
+        }
+    }
+
+    public function finance_pdf()
+    {
+        $this->require_permission('reports.finance');
+        try {
+            $data = $this->finance_document_data();
+            $data['isPdf'] = TRUE;
+            $html = $this->load->view('reports/finance_print', $data, TRUE);
+            $this->load->library('Pdf_renderer');
+            $pdf = $this->pdf_renderer->render_f4_landscape($html);
+            return $this->private_document_output(
+                'application/pdf',
+                $pdf,
+                'attachment; filename="laporan-keuangan-' . date('Ymd-His') . '.pdf"'
+            );
+        } catch (InvalidArgumentException $e) {
+            show_error($e->getMessage(), 400, 'Laporan Tidak Valid');
+        } catch (Throwable $e) {
+            log_message('error', 'Gagal membuat PDF laporan keuangan: ' . $e->getMessage());
+            show_error('PDF laporan keuangan belum dapat dibuat. Silakan coba kembali.', 500, 'PDF Gagal Dibuat');
+        }
     }
 
     private function income_report_data()
@@ -108,10 +152,30 @@ class Reports extends App_Controller
 
     private function date_filters()
     {
-        $from = $this->strict_date_filter($this->input->get('date_from', TRUE), 'Dari tanggal');
-        $to = $this->strict_date_filter($this->input->get('date_to', TRUE), 'Sampai tanggal');
+        $rawFrom = $this->input->get('date_from', TRUE);
+        $rawTo = $this->input->get('date_to', TRUE);
+        // The finance page opens on the current day.  Once the user submits
+        // the form, empty fields remain a valid open-ended filter.
+        if ($rawFrom === NULL && $rawTo === NULL) {
+            $today = date('Y-m-d');
+            return array('date_from' => $today, 'date_to' => $today);
+        }
+        $from = $this->strict_date_filter($rawFrom, 'Dari tanggal');
+        $to = $this->strict_date_filter($rawTo, 'Sampai tanggal');
         if ($from !== '' && $to !== '' && $from > $to) throw new InvalidArgumentException('Dari tanggal tidak boleh setelah sampai tanggal.');
         return array('date_from'=>$from,'date_to'=>$to);
+    }
+
+    private function finance_document_data()
+    {
+        $filters = $this->date_filters();
+        return array(
+            'report' => $this->finance->finance_report($filters),
+            'breakdown' => $this->finance->finance_breakdown($filters),
+            'filters' => $filters,
+            'generatedAt' => date('Y-m-d H:i:s'),
+            'organizationName' => $this->finance->setting_value('organization_name', 'MVIN')
+        );
     }
 
     private function strict_date_filter($value, $label)
