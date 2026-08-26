@@ -40,17 +40,17 @@ $printFrameId = $printModalId . '-frame';
         </div>
         <div class="simp-print-modal-actions<?= $printIconOnly ? ' is-icon-only' : '' ?>">
             <?php if ($printExcelUrl !== ''): ?>
-                <a href="<?= e($printExcelUrl) ?>" class="btn btn-m rounded-s font-600 border-green-dark color-green-dark" data-report-file-download data-report-file-label="<?= e($printExcelLabel) ?>" aria-label="Unduh <?= e($printExcelLabel) ?>" title="Unduh <?= e($printExcelLabel) ?>">
+                <a href="<?= e($printExcelUrl) ?>" class="btn btn-s rounded-s font-600 border-green-dark color-green-dark" data-report-file-download data-report-file-label="<?= e($printExcelLabel) ?>" aria-label="Unduh <?= e($printExcelLabel) ?>" title="Unduh <?= e($printExcelLabel) ?>">
                     <i class="fa fa-file-excel<?= $printIconOnly ? '' : ' me-1' ?>"></i><?php if ($printIconOnly): ?><span class="visually-hidden">Unduh <?= e($printExcelLabel) ?></span><?php else: ?> <?= e($printExcelLabel) ?><?php endif; ?>
                 </a>
             <?php endif; ?>
-            <a href="<?= e($printPdfUrl) ?>" class="btn btn-m rounded-s font-600 border-blue-dark color-blue-dark" target="_blank" rel="noopener" data-report-file-download data-report-file-label="PDF" aria-label="Unduh PDF" title="Unduh PDF">
+            <a href="<?= e($printPdfUrl) ?>" class="btn btn-s rounded-s font-600 border-blue-dark color-blue-dark" target="_blank" rel="noopener" data-report-file-download data-report-file-label="PDF" aria-label="Unduh PDF" title="Unduh PDF">
                 <i class="fa fa-file-pdf<?= $printIconOnly ? '' : ' me-1' ?>"></i><?php if ($printIconOnly): ?><span class="visually-hidden">Unduh PDF</span><?php else: ?> PDF<?php endif; ?>
             </a>
-            <button type="button" class="btn btn-m rounded-s font-600 border-green-dark color-green-dark" data-report-share-pdf data-report-pdf-url="<?= e($printPdfUrl) ?>" data-report-share-title="<?= e($printModalTitle) ?>" aria-label="Bagikan PDF melalui WhatsApp" title="Bagikan PDF melalui WhatsApp">
+            <button type="button" class="btn btn-s rounded-s font-600 border-green-dark color-green-dark" data-report-share-pdf data-report-pdf-url="<?= e($printPdfUrl) ?>" data-report-share-title="<?= e($printModalTitle) ?>" aria-label="Bagikan PDF melalui WhatsApp" title="Bagikan PDF melalui WhatsApp">
                 <i class="fab fa-whatsapp<?= $printIconOnly ? '' : ' me-1' ?>"></i><?php if ($printIconOnly): ?><span class="visually-hidden">Bagikan PDF melalui WhatsApp</span><?php else: ?> WhatsApp<?php endif; ?>
             </button>
-            <button type="button" class="btn btn-m rounded-s font-600 gradient-highlight" data-report-print="<?= e($printFrameId) ?>" aria-label="Cetak dokumen" title="Cetak dokumen">
+            <button type="button" class="btn btn-s rounded-s font-600 gradient-highlight" data-report-print="<?= e($printFrameId) ?>" aria-label="Cetak dokumen" title="Cetak dokumen">
                 <i class="fa fa-print<?= $printIconOnly ? '' : ' me-1' ?>"></i><?php if ($printIconOnly): ?><span class="visually-hidden">Cetak dokumen</span><?php else: ?> Cetak<?php endif; ?>
             </button>
         </div>
