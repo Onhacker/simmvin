@@ -23,6 +23,14 @@
     if (target) target.value = value === null || typeof value === 'undefined' ? '' : value;
   }
 
+  function moneyIsZero(target) {
+    var raw = moneyRaw(target);
+    var value = raw && raw.value !== null && typeof raw.value !== 'undefined'
+      ? String(raw.value).trim()
+      : '';
+    return value === '' || /^0(?:\.0*)?$/.test(value);
+  }
+
   function setMoneyControl(target, properties) {
     var raw = moneyRaw(target);
     var display = moneyDisplay(target);
@@ -54,7 +62,10 @@
     fee.style.opacity = isTransfer ? '1' : '.55';
     var input = fee.querySelector('input');
     if (!isTransfer && input) { setMoney(input, '0'); setMoneyControl(input, {readOnly: true}); }
-    else if (input) setMoneyControl(input, {readOnly: false});
+    else if (input) {
+      if (moneyIsZero(input)) setMoney(input, '2500');
+      setMoneyControl(input, {readOnly: false});
+    }
   }
 
   var type = document.querySelector('.js-account-type');
@@ -250,6 +261,7 @@
     var expenseTitle = document.getElementById('expense-add-title');
     var expenseExpectedUpdatedAt = document.getElementById('expense-modal-expected-updated-at');
     var expenseSubmit = expenseForm.querySelector('[data-expense-add-submit]');
+    var defaultExpenseAdminFee = '2500';
 
     function expenseEscape(value) {
       return String(value === null || typeof value === 'undefined' ? '' : value).replace(/[&<>'"]/g, function (character) {
@@ -309,7 +321,15 @@
         expenseFeeWrap.setAttribute('aria-hidden', isTransfer ? 'false' : 'true');
       }
       setMoneyControl(expenseFee, {readOnly: !isTransfer});
-      if (!isTransfer) setMoney(expenseFee, '0');
+      if (isTransfer) {
+        // New transfers start with the usual bank fee, but the field remains
+        // editable. Existing transactions keep their stored fee in Edit mode.
+        if (expenseForm.dataset.expenseMode === 'create' && moneyIsZero(expenseFee)) {
+          setMoney(expenseFee, defaultExpenseAdminFee);
+        }
+      } else {
+        setMoney(expenseFee, '0');
+      }
     }
 
     function prepareExpenseCreate() {

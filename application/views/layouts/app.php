@@ -116,7 +116,7 @@ if (!empty($pageScripts) && is_array($pageScripts)) $resolvedPageScripts = array
 $resolvedPageScripts = array_values(array_unique(array_filter($resolvedPageScripts)));
 ?>
 <?php foreach ($resolvedPageScripts as $resolvedPageScript): ?>
-    <script src="<?= base_url('assets/js/' . basename($resolvedPageScript)) ?>?v=36"></script>
+    <script src="<?= base_url('assets/js/' . basename($resolvedPageScript)) ?>?v=37"></script>
 <?php endforeach; ?>
 </body>
 </html>
