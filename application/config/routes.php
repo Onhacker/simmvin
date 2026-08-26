@@ -54,6 +54,7 @@ $route['pengeluaran/pdf'] = 'expenses/pdf';
 $route['pengeluaran/excel'] = 'expenses/excel';
 $route['pengeluaran/ajax/tambah'] = 'expenses/create_ajax';
 $route['pengeluaran/ajax/(:num)/ubah'] = 'expenses/update_ajax/$1';
+$route['pengeluaran/ajax/(:num)/hapus'] = 'expenses/delete_ajax/$1';
 $route['pengeluaran/tambah'] = 'expenses/create';
 $route['pengeluaran/kategori/tambah'] = 'expenses/category_create';
 $route['pengeluaran/(:num)/status'] = 'expenses/status/$1';

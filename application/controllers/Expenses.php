@@ -389,6 +389,47 @@ class Expenses extends App_Controller
         }
     }
 
+    /** Delete a regular expense through the list without reloading the page. */
+    public function delete_ajax($id)
+    {
+        $this->require_permission('expenses.create');
+        $this->require_post();
+        $id = (int)$id;
+        if ($id < 1) return $this->json(array('success'=>FALSE,'message'=>'Pengeluaran tidak valid.'), 422);
+
+        $expense = $this->finance->expense($id);
+        if (!$expense) return $this->json(array('success'=>FALSE,'message'=>'Pengeluaran tidak ditemukan.'), 404);
+        if (!empty($expense['debt_id'])) {
+            return $this->json(array('success'=>FALSE,'message'=>'Pembayaran hutang hanya dapat dikelola dari modul Hutang.'), 422);
+        }
+        $canDeleteVerified = $this->Auth_model->can('expenses.verify');
+        if ($expense['status'] === 'verified' && !$canDeleteVerified) {
+            return $this->json(array('success'=>FALSE,'message'=>'Pengeluaran terverifikasi hanya dapat dihapus oleh pengguna yang berhak memverifikasi.'), 403);
+        }
+
+        try {
+            $deleted = $this->finance->delete_expense($id, $canDeleteVerified);
+            $auditDetails = array(
+                'expense_no'=>isset($deleted['expense_no']) ? $deleted['expense_no'] : NULL,
+                'event_id'=>isset($deleted['event_id']) ? (int)$deleted['event_id'] : NULL,
+                'category_id'=>isset($deleted['category_id']) ? (int)$deleted['category_id'] : NULL,
+                'account_id'=>isset($deleted['account_id']) ? (int)$deleted['account_id'] : NULL,
+                'description'=>isset($deleted['description']) ? $deleted['description'] : NULL,
+                'amount'=>isset($deleted['amount']) ? $deleted['amount'] : NULL,
+                'admin_fee'=>isset($deleted['admin_fee']) ? $deleted['admin_fee'] : NULL,
+                'status'=>isset($deleted['status']) ? $deleted['status'] : NULL
+            );
+            try { $this->Audit_model->log('expense_deleted','expense',$id,$auditDetails); } catch (Throwable $ignored) {}
+            if (!empty($deleted['proof_path'])) $this->cleanup_expense_upload($deleted['proof_path']);
+            return $this->json(array('success'=>TRUE,'message'=>'Pengeluaran berhasil dihapus.','expense_id'=>$id));
+        } catch (InvalidArgumentException $e) {
+            return $this->json(array('success'=>FALSE,'message'=>$e->getMessage()), 422);
+        } catch (Throwable $e) {
+            log_message('error', 'Gagal menghapus pengeluaran #'.$id.': '.$e->getMessage());
+            return $this->json(array('success'=>FALSE,'message'=>'Pengeluaran gagal dihapus karena terjadi gangguan sistem.'), 500);
+        }
+    }
+
     /**
      * Normalize a value for MySQL DECIMAL(18,2). DECIMAL(18,2) has at most
      * sixteen integer digits and two fractional digits. Returning a string

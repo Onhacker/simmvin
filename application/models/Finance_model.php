@@ -467,6 +467,77 @@ class Finance_model extends CI_Model
     }
 
     /**
+     * Delete a regular event expense and its journal atomically. Verified
+     * expenses may only be deleted by a verifier; debt repayments remain
+     * owned by Debt_model and cannot enter this path.
+     */
+    public function delete_expense($id, $canDeleteVerified = FALSE)
+    {
+        $id = (int)$id;
+        if ($id < 1) throw new InvalidArgumentException('Pengeluaran tidak valid.');
+
+        $originalDbDebug = $this->db->db_debug;
+        $this->db->db_debug = FALSE;
+        $this->db->trans_begin();
+        try {
+            $row = $this->db->query('SELECT * FROM expenses WHERE id=? FOR UPDATE', array($id))->row_array();
+            if (!$row) throw new InvalidArgumentException('Pengeluaran tidak ditemukan.');
+            if (!empty($row['debt_id'])) throw new InvalidArgumentException('Pembayaran hutang hanya dapat dikelola dari modul Hutang.');
+            if ($row['status'] === 'rejected') throw new InvalidArgumentException('Pengeluaran yang ditolak bersifat final dan tidak dapat dihapus.');
+            if (!in_array($row['status'], array('pending','verified'), TRUE)) throw new RuntimeException('Status pengeluaran tidak konsisten.');
+            if ($row['status'] === 'verified' && !$canDeleteVerified) {
+                throw new InvalidArgumentException('Pengeluaran terverifikasi hanya dapat dihapus oleh pengguna yang berhak memverifikasi.');
+            }
+
+            $event = $this->db->query('SELECT id,status FROM training_events WHERE id=? FOR UPDATE', array((int)$row['event_id']))->row_array();
+            if (!$event || $event['status'] !== 'open') throw new InvalidArgumentException('Pengeluaran pada event yang sudah ditutup tidak dapat dihapus.');
+
+            // Lock the source account before reversing a verified journal so
+            // concurrent balance writers cannot observe a partial deletion.
+            $account = $this->lock_account((int)$row['account_id']);
+            if (!$account) throw new RuntimeException('Akun dana pengeluaran tidak ditemukan.');
+            if ($row['status'] === 'verified' && !(int)$account['is_active']) {
+                throw new InvalidArgumentException('Pengeluaran tidak dapat dihapus saat akun sumber nonaktif. Aktifkan kembali akun tersebut terlebih dahulu.');
+            }
+
+            $ledgerRows = $this->db->query(
+                'SELECT * FROM ledger_entries WHERE source_type=? AND source_id=? FOR UPDATE',
+                array('expense', $id)
+            )->result_array();
+            if ($row['status'] === 'verified') {
+                $amountCents = $this->money_cents($row['amount']);
+                $feeCents = $this->money_cents($row['admin_fee']);
+                if ($amountCents === NULL || $feeCents === NULL || count($ledgerRows) !== 1 ||
+                    (int)$ledgerRows[0]['account_id'] !== (int)$row['account_id'] ||
+                    $ledgerRows[0]['direction'] !== 'out' ||
+                    $this->money_cents($ledgerRows[0]['amount']) !== $amountCents + $feeCents) {
+                    throw new RuntimeException('Jurnal pengeluaran tidak konsisten sehingga data belum dapat dihapus.');
+                }
+            } elseif ($ledgerRows) {
+                throw new RuntimeException('Pengeluaran yang menunggu verifikasi memiliki jurnal yang tidak semestinya.');
+            }
+
+            if ($ledgerRows) {
+                if (!$this->db->where(array('source_type'=>'expense','source_id'=>$id))->delete('ledger_entries') ||
+                    $this->db->affected_rows() !== count($ledgerRows)) {
+                    throw new RuntimeException('Jurnal pengeluaran gagal dibatalkan.');
+                }
+            }
+            if (!$this->db->where('id', $id)->delete('expenses') || $this->db->affected_rows() !== 1) {
+                throw new RuntimeException('Pengeluaran gagal dihapus.');
+            }
+            if ($this->db->trans_status() === FALSE) throw new RuntimeException('Transaksi penghapusan pengeluaran gagal.');
+            if (!$this->db->trans_commit()) throw new RuntimeException('Transaksi penghapusan pengeluaran gagal diselesaikan.');
+            return $row;
+        } catch (Throwable $e) {
+            $this->db->trans_rollback();
+            throw $e;
+        } finally {
+            $this->db->db_debug = $originalDbDebug;
+        }
+    }
+
+    /**
      * @deprecated Debt repayments are owned by Debt_model. Keep this shim for
      * older integrations, but do not maintain a second accounting path here.
      */

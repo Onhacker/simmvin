@@ -165,6 +165,7 @@ $canVerify = !empty($canVerify);
         $total = simp_money_from_cents($amountCents + $adminFeeCents);
         $method = isset($methodLabels[$row['method']]) ? $methodLabels[$row['method']] : ucfirst((string) $row['method']);
         $canEditRow = $canCreate && empty($row['debt_id']) && $row['status'] !== 'rejected' && ($row['status'] !== 'verified' || $canVerify);
+        $canDeleteRow = $canCreate && empty($row['debt_id']) && $row['status'] !== 'rejected' && ($row['status'] !== 'verified' || $canVerify);
         $expenseEditPayload = $canEditRow ? array(
             'id'=>(int)$row['id'], 'event_id'=>(int)$row['event_id'],
             'category_id'=>(int)$row['category_id'], 'expense_date'=>$row['expense_date'],
@@ -252,13 +253,24 @@ $canVerify = !empty($canVerify);
                     </span>
                 </div>
 
-                <?php if ($canEditRow): ?>
-                    <div class="d-flex justify-content-end mt-2">
+                <?php if ($canEditRow || $canDeleteRow): ?>
+                    <div class="d-flex justify-content-end flex-wrap gap-2 mt-2">
+                        <?php if ($canEditRow): ?>
                         <button type="button" class="btn btn-s font-12 font-600 bg-theme color-highlight border-highlight rounded-s px-3"
                                 data-expense-edit-open
                                 data-expense="<?= e(json_encode($expenseEditPayload, JSON_HEX_TAG|JSON_HEX_APOS|JSON_HEX_AMP|JSON_HEX_QUOT)) ?>">
                             <i class="fa fa-edit me-1"></i> Edit
                         </button>
+                        <?php endif; ?>
+                        <?php if ($canDeleteRow): ?>
+                        <button type="button" class="btn btn-s font-12 font-600 bg-theme color-red-dark border-red-dark rounded-s px-3"
+                                data-expense-delete-open
+                                data-expense-delete-url="<?= e(site_url('pengeluaran/ajax/' . (int)$row['id'] . '/hapus')) ?>"
+                                data-expense-delete-label="<?= e($row['description']) ?>"
+                                data-expense-delete-status="<?= e($row['status']) ?>">
+                            <i class="fa fa-trash me-1"></i> Hapus
+                        </button>
+                        <?php endif; ?>
                     </div>
                 <?php endif; ?>
 

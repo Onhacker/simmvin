@@ -245,6 +245,61 @@
     expenseAlert(payload.message, 'Berhasil', 'success');
   }
 
+  function deleteExpense(button) {
+    var url = button.getAttribute('data-expense-delete-url') || '';
+    var label = String(button.getAttribute('data-expense-delete-label') || 'pengeluaran ini').trim();
+    var status = button.getAttribute('data-expense-delete-status') || 'pending';
+    if (!url) {
+      expenseAlert('Alamat penghapusan pengeluaran tidak tersedia.', 'Hapus Gagal', 'danger');
+      return;
+    }
+    if (label.length > 140) label = label.slice(0, 137) + '...';
+    var message = status === 'verified'
+      ? 'Hapus pengeluaran "' + label + '"? Jurnal akan dibatalkan dan saldo akun dikembalikan. Tindakan ini tidak dapat dibatalkan.'
+      : 'Hapus pengeluaran "' + label + '" beserta bukti pembayarannya? Tindakan ini tidak dapat dibatalkan.';
+    if (typeof window.simpConfirm !== 'function') {
+      expenseAlert('Konfirmasi MVIN belum siap. Muat ulang halaman lalu coba kembali.', 'Hapus Gagal', 'danger');
+      return;
+    }
+
+    window.simpConfirm(message, {
+      title: 'Hapus Pengeluaran?',
+      confirmLabel: 'Ya, Hapus',
+      tone: 'danger'
+    }).then(function (confirmed) {
+      if (!confirmed) return;
+      var originalText = button.innerHTML;
+      button.disabled = true;
+      button.innerHTML = '<i class="fa fa-spinner fa-spin me-1"></i>Menghapus...';
+      var body = new FormData();
+      if (window.SIMP && window.SIMP.csrfName) body.append(window.SIMP.csrfName, window.SIMP.csrfHash || '');
+      var headers = {'X-Requested-With':'XMLHttpRequest','Accept':'application/json'};
+      if (window.SIMP && window.SIMP.csrfHash) headers['X-CSRF-TOKEN'] = window.SIMP.csrfHash;
+      fetch(url, {method:'POST', headers:headers, body:body})
+        .then(function (response) { return expenseJson(response, 'Pengeluaran gagal dihapus.'); })
+        .then(function (payload) {
+          return refreshExpenseCards(window.location.href, {replaceFilters:true, updateHistory:false}).then(
+            function () { notifyExpensePersisted(payload, false, 'Pengeluaran'); },
+            function () { notifyExpensePersisted(payload, true, 'Pengeluaran'); }
+          );
+        })
+        .catch(function (error) { expenseAlert(error.message || 'Pengeluaran gagal dihapus.', 'Hapus Pengeluaran Gagal', 'danger'); })
+        .then(function () {
+          button.disabled = false;
+          button.innerHTML = originalText;
+        });
+    });
+  }
+
+  // Delegated so the action remains available after the list is refreshed by
+  // search, pagination, status changes, or another AJAX mutation.
+  document.addEventListener('click', function (event) {
+    var deleteButton = event.target.closest('[data-expense-delete-open]');
+    if (!deleteButton) return;
+    event.preventDefault();
+    deleteExpense(deleteButton);
+  });
+
   var expenseForm = document.getElementById('expense-add-form');
   if (expenseForm) {
     var expenseAccounts = [];
