@@ -164,6 +164,7 @@ $accountSummary = array_merge(array(
         .status.yellow { background: #a76608; }
         .status.red { background: #b42318; }
         .status.blue { background: #1f5fab; }
+        .status-icon { min-width: 16px; padding: 2px 4px; font-size: 9px; line-height: 1.1; }
         .empty-row td { padding: 20px 8px; color: #6b7280; text-align: center; }
         .document-foot { margin-top: 10px; border-top: 1px solid #cfd7e2; }
         .document-foot td { padding-top: 5px; color: #6b7280; font-size: 7.5px; vertical-align: top; }
@@ -311,7 +312,7 @@ $accountSummary = array_merge(array(
         <?php endif; ?>
         <table class="report-table">
             <colgroup><col width="4%" style="width:4%"><col width="29%" style="width:29%"><col width="18%" style="width:18%"><col width="13%" style="width:13%"><col width="16%" style="width:16%"><col width="11%" style="width:11%"><col width="9%" style="width:9%"></colgroup>
-            <thead><tr><th>No.</th><th><?= $report['view'] === 'participant' ? 'Peserta / Desa' : 'Desa / Event' ?></th><th><?= $report['view'] === 'participant' ? 'Jabatan / Wilayah' : 'Wilayah / Peserta' ?></th><th class="money">Tagihan</th><th class="money">Dana Masuk (Terverifikasi)</th><th class="money">Sisa Tagihan</th><th>Status</th></tr></thead>
+            <thead><tr><th width="4%">No.</th><th width="29%"><?= $report['view'] === 'participant' ? 'Peserta / Desa' : 'Desa / Event' ?></th><th width="18%"><?= $report['view'] === 'participant' ? 'Jabatan / Wilayah' : 'Wilayah / Peserta' ?></th><th width="13%" class="money">Tagihan</th><th width="16%" class="money">Dana Masuk (Terverifikasi)</th><th width="11%" class="money">Sisa Tagihan</th><th width="9%">Status</th></tr></thead>
             <tbody>
             <?php if (!$report['rows']): ?><tr class="empty-row"><td colspan="7">Belum ada data registrasi pada event aktif.</td></tr><?php endif; ?>
             <?php foreach ($report['rows'] as $index => $row): ?>
@@ -356,9 +357,9 @@ $accountSummary = array_merge(array(
     <?php elseif ($reportKind === 'expense'): ?>
         <?php if (!$expenseGroups): ?>
             <table class="report-table">
-                <colgroup><col width="4%" style="width:4%"><col width="14%" style="width:14%"><col width="31%" style="width:31%"><col width="17%" style="width:17%"><col width="10%" style="width:10%"><col width="12%" style="width:12%"><col width="12%" style="width:12%"></colgroup>
-                <thead><tr><th>No.</th><th>Tanggal / Nomor</th><th>Tujuan / Event</th><th>Akun / Metode</th><th>Status</th><th class="money">Nilai</th><th class="money">Total</th></tr></thead>
-                <tbody><tr class="empty-row"><td colspan="7">Belum ada transaksi pengeluaran pada event aktif.</td></tr></tbody>
+                <colgroup><col width="3%" style="width:3%"><col width="16%" style="width:16%"><col width="40%" style="width:40%"><col width="19%" style="width:19%"><col width="8%" style="width:8%"><col width="14%" style="width:14%"></colgroup>
+                <thead><tr><th width="3%">No.</th><th width="16%">Tanggal / Nomor</th><th width="40%">Deskripsi</th><th width="19%">Akun / Metode</th><th width="8%">Status</th><th width="14%" class="money">Total</th></tr></thead>
+                <tbody><tr class="empty-row"><td colspan="6">Belum ada transaksi pengeluaran pada event aktif.</td></tr></tbody>
             </table>
         <?php else: ?>
             <?php $expenseNo = 0; $grandExpenseCents = 0; ?>
@@ -371,47 +372,44 @@ $accountSummary = array_merge(array(
                 <div class="expense-category-group">
                 <div class="expense-category-heading"><span>Kategori</span><strong><?= e($expenseGroup['name']) ?></strong></div>
                 <table class="report-table expense-category-table">
-                    <colgroup><col width="4%" style="width:4%"><col width="14%" style="width:14%"><col width="34%" style="width:34%"><col width="17%" style="width:17%"><col width="10%" style="width:10%"><col width="10%" style="width:10%"><col width="11%" style="width:11%"></colgroup>
-                    <thead><tr><th>No.</th><th>Tanggal / Nomor</th><th>Tujuan / Event</th><th>Akun / Metode</th><th>Status</th><th class="money">Nilai</th><th class="money">Total</th></tr></thead>
+                    <colgroup><col width="3%" style="width:3%"><col width="16%" style="width:16%"><col width="40%" style="width:40%"><col width="19%" style="width:19%"><col width="8%" style="width:8%"><col width="14%" style="width:14%"></colgroup>
+                    <thead><tr><th width="3%">No.</th><th width="16%">Tanggal / Nomor</th><th width="40%">Deskripsi</th><th width="19%">Akun / Metode</th><th width="8%">Status</th><th width="14%" class="money">Total</th></tr></thead>
                     <tbody>
                     <?php foreach ($expenseGroup['rows'] as $row): ?>
                         <?php
                         $expenseNo++;
                         $amountCents = $moneyCents($row['amount']);
                         $adminFeeCents = $moneyCents($row['admin_fee']);
-                        $amount = simp_money_from_cents($amountCents);
                         $adminFee = simp_money_from_cents($adminFeeCents);
                         $total = simp_money_from_cents($amountCents + $adminFeeCents);
                         $status = isset($row['status']) ? $row['status'] : 'pending';
                         $statusClass = $status === 'verified' ? 'green' : ($status === 'rejected' ? 'red' : 'yellow');
-                        $eventName = !empty($row['event_name']) ? $row['event_name'] : 'Pengeluaran umum';
                         ?>
                         <tr>
                             <td class="number"><?= number_format($expenseNo) ?></td>
                             <td><span class="primary"><?= e(tanggal_id($row['expense_date'])) ?></span><span class="secondary"><?= e($row['expense_no']) ?></span></td>
-                            <td><span class="primary"><?= e($row['description']) ?></span><span class="secondary"><?= e($eventName) ?><?php if (!empty($row['debt_id'])): ?> · Pembayaran <?= e($row['debt_no']) ?> (<?= e($row['debt_creditor']) ?>)<?php endif; ?></span></td>
+                            <td><span class="primary"><?= e($row['description']) ?></span><?php if (!empty($row['debt_id'])): ?><span class="secondary">Pembayaran hutang <?= e($row['debt_no']) ?> · <?= e($row['debt_creditor']) ?></span><?php endif; ?></td>
                             <td><span class="primary"><?= e($row['account_name']) ?></span><span class="secondary"><?= e(isset($methodLabels[$row['method']]) ? $methodLabels[$row['method']] : ucfirst((string) $row['method'])) ?></span></td>
-                            <td><span class="status <?= $statusClass ?>"><?= e(isset($expenseStatusLabels[$status]) ? $expenseStatusLabels[$status] : ucwords(str_replace('_', ' ', $status))) ?></span></td>
-                            <td class="money"><?= e($printRupiah($amount)) ?></td>
+                            <td><?php if ($status === 'verified'): ?><span class="status status-icon <?= $statusClass ?>" role="img" aria-label="Terverifikasi" title="Terverifikasi">&#10003;</span><?php else: ?><span class="status <?= $statusClass ?>"><?= e(isset($expenseStatusLabels[$status]) ? $expenseStatusLabels[$status] : ucwords(str_replace('_', ' ', $status))) ?></span><?php endif; ?></td>
                             <td class="money"><span class="primary"><?= e($printRupiah($total)) ?></span><?php if ($adminFeeCents > 0): ?><span class="secondary">Admin <?= e($printRupiah($adminFee, FALSE)) ?></span><?php endif; ?></td>
                         </tr>
                     <?php endforeach; ?>
                     </tbody>
-                    <tfoot><tr class="category-total-row"><td colspan="6" class="money-label">Total <?= e($expenseGroup['name']) ?></td><td class="money"><?= e($printRupiah($categoryTotal)) ?></td></tr></tfoot>
+                    <tfoot><tr class="category-total-row"><td colspan="5" class="money-label">Total <?= e($expenseGroup['name']) ?></td><td class="money"><?= e($printRupiah($categoryTotal)) ?></td></tr></tfoot>
                 </table>
                 </div>
             <?php endforeach; ?>
             <?php $grandExpense = simp_money_from_cents($grandExpenseCents); ?>
             <table class="report-table expense-grand-total">
-                <colgroup><col width="4%" style="width:4%"><col width="14%" style="width:14%"><col width="34%" style="width:34%"><col width="17%" style="width:17%"><col width="10%" style="width:10%"><col width="10%" style="width:10%"><col width="11%" style="width:11%"></colgroup>
-                <tfoot><tr><td colspan="6" class="money-label">TOTAL SELURUH PENGELUARAN</td><td class="money"><?= e($printRupiah($grandExpense)) ?></td></tr></tfoot>
+                <colgroup><col width="3%" style="width:3%"><col width="16%" style="width:16%"><col width="40%" style="width:40%"><col width="19%" style="width:19%"><col width="8%" style="width:8%"><col width="14%" style="width:14%"></colgroup>
+                <tfoot><tr><td width="86%" colspan="5" class="money-label">TOTAL SELURUH PENGELUARAN</td><td width="14%" class="money"><?= e($printRupiah($grandExpense)) ?></td></tr></tfoot>
             </table>
         <?php endif; ?>
     <?php elseif ($reportKind === 'debt'): ?>
         <p class="report-note">Pembayaran terverifikasi mengurangi saldo hutang. Pembayaran yang masih menunggu verifikasi tetap tercantum sebagai komitmen.</p>
         <table class="report-table">
             <colgroup><col width="4%" style="width:4%"><col width="14%" style="width:14%"><col width="24%" style="width:24%"><col width="15%" style="width:15%"><col width="12%" style="width:12%"><col width="12%" style="width:12%"><col width="11%" style="width:11%"><col width="8%" style="width:8%"></colgroup>
-            <thead><tr><th>No.</th><th>Nomor / Tanggal</th><th>Kreditur / Uraian</th><th>Event / Kategori</th><th class="money">Nilai Pokok</th><th class="money">Terbayar</th><th class="money">Sisa</th><th>Status</th></tr></thead>
+            <thead><tr><th width="4%">No.</th><th width="14%">Nomor / Tanggal</th><th width="24%">Kreditur / Uraian</th><th width="15%">Event / Kategori</th><th width="12%" class="money">Nilai Pokok</th><th width="12%" class="money">Terbayar</th><th width="11%" class="money">Sisa</th><th width="8%">Status</th></tr></thead>
             <tbody>
             <?php $debtPaymentRows = array(); ?>
             <?php if (!$rows): ?><tr class="empty-row"><td colspan="8">Belum ada hutang perusahaan.</td></tr><?php endif; ?>
@@ -461,7 +459,7 @@ $accountSummary = array_merge(array(
             <div class="section-title">Riwayat Pembayaran Hutang</div>
             <table class="report-table">
                 <colgroup><col width="4%" style="width:4%"><col width="23%" style="width:23%"><col width="13%" style="width:13%"><col width="20%" style="width:20%"><col width="13%" style="width:13%"><col width="12%" style="width:12%"><col width="15%" style="width:15%"></colgroup>
-                <thead><tr><th>No.</th><th>Hutang / Kreditur</th><th>Tanggal</th><th>Akun / Metode</th><th class="money">Nominal</th><th class="money">Biaya Admin</th><th>Status / Catatan</th></tr></thead>
+                <thead><tr><th width="4%">No.</th><th width="23%">Hutang / Kreditur</th><th width="13%">Tanggal</th><th width="20%">Akun / Metode</th><th width="13%" class="money">Nominal</th><th width="12%" class="money">Biaya Admin</th><th width="15%">Status / Catatan</th></tr></thead>
                 <tbody>
                 <?php foreach ($debtPaymentRows as $paymentIndex => $payment): ?>
                     <?php
@@ -487,7 +485,7 @@ $accountSummary = array_merge(array(
         <p class="report-note">Total Saldo Dihitung hanya menjumlah akun bertanda “Ya”. Saldo akhir setiap akun berasal dari saldo awal ditambah seluruh mutasi buku besar.</p>
         <table class="report-table">
             <colgroup><col width="4%" style="width:4%"><col width="18%" style="width:18%"><col width="12%" style="width:12%"><col width="22%" style="width:22%"><col width="11%" style="width:11%"><col width="11%" style="width:11%"><col width="12%" style="width:12%"><col width="10%" style="width:10%"></colgroup>
-            <thead><tr><th>No.</th><th>Akun</th><th>Jenis</th><th>Bank / Nomor / Pemilik</th><th class="money">Saldo Awal</th><th class="money">Mutasi Bersih</th><th class="money">Saldo Akhir</th><th>Status</th></tr></thead>
+            <thead><tr><th width="4%">No.</th><th width="18%">Akun</th><th width="12%">Jenis</th><th width="22%">Bank / Nomor / Pemilik</th><th width="11%" class="money">Saldo Awal</th><th width="11%" class="money">Mutasi Bersih</th><th width="12%" class="money">Saldo Akhir</th><th width="10%">Status</th></tr></thead>
             <tbody>
             <?php if (!$accounts): ?><tr class="empty-row"><td colspan="8">Belum ada akun dana.</td></tr><?php endif; ?>
             <?php foreach ($accounts as $index => $account): ?>

@@ -170,7 +170,7 @@ if ($eventLocation === '') $eventLocation = '-';
     <?php if ($billingMode !== 'per_participant'): ?><p class="report-note">Pembayaran event ini dicatat pada tingkat desa. Status pada setiap peserta mengikuti status pembayaran registrasi desa dan bukan transaksi individual.</p><?php endif; ?>
     <table class="report-table">
         <colgroup><col width="4%" style="width:4%"><col width="22%" style="width:22%"><col width="12%" style="width:12%"><col width="14%" style="width:14%"><col width="12%" style="width:12%"><col width="11%" style="width:11%"><col width="12%" style="width:12%"><col width="13%" style="width:13%"></colgroup>
-        <thead><tr><th>No.</th><th>Nama / Jabatan</th><th>Kontak</th><th>Komponen Tagihan</th><th class="money">Terverifikasi</th><th class="money">Menunggu</th><th class="money">Sisa</th><th>Status</th></tr></thead>
+        <thead><tr><th width="4%">No.</th><th width="22%">Nama / Jabatan</th><th width="12%">Kontak</th><th width="14%">Komponen Tagihan</th><th width="12%" class="money">Terverifikasi</th><th width="11%" class="money">Menunggu</th><th width="12%" class="money">Sisa</th><th width="13%">Status</th></tr></thead>
         <tbody>
         <?php if (!$participants): ?><tr class="empty-row"><td colspan="8">Tidak ada peserta aktif pada registrasi ini.</td></tr><?php endif; ?>
         <?php foreach ($participants as $index => $participant): ?>
@@ -215,7 +215,7 @@ if ($eventLocation === '') $eventLocation = '-';
     <?php else: ?>
         <table class="report-table">
         <colgroup><col width="4%" style="width:4%"><col width="15%" style="width:15%"><col width="16%" style="width:16%"><col width="21%" style="width:21%"><col width="14%" style="width:14%"><col width="13%" style="width:13%"><col width="17%" style="width:17%"></colgroup>
-        <thead><tr><th>No.</th><th>Tanggal / Bukti</th><th>Untuk</th><th>Metode / Akun</th><th class="money">Nominal</th><th>Status</th><th>Catatan</th></tr></thead>
+        <thead><tr><th width="4%">No.</th><th width="15%">Tanggal / Bukti</th><th width="16%">Untuk</th><th width="21%">Metode / Akun</th><th width="14%" class="money">Nominal</th><th width="13%">Status</th><th width="17%">Catatan</th></tr></thead>
         <tbody>
         <?php foreach ($payments as $index => $payment): ?>
             <?php $paymentStatus = isset($payment['status']) ? (string) $payment['status'] : 'pending'; ?>

@@ -144,7 +144,7 @@ elseif (count($reportEvents) > 1) $eventScope = number_format(count($reportEvent
         <div class="section-title">Rincian Status Pembayaran</div>
         <table class="report-table">
             <colgroup><col width="3%" style="width:3%"><col width="16%" style="width:16%"><col width="25%" style="width:25%"><col width="5%" style="width:5%"><col width="10%" style="width:10%"><col width="17%" style="width:17%"><col width="9%" style="width:9%"><col width="9%" style="width:9%"><col width="6%" style="width:6%"></colgroup>
-            <thead><tr><th>No.</th><th>Desa / Kecamatan</th><th>Nama Peserta</th><th>Jml.</th><th class="money-cell">Tagihan</th><th class="money-cell">Terverifikasi / Metode</th><th class="money-cell">Menunggu</th><th class="money-cell">Sisa</th><th>Status</th></tr></thead>
+            <thead><tr><th width="3%">No.</th><th width="16%">Desa / Kecamatan</th><th width="25%">Nama Peserta</th><th width="5%">Jml.</th><th width="10%" class="money-cell">Tagihan</th><th width="17%" class="money-cell">Terverifikasi / Metode</th><th width="9%" class="money-cell">Menunggu</th><th width="9%" class="money-cell">Sisa</th><th width="6%">Status</th></tr></thead>
             <tbody>
             <?php if (!$rows): ?><tr class="empty-row"><td colspan="9">Belum ada data pembayaran pada lingkup yang dipilih.</td></tr><?php endif; ?>
             <?php foreach ($rows as $index => $row): ?>
