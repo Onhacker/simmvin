@@ -260,6 +260,51 @@
       };
     }
 
+    /* Count only numeric characters when translating a caret position from
+     * the user's unformatted text to the newly grouped Rupiah text. */
+    function countDigits(value) {
+      var matches = String(value || '').match(/\d/g);
+      return matches ? matches.length : 0;
+    }
+
+    function caretForDigits(formatted, majorDigits, fractionDigits, inFraction) {
+      var text = String(formatted || '');
+      var comma = text.indexOf(',');
+      if (inFraction && comma >= 0) {
+        var seenFraction = 0;
+        for (var fractionIndex = comma + 1; fractionIndex < text.length; fractionIndex++) {
+          if (!/\d/.test(text.charAt(fractionIndex))) continue;
+          seenFraction += 1;
+          if (seenFraction >= fractionDigits) return fractionIndex + 1;
+        }
+        return text.length;
+      }
+
+      var seenMajor = 0;
+      var majorEnd = comma >= 0 ? comma : text.length;
+      for (var majorIndex = 0; majorIndex < majorEnd; majorIndex++) {
+        if (!/\d/.test(text.charAt(majorIndex))) continue;
+        seenMajor += 1;
+        if (seenMajor >= majorDigits) return majorIndex + 1;
+      }
+      /* A caret before the first digit belongs after the "Rp " prefix. */
+      return majorDigits > 0 ? majorEnd : Math.min(3, text.length);
+    }
+
+    function restoreCaret(visible, oldValue, oldStart, oldEnd, formatted) {
+      if (!visible || document.activeElement !== visible || oldStart === null || typeof oldStart === 'undefined') return;
+      var comma = String(oldValue || '').indexOf(',');
+      var startInFraction = comma >= 0 && oldStart > comma;
+      var endInFraction = comma >= 0 && oldEnd > comma;
+      var startMajorDigits = countDigits(comma >= 0 && oldStart > comma ? oldValue.slice(0, comma) : oldValue.slice(0, oldStart));
+      var endMajorDigits = countDigits(comma >= 0 && oldEnd > comma ? oldValue.slice(0, comma) : oldValue.slice(0, oldEnd));
+      var startFractionDigits = startInFraction ? countDigits(oldValue.slice(comma + 1, oldStart)) : 0;
+      var endFractionDigits = endInFraction ? countDigits(oldValue.slice(comma + 1, oldEnd)) : 0;
+      var nextStart = caretForDigits(formatted, startMajorDigits, startFractionDigits, startInFraction);
+      var nextEnd = caretForDigits(formatted, endMajorDigits, endFractionDigits, endInFraction);
+      try { visible.setSelectionRange(nextStart, Math.max(nextStart, nextEnd)); } catch (error) {}
+    }
+
     function displayState(value) {
       var text = value === null || typeof value === 'undefined' ? '' : String(value);
       var withoutCurrency = text.replace(/^\s*rp\.?\s*/i, '').replace(/\s+/g, '');
@@ -267,14 +312,24 @@
         return {empty:true, syntaxValid:true, major:'', fraction:'', raw:'', hadSeparator:false};
       }
 
-      var pieces = withoutCurrency.split(',');
-      var syntaxValid = pieces.length <= 2 && /^[0-9.,]+$/.test(withoutCurrency);
-      var majorText = pieces.shift() || '';
-      var fractionText = pieces.length ? pieces.join('') : '';
-      var plainMajor = /^\d+$/.test(majorText);
-      var groupedMajor = /^\d{1,3}(?:\.\d{3})+$/.test(majorText);
-      var decimalOnly = majorText === '' && withoutCurrency.charAt(0) === ',';
-      if ((!plainMajor && !groupedMajor && !decimalOnly) || !/^\d*$/.test(fractionText)) syntaxValid = false;
+      /*
+       * The visible field is Indonesian-formatted: periods group thousands
+       * and a comma introduces the optional decimal fraction.  While a user
+       * is typing, a grouped value necessarily passes through transient forms
+       * such as `1.0000` and `1.000000`; insisting on groups of exactly three
+       * digits makes the next keystroke invalid (the bug that displayed
+       * `Rp 1.000000`).  Accept any digit groups around periods and normalize
+       * them below.  Canonical values supplied by the application still use a
+       * dot as a decimal separator and are handled by canonicalState().
+       */
+      var commaMatches = withoutCurrency.match(/,/g) || [];
+      var commaIndex = withoutCurrency.indexOf(',');
+      var majorText = commaIndex >= 0 ? withoutCurrency.slice(0, commaIndex) : withoutCurrency;
+      var fractionText = commaIndex >= 0 ? withoutCurrency.slice(commaIndex + 1) : '';
+      var decimalOnly = majorText === '' && commaIndex === 0;
+      var majorSyntax = /^\d+(?:\.\d+)*\.?$/.test(majorText);
+      var syntaxValid = commaMatches.length <= 1 && majorSyntax && /^\d*$/.test(fractionText);
+      if (decimalOnly) syntaxValid = commaMatches.length === 1 && /^\d*$/.test(fractionText);
       var majorDigits = majorText.replace(/\./g, '').replace(/\D/g, '');
       var fractionDigits = fractionText.replace(/\D/g, '');
       if (majorDigits === '' && fractionDigits === '') {
@@ -290,7 +345,7 @@
         major:major,
         fraction:fractionDigits,
         raw:major + (fractionDigits !== '' ? '.' + fractionDigits : ''),
-        hadSeparator:withoutCurrency.indexOf(',') !== -1,
+        hadSeparator:commaIndex !== -1,
         majorTooLong:major.length > 16,
         fractionTooLong:fractionDigits.length > 2,
         original:text,
@@ -443,10 +498,15 @@
     function syncFromVisible(visible, dispatchInput) {
       var raw = displayToRaw.get(visible);
       if (!raw) return null;
+      var oldValue = visible.value;
+      var oldStart = visible.selectionStart;
+      var oldEnd = visible.selectionEnd;
       externalValidity.delete(raw);
       var state = displayState(visible.value);
       lastState.set(raw, state);
-      visible.value = formatState(state, true);
+      var formatted = formatState(state, true);
+      visible.value = formatted;
+      restoreCaret(visible, oldValue, oldStart, oldEnd, formatted);
       applyValidity(raw, state);
       if (!state.syntaxValid) return raw;
       raw.value = state.raw;
