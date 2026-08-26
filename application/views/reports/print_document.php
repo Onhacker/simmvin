@@ -110,7 +110,8 @@ $accountSummary = array_merge(array(
     <style>
         @page { size: 210mm 330mm; margin: 12mm 10mm 14mm; }
         * { box-sizing: border-box; }
-        html, body { margin: 0; padding: 0; color: #111827; font-family: "DejaVu Sans", Arial, sans-serif; font-size: 9px; line-height: 1.45; touch-action: pan-x pan-y; }
+        html { padding: 0; color: #111827; font-family: "DejaVu Sans", Arial, sans-serif; font-size: 9px; line-height: 1.45; touch-action: pan-x pan-y; }
+        body { margin: 0; padding: 0; color: #111827; font-family: inherit; font-size: inherit; line-height: inherit; touch-action: inherit; }
         body { background: #e9eef5; }
         .screen-note { width: 210mm; max-width: calc(100% - 24px); margin: 14px auto 0; padding: 9px 12px; border: 1px solid #bfd2ee; border-radius: 8px; background: #eef5ff; color: #174b8b; font-size: 12px; text-align: center; }
         .sheet-stage { width: 210mm; min-height: 330mm; margin: 14px auto 24px; }
@@ -309,7 +310,7 @@ $accountSummary = array_merge(array(
             <p class="report-note">Ringkasan tetap mencakup tagihan dan pembayaran tingkat desa. Pada rincian peserta, event per desa menampilkan penanda pencatatan desa, sedangkan skema paket hanya menampilkan komponen peserta yang termasuk paket atau peserta tambahan.</p>
         <?php endif; ?>
         <table class="report-table">
-            <colgroup><col style="width:4%"><col style="width:29%"><col style="width:18%"><col style="width:13%"><col style="width:16%"><col style="width:11%"><col style="width:9%"></colgroup>
+            <colgroup><col width="4%" style="width:4%"><col width="29%" style="width:29%"><col width="18%" style="width:18%"><col width="13%" style="width:13%"><col width="16%" style="width:16%"><col width="11%" style="width:11%"><col width="9%" style="width:9%"></colgroup>
             <thead><tr><th>No.</th><th><?= $report['view'] === 'participant' ? 'Peserta / Desa' : 'Desa / Event' ?></th><th><?= $report['view'] === 'participant' ? 'Jabatan / Wilayah' : 'Wilayah / Peserta' ?></th><th class="money">Tagihan</th><th class="money">Dana Masuk (Terverifikasi)</th><th class="money">Sisa Tagihan</th><th>Status</th></tr></thead>
             <tbody>
             <?php if (!$report['rows']): ?><tr class="empty-row"><td colspan="7">Belum ada data registrasi pada event aktif.</td></tr><?php endif; ?>
@@ -355,7 +356,7 @@ $accountSummary = array_merge(array(
     <?php elseif ($reportKind === 'expense'): ?>
         <?php if (!$expenseGroups): ?>
             <table class="report-table">
-                <colgroup><col style="width:4%"><col style="width:14%"><col style="width:31%"><col style="width:17%"><col style="width:10%"><col style="width:12%"><col style="width:12%"></colgroup>
+                <colgroup><col width="4%" style="width:4%"><col width="14%" style="width:14%"><col width="31%" style="width:31%"><col width="17%" style="width:17%"><col width="10%" style="width:10%"><col width="12%" style="width:12%"><col width="12%" style="width:12%"></colgroup>
                 <thead><tr><th>No.</th><th>Tanggal / Nomor</th><th>Tujuan / Event</th><th>Akun / Metode</th><th>Status</th><th class="money">Nilai</th><th class="money">Total</th></tr></thead>
                 <tbody><tr class="empty-row"><td colspan="7">Belum ada transaksi pengeluaran pada event aktif.</td></tr></tbody>
             </table>
@@ -370,7 +371,7 @@ $accountSummary = array_merge(array(
                 <div class="expense-category-group">
                 <div class="expense-category-heading"><span>Kategori</span><strong><?= e($expenseGroup['name']) ?></strong></div>
                 <table class="report-table expense-category-table">
-                    <colgroup><col style="width:4%"><col style="width:14%"><col style="width:34%"><col style="width:17%"><col style="width:10%"><col style="width:10%"><col style="width:11%"></colgroup>
+                    <colgroup><col width="4%" style="width:4%"><col width="14%" style="width:14%"><col width="34%" style="width:34%"><col width="17%" style="width:17%"><col width="10%" style="width:10%"><col width="10%" style="width:10%"><col width="11%" style="width:11%"></colgroup>
                     <thead><tr><th>No.</th><th>Tanggal / Nomor</th><th>Tujuan / Event</th><th>Akun / Metode</th><th>Status</th><th class="money">Nilai</th><th class="money">Total</th></tr></thead>
                     <tbody>
                     <?php foreach ($expenseGroup['rows'] as $row): ?>
@@ -402,14 +403,14 @@ $accountSummary = array_merge(array(
             <?php endforeach; ?>
             <?php $grandExpense = simp_money_from_cents($grandExpenseCents); ?>
             <table class="report-table expense-grand-total">
-                <colgroup><col style="width:4%"><col style="width:14%"><col style="width:34%"><col style="width:17%"><col style="width:10%"><col style="width:10%"><col style="width:11%"></colgroup>
+                <colgroup><col width="4%" style="width:4%"><col width="14%" style="width:14%"><col width="34%" style="width:34%"><col width="17%" style="width:17%"><col width="10%" style="width:10%"><col width="10%" style="width:10%"><col width="11%" style="width:11%"></colgroup>
                 <tfoot><tr><td colspan="6" class="money-label">TOTAL SELURUH PENGELUARAN</td><td class="money"><?= e($printRupiah($grandExpense)) ?></td></tr></tfoot>
             </table>
         <?php endif; ?>
     <?php elseif ($reportKind === 'debt'): ?>
         <p class="report-note">Pembayaran terverifikasi mengurangi saldo hutang. Pembayaran yang masih menunggu verifikasi tetap tercantum sebagai komitmen.</p>
         <table class="report-table">
-            <colgroup><col style="width:4%"><col style="width:14%"><col style="width:24%"><col style="width:15%"><col style="width:12%"><col style="width:12%"><col style="width:11%"><col style="width:8%"></colgroup>
+            <colgroup><col width="4%" style="width:4%"><col width="14%" style="width:14%"><col width="24%" style="width:24%"><col width="15%" style="width:15%"><col width="12%" style="width:12%"><col width="12%" style="width:12%"><col width="11%" style="width:11%"><col width="8%" style="width:8%"></colgroup>
             <thead><tr><th>No.</th><th>Nomor / Tanggal</th><th>Kreditur / Uraian</th><th>Event / Kategori</th><th class="money">Nilai Pokok</th><th class="money">Terbayar</th><th class="money">Sisa</th><th>Status</th></tr></thead>
             <tbody>
             <?php $debtPaymentRows = array(); ?>
@@ -459,7 +460,7 @@ $accountSummary = array_merge(array(
         <?php if ($debtPaymentRows): ?>
             <div class="section-title">Riwayat Pembayaran Hutang</div>
             <table class="report-table">
-                <colgroup><col style="width:4%"><col style="width:23%"><col style="width:13%"><col style="width:20%"><col style="width:13%"><col style="width:12%"><col style="width:15%"></colgroup>
+                <colgroup><col width="4%" style="width:4%"><col width="23%" style="width:23%"><col width="13%" style="width:13%"><col width="20%" style="width:20%"><col width="13%" style="width:13%"><col width="12%" style="width:12%"><col width="15%" style="width:15%"></colgroup>
                 <thead><tr><th>No.</th><th>Hutang / Kreditur</th><th>Tanggal</th><th>Akun / Metode</th><th class="money">Nominal</th><th class="money">Biaya Admin</th><th>Status / Catatan</th></tr></thead>
                 <tbody>
                 <?php foreach ($debtPaymentRows as $paymentIndex => $payment): ?>
@@ -485,7 +486,7 @@ $accountSummary = array_merge(array(
     <?php else: ?>
         <p class="report-note">Total Saldo Dihitung hanya menjumlah akun bertanda “Ya”. Saldo akhir setiap akun berasal dari saldo awal ditambah seluruh mutasi buku besar.</p>
         <table class="report-table">
-            <colgroup><col style="width:4%"><col style="width:18%"><col style="width:12%"><col style="width:22%"><col style="width:11%"><col style="width:11%"><col style="width:12%"><col style="width:10%"></colgroup>
+            <colgroup><col width="4%" style="width:4%"><col width="18%" style="width:18%"><col width="12%" style="width:12%"><col width="22%" style="width:22%"><col width="11%" style="width:11%"><col width="11%" style="width:11%"><col width="12%" style="width:12%"><col width="10%" style="width:10%"></colgroup>
             <thead><tr><th>No.</th><th>Akun</th><th>Jenis</th><th>Bank / Nomor / Pemilik</th><th class="money">Saldo Awal</th><th class="money">Mutasi Bersih</th><th class="money">Saldo Akhir</th><th>Status</th></tr></thead>
             <tbody>
             <?php if (!$accounts): ?><tr class="empty-row"><td colspan="8">Belum ada akun dana.</td></tr><?php endif; ?>

@@ -69,7 +69,8 @@ if ($eventLocation === '') $eventLocation = '-';
     <style>
         @page { size: 210mm 330mm; margin: 12mm 10mm 14mm; }
         * { box-sizing: border-box; }
-        html, body { margin: 0; padding: 0; color: #111827; font-family: "DejaVu Sans", Arial, sans-serif; font-size: 9px; line-height: 1.4; touch-action: pan-x pan-y; }
+        html { padding: 0; color: #111827; font-family: "DejaVu Sans", Arial, sans-serif; font-size: 9px; line-height: 1.4; touch-action: pan-x pan-y; }
+        body { margin: 0; padding: 0; color: #111827; font-family: inherit; font-size: inherit; line-height: inherit; touch-action: inherit; }
         body { background: #e9eef5; }
         .sheet-stage { width: 210mm; min-height: 330mm; margin: 14px auto 24px; }
         .sheet { width: 210mm; min-height: 330mm; margin: 0; padding: 12mm 10mm 14mm; background: #fff; box-shadow: 0 10px 34px rgba(15, 23, 42, .14); transform-origin: top left; }
@@ -168,7 +169,7 @@ if ($eventLocation === '') $eventLocation = '-';
     <div class="section-title">Rincian Peserta</div>
     <?php if ($billingMode !== 'per_participant'): ?><p class="report-note">Pembayaran event ini dicatat pada tingkat desa. Status pada setiap peserta mengikuti status pembayaran registrasi desa dan bukan transaksi individual.</p><?php endif; ?>
     <table class="report-table">
-        <colgroup><col style="width:4%"><col style="width:22%"><col style="width:12%"><col style="width:14%"><col style="width:12%"><col style="width:11%"><col style="width:12%"><col style="width:13%"></colgroup>
+        <colgroup><col width="4%" style="width:4%"><col width="22%" style="width:22%"><col width="12%" style="width:12%"><col width="14%" style="width:14%"><col width="12%" style="width:12%"><col width="11%" style="width:11%"><col width="12%" style="width:12%"><col width="13%" style="width:13%"></colgroup>
         <thead><tr><th>No.</th><th>Nama / Jabatan</th><th>Kontak</th><th>Komponen Tagihan</th><th class="money">Terverifikasi</th><th class="money">Menunggu</th><th class="money">Sisa</th><th>Status</th></tr></thead>
         <tbody>
         <?php if (!$participants): ?><tr class="empty-row"><td colspan="8">Tidak ada peserta aktif pada registrasi ini.</td></tr><?php endif; ?>
@@ -213,7 +214,7 @@ if ($eventLocation === '') $eventLocation = '-';
         <div class="empty-note">Belum ada transaksi pembayaran pada registrasi ini.</div>
     <?php else: ?>
         <table class="report-table">
-        <colgroup><col style="width:4%"><col style="width:15%"><col style="width:16%"><col style="width:21%"><col style="width:14%"><col style="width:13%"><col style="width:17%"></colgroup>
+        <colgroup><col width="4%" style="width:4%"><col width="15%" style="width:15%"><col width="16%" style="width:16%"><col width="21%" style="width:21%"><col width="14%" style="width:14%"><col width="13%" style="width:13%"><col width="17%" style="width:17%"></colgroup>
         <thead><tr><th>No.</th><th>Tanggal / Bukti</th><th>Untuk</th><th>Metode / Akun</th><th class="money">Nominal</th><th>Status</th><th>Catatan</th></tr></thead>
         <tbody>
         <?php foreach ($payments as $index => $payment): ?>

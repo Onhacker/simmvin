@@ -186,7 +186,7 @@ if (!$pages) {
         ?>
             <section class="print-page">
                 <table class="attendance-head" role="presentation">
-                    <colgroup><col style="width:9%"><col style="width:82%"><col style="width:9%"></colgroup>
+                    <colgroup><col width="9%" style="width:9%"><col width="82%" style="width:82%"><col width="9%" style="width:9%"></colgroup>
                     <tr>
                         <td class="logo-cell"><?php if ($logoDataUri !== ''): ?><img src="<?= e($logoDataUri) ?>" alt="Logo MVIN"><?php endif; ?></td>
                         <td class="title-cell">

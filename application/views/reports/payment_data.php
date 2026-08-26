@@ -42,7 +42,8 @@ elseif (count($reportEvents) > 1) $eventScope = number_format(count($reportEvent
     <style>
         @page { size: 330mm 210mm; margin: 9mm 9mm 11mm; }
         * { box-sizing: border-box; }
-        html, body { margin: 0; padding: 0; color: #111; font-family: "DejaVu Sans", Arial, sans-serif; font-size: 9.5px; line-height: 1.35; touch-action: pan-x pan-y; }
+        html { padding: 0; color: #111; font-family: "DejaVu Sans", Arial, sans-serif; font-size: 9.5px; line-height: 1.35; touch-action: pan-x pan-y; }
+        body { margin: 0; padding: 0; color: #111; font-family: inherit; font-size: inherit; line-height: inherit; touch-action: inherit; }
         body { background: #e9eef5; }
         .sheet-stage { width: 330mm; min-height: 210mm; margin: 14px auto 24px; }
         .sheet { width: 330mm; min-height: 210mm; padding: 9mm 9mm 11mm; background: #fff; box-shadow: 0 10px 34px rgba(15, 23, 42, .14); transform-origin: top left; }
@@ -142,7 +143,7 @@ elseif (count($reportEvents) > 1) $eventScope = number_format(count($reportEvent
 
         <div class="section-title">Rincian Status Pembayaran</div>
         <table class="report-table">
-            <colgroup><col style="width:3%"><col style="width:16%"><col style="width:25%"><col style="width:5%"><col style="width:10%"><col style="width:17%"><col style="width:9%"><col style="width:9%"><col style="width:6%"></colgroup>
+            <colgroup><col width="3%" style="width:3%"><col width="16%" style="width:16%"><col width="25%" style="width:25%"><col width="5%" style="width:5%"><col width="10%" style="width:10%"><col width="17%" style="width:17%"><col width="9%" style="width:9%"><col width="9%" style="width:9%"><col width="6%" style="width:6%"></colgroup>
             <thead><tr><th>No.</th><th>Desa / Kecamatan</th><th>Nama Peserta</th><th>Jml.</th><th class="money-cell">Tagihan</th><th class="money-cell">Terverifikasi / Metode</th><th class="money-cell">Menunggu</th><th class="money-cell">Sisa</th><th>Status</th></tr></thead>
             <tbody>
             <?php if (!$rows): ?><tr class="empty-row"><td colspan="9">Belum ada data pembayaran pada lingkup yang dipilih.</td></tr><?php endif; ?>
