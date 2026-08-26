@@ -244,10 +244,10 @@
     var expenseProofLabel = document.getElementById('expense-modal-proof-label');
     var expenseProofHelp = document.getElementById('expense-modal-proof-help');
     var expenseFee = document.getElementById('expense-modal-fee');
+    var expenseFeeWrap = document.getElementById('expense-modal-fee-wrap');
     var expenseStatus = document.getElementById('expense-modal-status');
     var expenseStatusWrap = document.getElementById('expense-modal-status-wrap');
     var expenseTitle = document.getElementById('expense-add-title');
-    var expenseKicker = document.getElementById('expense-modal-kicker');
     var expenseExpectedUpdatedAt = document.getElementById('expense-modal-expected-updated-at');
     var expenseSubmit = expenseForm.querySelector('[data-expense-add-submit]');
 
@@ -303,6 +303,11 @@
     function updateExpenseFeeRule() {
       if (!expenseMethod || !expenseFee) return;
       var isTransfer = expenseMethod.value === 'transfer';
+      if (expenseFeeWrap) {
+        expenseFeeWrap.classList.toggle('d-none', !isTransfer);
+        expenseFeeWrap.hidden = !isTransfer;
+        expenseFeeWrap.setAttribute('aria-hidden', isTransfer ? 'false' : 'true');
+      }
       setMoneyControl(expenseFee, {readOnly: !isTransfer});
       if (!isTransfer) setMoney(expenseFee, '0');
     }
@@ -314,7 +319,6 @@
       expenseForm.dataset.hasProof = '0';
       if (expenseExpectedUpdatedAt) expenseExpectedUpdatedAt.value = '';
       if (expenseTitle) expenseTitle.textContent = 'Tambah Pengeluaran';
-      if (expenseKicker) expenseKicker.textContent = 'Dana keluar';
       if (expenseStatusWrap) expenseStatusWrap.classList.remove('d-none');
       if (expenseStatus) expenseStatus.disabled = false;
       setExpenseValue('expense_date', localExpenseDate());
@@ -333,7 +337,6 @@
       if (expenseExpectedUpdatedAt) expenseExpectedUpdatedAt.value = expense.updated_at || '';
       expenseForm.action = (expenseForm.dataset.updatePrefix || '').replace(/\/$/, '') + '/' + encodeURIComponent(expense.id) + '/ubah';
       if (expenseTitle) expenseTitle.textContent = 'Edit Pengeluaran';
-      if (expenseKicker) expenseKicker.textContent = 'Perbarui transaksi';
       setExpenseValue('event_id', expense.event_id);
       setExpenseValue('category_id', expense.category_id);
       setExpenseValue('expense_date', expense.expense_date);
