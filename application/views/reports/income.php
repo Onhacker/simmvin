@@ -3,8 +3,10 @@ defined('BASEPATH') OR exit('No direct script access allowed');
 $summary = $report['summary'];
 $activeEvents = isset($activeEvents) && is_array($activeEvents) ? $activeEvents : array();
 $viewMode = $report['view'] === 'participant' ? 'participant' : 'village';
+$ajaxPartial = !empty($ajaxPartial);
 ?>
 
+<div id="income-report-content" data-income-report-content>
 <?php if (!$activeEvents): ?>
     <div class="card card-style">
         <div class="content text-center py-4">
@@ -27,7 +29,6 @@ $viewMode = $report['view'] === 'participant' ? 'participant' : 'village';
                         <p class="font-11 opacity-60 mb-0">Pemasukan seluruh event aktif digabung otomatis.</p>
                     <?php endif; ?>
                 </div>
-                <a class="btn btn-s font-13 font-600 bg-theme color-theme border rounded-s ms-auto flex-shrink-0" href="<?= site_url('laporan/pemasukan/cetak') . '?view=' . rawurlencode($viewMode) ?>" data-report-preview-open="income-print-modal"><i class="fas fa-print me-1 color-highlight"></i> Cetak</a>
             </div>
             <?php if (count($activeEvents) > 1): ?>
                 <div class="divider mt-3 mb-3"></div>
@@ -42,9 +43,10 @@ $viewMode = $report['view'] === 'participant' ? 'participant' : 'village';
         <div class="content mb-3">
             <p class="font-600 color-highlight mb-n1">Rincian pemasukan</p>
             <h2 class="mb-3">Tampilkan Berdasarkan</h2>
-            <div class="row mb-0">
-                <div class="col-6 pe-1"><a class="btn btn-full btn-m rounded-s font-600 <?= $viewMode === 'village' ? 'gradient-highlight color-white' : 'bg-theme color-theme border' ?>" href="<?= site_url('laporan/pemasukan?view=village') ?>"><i class="fa fa-home me-1"></i> Per Desa</a></div>
-                <div class="col-6 ps-1"><a class="btn btn-full btn-m rounded-s font-600 <?= $viewMode === 'participant' ? 'gradient-highlight color-white' : 'bg-theme color-theme border' ?>" href="<?= site_url('laporan/pemasukan?view=participant') ?>"><i class="fa fa-user me-1"></i> Per Peserta</a></div>
+            <div class="row mb-0 gx-2">
+                <div class="col-4 px-1"><a class="btn btn-full btn-s rounded-s font-600 <?= $viewMode === 'village' ? 'gradient-highlight color-white' : 'bg-theme color-theme border' ?>" href="<?= site_url('laporan/pemasukan?view=village') ?>" data-income-view="village" aria-pressed="<?= $viewMode === 'village' ? 'true' : 'false' ?>"><i class="fa fa-home me-1"></i> Per Desa</a></div>
+                <div class="col-4 px-1"><a class="btn btn-full btn-s rounded-s font-600 <?= $viewMode === 'participant' ? 'gradient-highlight color-white' : 'bg-theme color-theme border' ?>" href="<?= site_url('laporan/pemasukan?view=participant') ?>" data-income-view="participant" aria-pressed="<?= $viewMode === 'participant' ? 'true' : 'false' ?>"><i class="fa fa-user me-1"></i> Per Peserta</a></div>
+                <div class="col-4 px-1"><a class="btn btn-full btn-s rounded-s font-600 bg-theme color-theme border" href="<?= site_url('laporan/pemasukan/cetak') . '?view=' . rawurlencode($viewMode) ?>" data-income-print-trigger data-report-preview-open="income-print-modal"><i class="fas fa-print me-1 color-highlight"></i> Cetak</a></div>
             </div>
         </div>
     </div>
@@ -102,7 +104,8 @@ $viewMode = $report['view'] === 'participant' ? 'participant' : 'village';
         <?php endforeach; ?>
     </div>
 <?php endif; ?>
-<?php if ($activeEvents): ?>
+</div>
+<?php if ($activeEvents && !$ajaxPartial): ?>
     <?php $this->load->view('reports/print_modal', array(
         'printModalId' => 'income-print-modal',
         'printModalTitle' => 'Cetak Pemasukan',

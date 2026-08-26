@@ -6,9 +6,10 @@ $reportKind = isset($reportKind) && in_array($reportKind, $validReportKinds, TRU
 $documentTitle = isset($documentTitle) ? (string) $documentTitle : 'Laporan';
 $organizationName = isset($organizationName) ? (string) $organizationName : 'Penyelenggara Pelatihan';
 $displayOrganization = trim($organizationName) !== '';
-if ($reportKind === 'expense' && strcasecmp(trim($organizationName), 'Penyelenggara Pelatihan') === 0) {
+if (in_array($reportKind, array('income', 'expense'), TRUE) && strcasecmp(trim($organizationName), 'Penyelenggara Pelatihan') === 0) {
     $displayOrganization = FALSE;
 }
+$incomeLandscape = $reportKind === 'income';
 $activeEvents = isset($activeEvents) && is_array($activeEvents) ? $activeEvents : array();
 $rows = isset($rows) && is_array($rows) ? $rows : array();
 $debtSummary = isset($summary) && is_array($summary) ? $summary : array();
@@ -31,6 +32,14 @@ $printCategory = function ($value) {
     $value = trim((string) $value);
     if ($value === '') return 'TANPA KATEGORI';
     return function_exists('mb_strtoupper') ? mb_strtoupper($value, 'UTF-8') : strtoupper($value);
+};
+$printCategoryTitle = function ($value) {
+    $value = trim((string) $value);
+    if ($value === '') return 'Tanpa Kategori';
+    $lower = function_exists('mb_strtolower') ? mb_strtolower($value, 'UTF-8') : strtolower($value);
+    return function_exists('mb_convert_case')
+        ? mb_convert_case($lower, MB_CASE_TITLE, 'UTF-8')
+        : ucwords($lower);
 };
 $moneyCents = function ($value) {
     $cents = simp_money_cents($value);
@@ -126,13 +135,13 @@ $accountSummary = array_merge(array(
     <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=10, user-scalable=yes">
     <title><?= e($documentTitle) ?> | MVIN</title>
     <style>
-        @page { size: 210mm 330mm; margin: 12mm 10mm 14mm; }
+        @page { size: <?= $incomeLandscape ? '330mm 210mm' : '210mm 330mm' ?>; margin: 12mm 10mm 14mm; }
         * { box-sizing: border-box; }
         html { padding: 0; color: #111827; font-family: "DejaVu Sans", Arial, sans-serif; font-size: 12px; line-height: 1.3; touch-action: pan-x pan-y; }
         body { margin: 0; padding: 0; color: #111827; font-family: inherit; font-size: inherit; line-height: inherit; touch-action: inherit; }
         body { background: #e9eef5; }
-        .sheet-stage { width: 210mm; min-height: 330mm; margin: 14px auto 24px; }
-        .sheet { width: 210mm; min-height: 330mm; margin: 0; padding: 12mm 10mm 14mm; background: #fff; box-shadow: 0 10px 34px rgba(15, 23, 42, .14); transform-origin: top left; }
+        .sheet-stage { width: <?= $incomeLandscape ? '330mm' : '210mm' ?>; min-height: <?= $incomeLandscape ? '210mm' : '330mm' ?>; margin: 14px auto 24px; }
+        .sheet { width: <?= $incomeLandscape ? '330mm' : '210mm' ?>; min-height: <?= $incomeLandscape ? '210mm' : '330mm' ?>; margin: 0; padding: 12mm 10mm 14mm; background: #fff; box-shadow: 0 10px 34px rgba(15, 23, 42, .14); transform-origin: top left; }
         .document-head, .meta-table, .summary-grid, .report-table, .document-foot { width: 100%; border-collapse: collapse; }
         .document-head td { vertical-align: top; padding: 0 0 7px; border-bottom: 2px solid #1f5fab; }
         .brand-code { color: #1f5fab; font-size: 23px; font-weight: 800; letter-spacing: 1px; line-height: 1; }
@@ -180,10 +189,10 @@ $accountSummary = array_merge(array(
         .report-table .money { text-align: right; white-space: normal; overflow-wrap: anywhere; word-break: break-word; }
         .report-table .primary { display: block; font-weight: 700; }
         .report-table .secondary { display: block; margin-top: 1px; color: #5f6b7a; font-size: 12px; line-height: 1.2; }
+        .report-table .phone-link { color: #174b8b; text-decoration: underline; overflow-wrap: anywhere; word-break: break-word; }
         .report-note { margin: -1px 0 6px; padding: 5px 7px; border-left: 3px solid #1f5fab; background: #f3f7fc; color: #4b5563; font-size: 12px; }
         .expense-category-heading { margin: 8px 0 3px; padding: 4px 8px; border-left: 4px solid #1f5fab; background: #eaf2fc; color: #174b8b; page-break-after: avoid; break-after: avoid; }
-        .expense-category-heading span { display: block; color: #6b7280; font-size: 12px; font-weight: 700; letter-spacing: .25px; line-height: 1.1; text-transform: uppercase; }
-        .expense-category-heading strong { display: block; margin-top: 2px; color: #174b8b; font-size: 12px; line-height: 1.2; }
+        .expense-category-heading strong { display: block; margin: 0; color: #174b8b; font-size: 12px; line-height: 1.2; }
         .expense-category-group { page-break-inside: avoid; break-inside: avoid; }
         .expense-category-table { margin-bottom: 4px; page-break-before: avoid; break-before: avoid; }
         .expense-category-table .category-total-row td { background: #eef5ff !important; border-top: 2px solid #1f5fab; color: #174b8b; font-weight: 800; }
@@ -327,25 +336,16 @@ $accountSummary = array_merge(array(
 
     <div class="section-title"><?= $reportKind === 'accounts' ? 'Rincian Akun Dana' : ($reportKind === 'debt' ? 'Rincian Hutang' : 'Rincian Transaksi') ?></div>
     <?php if ($reportKind === 'income'): ?>
-        <?php
-        $hasVillageLevelParticipantRows = FALSE;
-        if ($report['view'] === 'participant') {
-            foreach ($report['rows'] as $participantReportRow) {
-                if ($participantReportRow['billing_mode'] !== 'per_participant') {
-                    $hasVillageLevelParticipantRows = TRUE;
-                    break;
-                }
-            }
-        }
-        ?>
-        <?php if ($hasVillageLevelParticipantRows): ?>
-            <p class="report-note">Ringkasan tetap mencakup tagihan dan pembayaran tingkat desa. Pada rincian peserta, event per desa menampilkan penanda pencatatan desa, sedangkan skema paket hanya menampilkan komponen peserta yang termasuk paket atau peserta tambahan.</p>
-        <?php endif; ?>
         <table class="report-table">
-            <colgroup><col width="4%" style="width:4%"><col width="29%" style="width:29%"><col width="18%" style="width:18%"><col width="13%" style="width:13%"><col width="16%" style="width:16%"><col width="11%" style="width:11%"><col width="9%" style="width:9%"></colgroup>
-            <thead><tr><th width="4%">No.</th><th width="29%"><?= $report['view'] === 'participant' ? 'Peserta / Desa' : 'Desa / Event' ?></th><th width="18%"><?= $report['view'] === 'participant' ? 'Jabatan / Wilayah' : 'Wilayah / Peserta' ?></th><th width="13%" class="money">Tagihan</th><th width="16%" class="money">Dana Masuk (Terverifikasi)</th><th width="11%" class="money">Sisa Tagihan</th><th width="9%">Status</th></tr></thead>
+            <?php if ($report['view'] === 'participant'): ?>
+            <colgroup><col width="28%" style="width:28%"><col width="28%" style="width:28%"><col width="18%" style="width:18%"><col width="14%" style="width:14%"><col width="12%" style="width:12%"></colgroup>
+            <thead><tr><th width="28%">Kecamatan/Desa</th><th width="28%">Nama Peserta/Jabatan</th><th width="18%">No. HP</th><th width="14%">Status Bayar (BB/Lunas)</th><th width="12%">Status</th></tr></thead>
+            <?php else: ?>
+            <colgroup><col width="4%" style="width:4%"><col width="39%" style="width:39%"><col width="16%" style="width:16%"><col width="21%" style="width:21%"><col width="12%" style="width:12%"><col width="8%" style="width:8%"></colgroup>
+            <thead><tr><th width="4%">No.</th><th width="39%">Kecamatan/Desa</th><th width="16%" class="money">Tagihan</th><th width="21%" class="money">Dana Masuk (Terverifikasi)</th><th width="12%" class="money">Sisa Tagihan</th><th width="8%">Status</th></tr></thead>
+            <?php endif; ?>
             <tbody>
-            <?php if (!$report['rows']): ?><tr class="empty-row"><td colspan="7">Belum ada data registrasi pada event aktif.</td></tr><?php endif; ?>
+            <?php if (!$report['rows']): ?><tr class="empty-row"><td colspan="<?= $report['view'] === 'participant' ? '5' : '6' ?>">Belum ada data registrasi pada event aktif.</td></tr><?php endif; ?>
             <?php foreach ($report['rows'] as $index => $row): ?>
                 <?php
                 $participantView = $report['view'] === 'participant';
@@ -366,21 +366,38 @@ $accountSummary = array_merge(array(
                     $statusClass = 'blue';
                     $statusLabel = $pureVillageParticipant ? 'Dicatat di Desa' : ($extraParticipant ? 'Peserta Tambahan' : 'Termasuk Paket Desa');
                 }
+                $registrationStatus = isset($row['registration_status']) ? strtolower(trim((string) $row['registration_status'])) : 'active';
+                $registrationStatusLabel = $registrationStatus === 'active' ? 'Aktif' : ($registrationStatus === 'cancelled' ? 'Dibatalkan' : ucfirst($registrationStatus));
+                $registrationStatusClass = $registrationStatus === 'active' ? 'green' : 'red';
                 ?>
                 <tr>
-                    <td class="number"><?= number_format($index + 1) ?></td>
-                    <td><span class="primary"><?= e($participantView ? $row['participant_name'] : $row['village_name']) ?></span><span class="secondary"><?= $participantView ? e($row['village_name']) . ' · ' : '' ?><?= e($row['event_name']) ?></span></td>
-                    <td><span class="primary"><?= e($participantView ? $row['position'] : $row['district_name']) ?></span><span class="secondary"><?= $participantView ? e($row['district_name'] . ', ' . $row['regency_name']) : e($row['regency_name']) . ' · ' . number_format((int) $row['participant_count']) . ' peserta' ?></span></td>
-                    <?php if ($villageBillingParticipant): ?>
-                        <td class="money"><?= $pureVillageParticipant ? '-' : ($extraParticipant ? e($printRupiah($due)) : 'Termasuk paket') ?></td>
-                        <td class="money"><span class="secondary">Dicatat di desa</span></td>
-                        <td class="money">-</td>
+                    <?php if ($participantView): ?>
+                    <?php
+                    $phone = trim((string) (isset($row['phone']) ? $row['phone'] : ''));
+                    $phoneDigits = preg_replace('/\D+/', '', $phone);
+                    if ($phoneDigits !== '' && strpos($phoneDigits, '0') === 0) $phoneDigits = '62' . substr($phoneDigits, 1);
+                    $statusDueCents = $villageBillingParticipant ? $moneyCents(isset($row['village_due']) ? $row['village_due'] : 0) : $dueCents;
+                    $statusPaidCents = $villageBillingParticipant ? $moneyCents(isset($row['village_paid']) ? $row['village_paid'] : 0) : $paidCents;
+                    if ($statusDueCents === NULL) $statusDueCents = 0;
+                    if ($statusPaidCents === NULL) $statusPaidCents = 0;
+                    if ($statusDueCents < 0) $statusDueCents = 0;
+                    if ($statusPaidCents < 0) $statusPaidCents = 0;
+                    $isParticipantPaid = $statusDueCents > 0 && $statusPaidCents >= $statusDueCents;
+                    if ($statusDueCents <= 0 && $statusPaidCents > 0) $isParticipantPaid = TRUE;
+                    ?>
+                    <td><span class="primary"><?= e($row['district_name']) ?></span><span class="secondary"><?= e($row['village_name']) ?></span></td>
+                    <td><span class="primary"><?= e($row['participant_name']) ?></span><span class="secondary"><?= e($row['position']) ?></span></td>
+                    <td><?php if ($phone !== '' && $phoneDigits !== ''): ?><a class="phone-link" href="https://wa.me/<?= e($phoneDigits) ?>" target="_blank" rel="noopener"><?= e($phone) ?></a><?php else: ?>-<?php endif; ?></td>
+                    <td><span class="status <?= $isParticipantPaid ? 'green' : 'red' ?>"><?= $isParticipantPaid ? 'Lunas' : 'BB' ?></span></td>
+                    <td><span class="status <?= $registrationStatusClass ?>"><?= e($registrationStatusLabel) ?></span></td>
                     <?php else: ?>
-                        <td class="money"><?= e($printRupiah($due)) ?></td>
-                        <td class="money"><span class="primary"><?= e($printRupiah($paid)) ?></span><span class="secondary">T <?= e($printRupiah($row['cash_total'], FALSE)) ?> · TF <?= e($printRupiah($row['transfer_total'], FALSE)) ?> · Q <?= e($printRupiah($row['qris_total'], FALSE)) ?></span></td>
-                        <td class="money"><?= e($printRupiah($remaining)) ?></td>
-                    <?php endif; ?>
+                    <td class="number"><?= number_format($index + 1) ?></td>
+                    <td><span class="primary"><?= e($row['district_name']) ?></span><span class="secondary"><?= e($row['village_name']) ?></span><span class="secondary"><?= number_format((int) $row['participant_count']) ?> peserta</span></td>
+                    <td class="money"><?= e($printRupiah($due)) ?></td>
+                    <td class="money"><span class="primary"><?= e($printRupiah($paid)) ?></span><span class="secondary"><?= $villageBillingParticipant ? 'Dicatat di desa' : 'T ' . e($printRupiah($row['cash_total'], FALSE)) . ' · TF ' . e($printRupiah($row['transfer_total'], FALSE)) . ' · Q ' . e($printRupiah($row['qris_total'], FALSE)) ?></span></td>
+                    <td class="money"><?= e($printRupiah($remaining)) ?></td>
                     <td><span class="status <?= $statusClass ?>"><?= e($statusLabel) ?></span></td>
+                    <?php endif; ?>
                 </tr>
             <?php endforeach; ?>
             </tbody>
@@ -401,7 +418,7 @@ $accountSummary = array_merge(array(
                 $categoryTotal = simp_money_from_cents($categoryTotalCents);
                 ?>
                 <div class="expense-category-group">
-                <div class="expense-category-heading"><span>Kategori</span><strong><?= e($printCategory($expenseGroup['name'])) ?></strong></div>
+                <div class="expense-category-heading"><strong><?= e($printCategoryTitle($expenseGroup['name'])) ?></strong></div>
                 <table class="report-table expense-category-table">
                     <colgroup><col width="5%" style="width:5%"><col width="12%" style="width:12%"><col width="42%" style="width:42%"><col width="19%" style="width:19%"><col width="8%" style="width:8%"><col width="14%" style="width:14%"></colgroup>
                     <thead><tr><th width="5%">No.</th><th width="12%">Tanggal</th><th width="42%">Deskripsi</th><th width="19%">Akun / Metode</th><th width="8%">Status</th><th width="14%" class="money">Total</th></tr></thead>
@@ -576,9 +593,9 @@ $accountSummary = array_merge(array(
     var userZoom = 100;
     function fitSheet() {
         sheet.style.transform = 'none';
-        stage.style.width = '210mm';
+        stage.style.width = '<?= $incomeLandscape ? '330mm' : '210mm' ?>';
         stage.style.height = 'auto';
-        stage.style.minHeight = '330mm';
+        stage.style.minHeight = '<?= $incomeLandscape ? '210mm' : '330mm' ?>';
         var naturalWidth = sheet.offsetWidth;
         var naturalHeight = sheet.offsetHeight;
         var availableWidth = Math.max(1, document.documentElement.clientWidth - 24);

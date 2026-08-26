@@ -48,6 +48,72 @@
     if (typeof window.simpAlert === 'function') window.simpAlert(message, {title:title, tone:tone});
   }
 
+  // Switch income report grouping without a full page reload. The returned
+  // partial contains the same outer #income-report-content wrapper and the
+  // current print link; the shared print modal remains mounted outside it.
+  function requestIncomeView(view, trigger) {
+    var current = document.getElementById('income-report-content');
+    if (!current || !view) return;
+    var url = new URL((trigger && trigger.href) || window.location.href, window.location.href);
+    url.search = '';
+    url.searchParams.set('view', view);
+    if (trigger) trigger.setAttribute('aria-busy', 'true');
+    fetch(url.toString(), {
+      credentials: 'same-origin', cache: 'no-store',
+      headers: {'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json'}
+    }).then(function (response) {
+      return response.text().then(function (body) {
+        var responseUrl = String(response.url || '');
+        if (response.status === 401 || /\/login(?:[/?#]|$)/i.test(responseUrl)) {
+          throw new Error('Sesi Anda telah berakhir. Silakan masuk kembali.');
+        }
+        var payload;
+        try { payload = JSON.parse(body); } catch (error) { throw new Error('Laporan pemasukan gagal diperbarui.'); }
+        if (!response.ok || payload.success !== true) throw new Error(payload.message || 'Laporan pemasukan gagal diperbarui.');
+        return payload;
+      });
+    }).then(function (payload) {
+      var parsed = new DOMParser().parseFromString(payload.html || '', 'text/html');
+      var next = parsed.getElementById('income-report-content');
+      if (!next) throw new Error('Potongan laporan pemasukan tidak lengkap.');
+      current.replaceWith(document.importNode(next, true));
+      if (window.history && window.history.replaceState) window.history.replaceState({}, '', url.toString());
+      var modal = document.getElementById('income-print-modal');
+      if (modal) {
+        var frame = modal.querySelector('[data-report-preview-frame]');
+        var pdf = modal.querySelector('[data-report-file-label="PDF"]');
+        var excel = modal.querySelector('[data-report-file-label="Excel"]');
+        var share = modal.querySelector('[data-report-share-pdf]');
+        if (frame) { frame.setAttribute('data-src', payload.preview_url); frame.removeAttribute('src'); frame.dataset.loaded = 'false'; }
+        if (pdf) pdf.href = payload.pdf_url;
+        if (excel && payload.excel_url) excel.href = payload.excel_url;
+        if (share) share.setAttribute('data-report-pdf-url', payload.pdf_url);
+      }
+    }).catch(function (error) {
+      financeAlert(error.message || 'Laporan pemasukan gagal diperbarui.', 'Gagal Memuat', 'danger');
+    }).finally(function () {
+      if (trigger) trigger.removeAttribute('aria-busy');
+    });
+  }
+
+  document.addEventListener('click', function (event) {
+    var trigger = event.target.closest('[data-income-view]');
+    if (!trigger) return;
+    event.preventDefault();
+    requestIncomeView(trigger.getAttribute('data-income-view'), trigger);
+  });
+
+  document.addEventListener('click', function (event) {
+    var trigger = event.target.closest('[data-income-print-trigger]');
+    if (!trigger) return;
+    var active = document.querySelector('[data-income-view][aria-pressed="true"]');
+    if (active) {
+      var href = new URL(trigger.href, window.location.href);
+      href.searchParams.set('view', active.getAttribute('data-income-view'));
+      trigger.href = href.toString();
+    }
+  }, true);
+
   function requestFinanceFilter(url) {
     var form = document.querySelector('[data-finance-filter-form]');
     var button = form ? form.querySelector('[data-finance-apply]') : null;

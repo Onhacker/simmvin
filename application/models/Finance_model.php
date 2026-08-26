@@ -1241,12 +1241,13 @@ class Finance_model extends CI_Model
 
         if ($view === 'participant') {
             $participantPayment = $paymentConditions . ' AND py.participant_id=pt.id';
-            $select = "pt.id participant_id,r.id registration_id,r.village_name,r.district_name,r.regency_name,e.name event_name,e.billing_mode,e.included_participant_count,e.participant_fee,pt.full_name participant_name,COALESCE(pt.position,'-') position,pt.expected_amount due_amount,r.expected_amount village_due," .
+            $select = "pt.id participant_id,r.id registration_id,r.status registration_status,r.village_name,r.district_name,r.regency_name,e.name event_name,e.billing_mode,e.included_participant_count,e.participant_fee,pt.full_name participant_name,COALESCE(pt.position,'-') position,COALESCE(pt.phone,'') phone,pt.expected_amount due_amount,r.expected_amount village_due," .
                 "(SELECT COUNT(*) FROM payments py WHERE {$participantPayment}) payment_count," .
                 "(SELECT COALESCE(SUM(py.amount),0) FROM payments py WHERE {$participantPayment}) paid," .
                 "(SELECT COALESCE(SUM(py.amount),0) FROM payments py WHERE {$participantPayment} AND py.method='cash') cash_total," .
                 "(SELECT COALESCE(SUM(py.amount),0) FROM payments py WHERE {$participantPayment} AND py.method='transfer') transfer_total," .
-                "(SELECT COALESCE(SUM(py.amount),0) FROM payments py WHERE {$participantPayment} AND py.method='qris') qris_total";
+                "(SELECT COALESCE(SUM(py.amount),0) FROM payments py WHERE {$participantPayment} AND py.method='qris') qris_total," .
+                "(SELECT COALESCE(SUM(py.amount),0) FROM payments py WHERE {$paymentConditions} AND py.registration_id=r.id) village_paid";
             $this->db->select($select, FALSE)->from('participants pt')
                 ->join('registrations r', 'r.id=pt.registration_id')->join('training_events e', 'e.id=r.event_id')
                 ->where(array('r.status' => 'active', 'pt.is_active' => 1))->where('pt.deleted_at IS NULL', NULL, FALSE)

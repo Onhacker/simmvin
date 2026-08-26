@@ -13,6 +13,17 @@ class Reports extends App_Controller
     {
         $this->require_permission('reports.income');
         $data = $this->income_report_data();
+        if ($this->input->is_ajax_request()) {
+            $view = $data['filters']['view'];
+            return $this->json(array(
+                'success' => TRUE,
+                'html' => $this->load->view('reports/income', array_merge($data, array('ajaxPartial'=>TRUE)), TRUE),
+                'view' => $view,
+                'preview_url' => site_url('laporan/pemasukan/cetak') . '?view=' . rawurlencode($view),
+                'pdf_url' => site_url('laporan/pemasukan/pdf') . '?view=' . rawurlencode($view),
+                'excel_url' => site_url('laporan/pemasukan/excel') . '?view=' . rawurlencode($view)
+            ));
+        }
         $data['pageTitle'] = 'Laporan Pemasukan';
         $data['pageScript'] = 'finance.js';
         $this->render('reports/income', $data);
@@ -42,7 +53,7 @@ class Reports extends App_Controller
 
         try {
             $this->load->library('Pdf_renderer');
-            $pdf = $this->pdf_renderer->render_f4($html);
+            $pdf = $this->pdf_renderer->render_f4_landscape($html);
             $mode = $data['report']['view'] === 'participant' ? 'peserta' : 'desa';
             return $this->private_document_output(
                 'application/pdf',
