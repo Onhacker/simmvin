@@ -6,6 +6,46 @@ $viewMode = $report['view'] === 'participant' ? 'participant' : 'village';
 $ajaxPartial = !empty($ajaxPartial);
 ?>
 
+<style>
+/* The three report actions share one row even on a narrow phone.  The
+ * global AppKit btn-s rule has generous horizontal padding, which makes
+ * “Per Peserta” wrap while “Cetak” stays on one line. */
+#page [data-income-report-content] .income-report-actions {
+    display: flex;
+    flex-wrap: nowrap;
+    gap: 6px;
+}
+#page [data-income-report-content] .income-report-actions > div {
+    flex: 1 1 0;
+    min-width: 0;
+    padding-left: 0 !important;
+    padding-right: 0 !important;
+}
+#page [data-income-report-content] .income-report-actions .btn {
+    min-height: 40px;
+    padding: 7px 4px !important;
+    font-size: 12px !important;
+    line-height: 1.2 !important;
+    white-space: nowrap;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+#page [data-income-report-content] .income-report-actions .btn i {
+    margin-right: 3px !important;
+}
+@media (max-width: 380px) {
+    #page [data-income-report-content] .income-report-actions {
+        gap: 4px;
+    }
+    #page [data-income-report-content] .income-report-actions .btn {
+        padding-left: 2px !important;
+        padding-right: 2px !important;
+        font-size: 11px !important;
+    }
+}
+</style>
+
 <div id="income-report-content" data-income-report-content>
 <?php if (!$activeEvents): ?>
     <div class="card card-style">
@@ -43,7 +83,7 @@ $ajaxPartial = !empty($ajaxPartial);
         <div class="content mb-3">
             <p class="font-600 color-highlight mb-n1">Rincian pemasukan</p>
             <h2 class="mb-3">Tampilkan Berdasarkan</h2>
-            <div class="row mb-0 gx-2">
+            <div class="row mb-0 income-report-actions">
                 <div class="col-4 px-1"><a class="btn btn-full btn-s rounded-s font-600 <?= $viewMode === 'village' ? 'gradient-highlight color-white' : 'bg-theme color-theme border' ?>" href="<?= site_url('laporan/pemasukan?view=village') ?>" data-income-view="village" aria-pressed="<?= $viewMode === 'village' ? 'true' : 'false' ?>"><i class="fa fa-home me-1"></i> Per Desa</a></div>
                 <div class="col-4 px-1"><a class="btn btn-full btn-s rounded-s font-600 <?= $viewMode === 'participant' ? 'gradient-highlight color-white' : 'bg-theme color-theme border' ?>" href="<?= site_url('laporan/pemasukan?view=participant') ?>" data-income-view="participant" aria-pressed="<?= $viewMode === 'participant' ? 'true' : 'false' ?>"><i class="fa fa-user me-1"></i> Per Peserta</a></div>
                 <div class="col-4 px-1"><a class="btn btn-full btn-s rounded-s font-600 bg-theme color-theme border" href="<?= site_url('laporan/pemasukan/cetak') . '?view=' . rawurlencode($viewMode) ?>" data-income-print-trigger data-report-preview-open="income-print-modal"><i class="fas fa-print me-1 color-highlight"></i> Cetak</a></div>
