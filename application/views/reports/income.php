@@ -105,7 +105,7 @@ $viewMode = $report['view'] === 'participant' ? 'participant' : 'village';
 <?php if ($activeEvents): ?>
     <?php $this->load->view('reports/print_modal', array(
         'printModalId' => 'income-print-modal',
-        'printModalTitle' => 'Pratinjau Pemasukan',
+        'printModalTitle' => 'Cetak Pemasukan',
         'printPreviewUrl' => site_url('laporan/pemasukan/cetak') . '?view=' . rawurlencode($viewMode),
         'printPdfUrl' => site_url('laporan/pemasukan/pdf') . '?view=' . rawurlencode($viewMode),
         'printExcelUrl' => site_url('laporan/pemasukan/excel') . '?view=' . rawurlencode($viewMode)

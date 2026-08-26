@@ -107,8 +107,6 @@ $hasPrintableParticipants = $activeParticipantCount > 0;
         'printPreviewUrl' => site_url('event/'.(int)($event['id'] ?? 0).'/registrasi/cetak'),
         'printPdfUrl' => site_url('event/'.(int)($event['id'] ?? 0).'/registrasi/pdf'),
         'printExcelUrl' => site_url('event/'.(int)($event['id'] ?? 0).'/registrasi/excel'),
-        'printExcelLabel' => 'Excel Mailing',
-        'printFormatLabel' => 'Landscape F4',
-        'printPaperNote' => 'Arsip event · Landscape F4/Folio · Data hanya untuk baca dan cetak.'
+        'printExcelLabel' => 'Excel Mailing'
     )); ?>
 <?php endif; ?>

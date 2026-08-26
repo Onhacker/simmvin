@@ -158,7 +158,7 @@ foreach ($categories as $category) $categoryPayload[] = array('id'=>(int)$catego
 
 <?php $this->load->view('reports/print_modal', array(
     'printModalId' => 'debt-print-modal',
-    'printModalTitle' => 'Pratinjau Hutang Perusahaan',
+    'printModalTitle' => 'Cetak Hutang Perusahaan',
     'printPreviewUrl' => site_url('hutang/cetak'),
     'printPdfUrl' => site_url('hutang/pdf'),
     'printExcelUrl' => site_url('hutang/excel')

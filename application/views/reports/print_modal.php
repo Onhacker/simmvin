@@ -1,13 +1,13 @@
 <?php
 defined('BASEPATH') OR exit('No direct script access allowed');
 $printModalId = isset($printModalId) ? preg_replace('/[^a-z0-9_-]/i', '', $printModalId) : 'report-print-modal';
-$printModalTitle = isset($printModalTitle) ? (string) $printModalTitle : 'Pratinjau Laporan';
+$printModalTitle = isset($printModalTitle) ? (string) $printModalTitle : 'Cetak Laporan';
 $printPreviewUrl = isset($printPreviewUrl) ? (string) $printPreviewUrl : '#';
 $printPdfUrl = isset($printPdfUrl) ? (string) $printPdfUrl : '#';
 $printExcelUrl = isset($printExcelUrl) ? trim((string) $printExcelUrl) : '';
 $printExcelLabel = isset($printExcelLabel) && trim((string) $printExcelLabel) !== '' ? (string) $printExcelLabel : 'Excel';
-$printPaperNote = isset($printPaperNote) ? (string) $printPaperNote : 'Gunakan ukuran kertas F4/Folio 210 × 330 mm pada pengaturan printer.';
-$printFormatLabel = isset($printFormatLabel) ? (string) $printFormatLabel : 'Dokumen F4';
+$printPaperNote = isset($printPaperNote) ? (string) $printPaperNote : '';
+$printFormatLabel = isset($printFormatLabel) ? (string) $printFormatLabel : '';
 $printIconOnly = !empty($printIconOnly);
 $printFrameId = $printModalId . '-frame';
 ?>

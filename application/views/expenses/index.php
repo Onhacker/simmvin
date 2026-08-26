@@ -300,7 +300,7 @@ $canVerify = !empty($canVerify);
 <?php if ($activeEvents): ?>
     <?php $this->load->view('reports/print_modal', array(
         'printModalId' => 'expense-print-modal',
-        'printModalTitle' => 'Pratinjau Pengeluaran',
+        'printModalTitle' => 'Cetak Pengeluaran',
         'printPreviewUrl' => site_url('pengeluaran/cetak'),
         'printPdfUrl' => site_url('pengeluaran/pdf'),
         'printExcelUrl' => site_url('pengeluaran/excel')

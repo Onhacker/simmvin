@@ -90,7 +90,6 @@ $accountSummary = array_merge(array(
         html { padding: 0; color: #111827; font-family: "DejaVu Sans", Arial, sans-serif; font-size: 9px; line-height: 1.45; touch-action: pan-x pan-y; }
         body { margin: 0; padding: 0; color: #111827; font-family: inherit; font-size: inherit; line-height: inherit; touch-action: inherit; }
         body { background: #e9eef5; }
-        .screen-note { width: 210mm; max-width: calc(100% - 24px); margin: 14px auto 0; padding: 9px 12px; border: 1px solid #bfd2ee; border-radius: 8px; background: #eef5ff; color: #174b8b; font-size: 12px; text-align: center; }
         .sheet-stage { width: 210mm; min-height: 330mm; margin: 14px auto 24px; }
         .sheet { width: 210mm; min-height: 330mm; margin: 0; padding: 12mm 10mm 14mm; background: #fff; box-shadow: 0 10px 34px rgba(15, 23, 42, .14); transform-origin: top left; }
         .document-head, .meta-table, .summary-grid, .report-table, .document-foot { width: 100%; border-collapse: collapse; }
@@ -154,23 +153,17 @@ $accountSummary = array_merge(array(
         .empty-row td { padding: 20px 8px; color: #6b7280; text-align: center; }
         .document-foot { margin-top: 10px; border-top: 1px solid #cfd7e2; }
         .document-foot td { padding-top: 5px; color: #6b7280; font-size: 7.5px; vertical-align: top; }
-        .document-foot .right { text-align: right; }
         @media print {
             html, body { background: #fff; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-            .screen-note { display: none !important; }
             .sheet-stage { width: auto !important; height: auto !important; min-height: 0 !important; margin: 0 !important; }
             .sheet { width: auto; min-height: 0; margin: 0; padding: 0; box-shadow: none; transform: none !important; }
         }
         @media screen and (max-width: 820px) {
-            .screen-note { margin-left: 12px; margin-right: 12px; }
             .sheet-stage { margin-top: 12px; margin-bottom: 12px; }
         }
     </style>
 </head>
 <body>
-<?php if (!$isPdf): ?>
-    <div class="screen-note">Pratinjau dokumen pada kertas F4 210 × 330 mm.</div>
-<?php endif; ?>
 <div class="sheet-stage" data-sheet-stage>
 <article class="sheet" data-print-sheet>
     <table class="document-head">
@@ -192,7 +185,7 @@ $accountSummary = array_merge(array(
     </table>
 
     <table class="meta-table">
-        <tr><td class="meta-label">Lingkup data</td><td class="meta-separator">:</td><td class="meta-value"><?= e($reportKind === 'accounts' ? 'Seluruh akun dana' : $eventScope) ?></td></tr>
+        <?php if ($reportKind !== 'expense'): ?><tr><td class="meta-label">Lingkup data</td><td class="meta-separator">:</td><td class="meta-value"><?= e($reportKind === 'accounts' ? 'Seluruh akun dana' : $eventScope) ?></td></tr><?php endif; ?>
         <?php if ($reportKind === 'income'): ?>
             <tr><td class="meta-label">Rincian</td><td class="meta-separator">:</td><td class="meta-value"><?= $report['view'] === 'participant' ? 'Per peserta' : 'Per desa' ?></td></tr>
         <?php elseif ($reportKind === 'accounts'): ?>
@@ -344,8 +337,8 @@ $accountSummary = array_merge(array(
     <?php elseif ($reportKind === 'expense'): ?>
         <?php if (!$expenseGroups): ?>
             <table class="report-table">
-                <colgroup><col width="3%" style="width:3%"><col width="16%" style="width:16%"><col width="40%" style="width:40%"><col width="19%" style="width:19%"><col width="8%" style="width:8%"><col width="14%" style="width:14%"></colgroup>
-                <thead><tr><th width="3%">No.</th><th width="16%">Tanggal / Nomor</th><th width="40%">Deskripsi</th><th width="19%">Akun / Metode</th><th width="8%">Status</th><th width="14%" class="money">Total</th></tr></thead>
+                <colgroup><col width="3%" style="width:3%"><col width="12%" style="width:12%"><col width="44%" style="width:44%"><col width="19%" style="width:19%"><col width="8%" style="width:8%"><col width="14%" style="width:14%"></colgroup>
+                <thead><tr><th width="3%">No.</th><th width="12%">Tanggal</th><th width="44%">Deskripsi</th><th width="19%">Akun / Metode</th><th width="8%">Status</th><th width="14%" class="money">Total</th></tr></thead>
                 <tbody><tr class="empty-row"><td colspan="6">Belum ada transaksi pengeluaran pada event aktif.</td></tr></tbody>
             </table>
         <?php else: ?>
@@ -359,8 +352,8 @@ $accountSummary = array_merge(array(
                 <div class="expense-category-group">
                 <div class="expense-category-heading"><span>Kategori</span><strong><?= e($expenseGroup['name']) ?></strong></div>
                 <table class="report-table expense-category-table">
-                    <colgroup><col width="3%" style="width:3%"><col width="16%" style="width:16%"><col width="40%" style="width:40%"><col width="19%" style="width:19%"><col width="8%" style="width:8%"><col width="14%" style="width:14%"></colgroup>
-                    <thead><tr><th width="3%">No.</th><th width="16%">Tanggal / Nomor</th><th width="40%">Deskripsi</th><th width="19%">Akun / Metode</th><th width="8%">Status</th><th width="14%" class="money">Total</th></tr></thead>
+                    <colgroup><col width="3%" style="width:3%"><col width="12%" style="width:12%"><col width="44%" style="width:44%"><col width="19%" style="width:19%"><col width="8%" style="width:8%"><col width="14%" style="width:14%"></colgroup>
+                    <thead><tr><th width="3%">No.</th><th width="12%">Tanggal</th><th width="44%">Deskripsi</th><th width="19%">Akun / Metode</th><th width="8%">Status</th><th width="14%" class="money">Total</th></tr></thead>
                     <tbody>
                     <?php foreach ($expenseGroup['rows'] as $row): ?>
                         <?php
@@ -374,7 +367,7 @@ $accountSummary = array_merge(array(
                         ?>
                         <tr>
                             <td class="number"><?= number_format($expenseNo) ?></td>
-                            <td><span class="primary"><?= e(tanggal_id($row['expense_date'])) ?></span><span class="secondary"><?= e($row['expense_no']) ?></span></td>
+                            <td><span class="primary"><?= e(tanggal_id($row['expense_date'])) ?></span></td>
                             <td><span class="primary"><?= e($row['description']) ?></span><?php if (!empty($row['debt_id'])): ?><span class="secondary">Pembayaran hutang <?= e($row['debt_no']) ?> · <?= e($row['debt_creditor']) ?></span><?php endif; ?></td>
                             <td><span class="primary"><?= e($row['account_name']) ?></span><span class="secondary"><?= e(isset($methodLabels[$row['method']]) ? $methodLabels[$row['method']] : ucfirst((string) $row['method'])) ?></span></td>
                             <td><?php if ($status === 'verified'): ?><span class="status status-icon <?= $statusClass ?>" role="img" aria-label="Terverifikasi" title="Terverifikasi">&#10003;</span><?php else: ?><span class="status <?= $statusClass ?>"><?= e(isset($expenseStatusLabels[$status]) ? $expenseStatusLabels[$status] : ucwords(str_replace('_', ' ', $status))) ?></span><?php endif; ?></td>
@@ -388,7 +381,7 @@ $accountSummary = array_merge(array(
             <?php endforeach; ?>
             <?php $grandExpense = simp_money_from_cents($grandExpenseCents); ?>
             <table class="report-table expense-grand-total">
-                <colgroup><col width="3%" style="width:3%"><col width="16%" style="width:16%"><col width="40%" style="width:40%"><col width="19%" style="width:19%"><col width="8%" style="width:8%"><col width="14%" style="width:14%"></colgroup>
+                <colgroup><col width="3%" style="width:3%"><col width="12%" style="width:12%"><col width="44%" style="width:44%"><col width="19%" style="width:19%"><col width="8%" style="width:8%"><col width="14%" style="width:14%"></colgroup>
                 <tfoot><tr><td width="86%" colspan="5" class="money-label">TOTAL SELURUH PENGELUARAN</td><td width="14%" class="money"><?= e($printRupiah($grandExpense)) ?></td></tr></tfoot>
             </table>
         <?php endif; ?>
@@ -505,12 +498,11 @@ $accountSummary = array_merge(array(
 
     <table class="document-foot">
         <tr>
-            <td><?php
+            <td colspan="2"><?php
                 if ($reportKind === 'accounts') echo 'Data otomatis dari MVIN. Saldo berasal dari saldo awal dan mutasi buku besar.';
                 elseif ($reportKind === 'debt') echo 'Data otomatis dari MVIN. Pembayaran hutang terverifikasi mengurangi kewajiban.';
                 else echo 'Data otomatis dari MVIN. Nilai pemasukan dan pengeluaran terverifikasi memengaruhi saldo.';
             ?></td>
-            <td class="right">Format: F4 · 210 × 330 mm</td>
         </tr>
     </table>
 </article>

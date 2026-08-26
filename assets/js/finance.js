@@ -354,7 +354,7 @@
 
   function reportPreviewAlert(message, title, tone) {
     if (typeof window.simpAlert === 'function') {
-      window.simpAlert(message, {title:title || 'Pratinjau Laporan', tone:tone || 'warning'});
+      window.simpAlert(message, {title:title || 'Cetak Laporan', tone:tone || 'warning'});
     }
   }
 
