@@ -1667,20 +1667,21 @@
       var event = selectedAddEvent(), villageId = addVillage && addVillage.value ? String(addVillage.value) : '', mode = event && event.billing_mode ? String(event.billing_mode) : '';
       Array.prototype.forEach.call(addParticipants.querySelectorAll('[data-add-payment-slot]'), function (slot) {
         var row = slot.closest('[data-add-participant-row]'), key = row && row.dataset.addParticipantRow;
-        if (!addCanRecordPayment || mode !== 'per_participant' || !villageId || !key) { slot.innerHTML = ''; return; }
+        if (!addCanRecordPayment || mode !== 'per_participant' || !villageId || !key || !event || moneyCents(canonicalMoney(event.participant_fee || '0')) <= 0n) { slot.innerHTML = ''; return; }
         if (slot.dataset.paymentVillage === villageId && slot.dataset.paymentKey === key && slot.querySelector('[data-inline-payment-block]')) return;
         slot.innerHTML = inlinePaymentMarkup(villageId, key, canonicalMoney(event.participant_fee), 'Pembayaran peserta', addAccounts);
         slot.dataset.paymentVillage = villageId; slot.dataset.paymentKey = key;
         initializeInlinePayments(slot);
       });
       if (!addVillagePayment) return;
-      if (!addCanRecordPayment || mode === 'per_participant' || !villageId) { addVillagePayment.innerHTML = ''; return; }
+      var villageAmount = event ? addExpectedAmount(addParticipants.children.length) : '0.00';
+      if (!addCanRecordPayment || mode === 'per_participant' || !villageId || moneyCents(villageAmount) <= 0n) { addVillagePayment.innerHTML = ''; return; }
       var block = addVillagePayment.querySelector('[data-inline-payment-block]');
       if (!block || addVillagePayment.dataset.paymentVillage !== villageId) {
-        addVillagePayment.innerHTML = inlinePaymentMarkup(villageId, 'village', addExpectedAmount(addParticipants.children.length), 'Pembayaran tingkat desa', addAccounts);
+        addVillagePayment.innerHTML = inlinePaymentMarkup(villageId, 'village', villageAmount, 'Pembayaran tingkat desa', addAccounts);
         addVillagePayment.dataset.paymentVillage = villageId;
         initializeInlinePayments(addVillagePayment);
-      } else inlinePaymentSetTarget(block, addExpectedAmount(addParticipants.children.length), false);
+      } else inlinePaymentSetTarget(block, villageAmount, false);
     }
     function addParticipantRow() {
       if (addParticipants.children.length >= modalParticipantLimit) {
@@ -1761,17 +1762,18 @@
       var villageId = String(participantForm.dataset.villageId || ''), mode = detailBillingMode();
       Array.prototype.forEach.call(detailRows.querySelectorAll('[data-detail-payment-slot]'), function (slot) {
         var row = slot.closest('[data-detail-participant-row]'), key = row && row.dataset.detailParticipantRow;
-        if (!detailCanRecordPayment || mode !== 'per_participant' || !villageId || !key) { slot.innerHTML = ''; return; }
+        if (!detailCanRecordPayment || mode !== 'per_participant' || !villageId || !key || moneyCents(canonicalMoney(participantForm.dataset.participantFee || '0')) <= 0n) { slot.innerHTML = ''; return; }
         if (slot.dataset.paymentKey === key && slot.querySelector('[data-inline-payment-block]')) return;
         slot.innerHTML = inlinePaymentMarkup(villageId, key, canonicalMoney(participantForm.dataset.participantFee || '0'), 'Pembayaran peserta', detailAccounts);
         slot.dataset.paymentKey = key;
         initializeInlinePayments(slot);
       });
       if (!detailVillagePayment) return;
-      if (!detailCanRecordPayment || mode === 'per_participant' || !villageId) { detailVillagePayment.innerHTML = ''; return; }
+      var villageAmount = detailExpectedPayment();
+      if (!detailCanRecordPayment || mode === 'per_participant' || !villageId || moneyCents(villageAmount) <= 0n) { detailVillagePayment.innerHTML = ''; return; }
       var block = detailVillagePayment.querySelector('[data-inline-payment-block]');
-      if (!block) { detailVillagePayment.innerHTML = inlinePaymentMarkup(villageId, 'village', detailExpectedPayment(), 'Pembayaran tingkat desa', detailAccounts); initializeInlinePayments(detailVillagePayment); }
-      else inlinePaymentSetTarget(block, detailExpectedPayment(), false);
+      if (!block) { detailVillagePayment.innerHTML = inlinePaymentMarkup(villageId, 'village', villageAmount, 'Pembayaran tingkat desa', detailAccounts); initializeInlinePayments(detailVillagePayment); }
+      else inlinePaymentSetTarget(block, villageAmount, false);
     }
     function addDetailRow() {
       if (detailRows.children.length >= modalParticipantLimit) {
@@ -1889,14 +1891,24 @@
    */
   var participantMutationForm = document.getElementById('registration-participant-mutation-form');
   var mutationPaymentConfig = document.getElementById('registration-inline-payment-config');
+  /* Keep this callback in the outer scope: the delegated edit opener below
+   * runs outside the setup block on browsers that enforce block-scoped
+   * function declarations. */
+  var refreshMutationPayment = function () {};
   if (participantMutationForm) {
+    var mutationModal = document.getElementById('registration-participant-mutation-modal');
+    if (mutationModal) {
+      mutationModal.classList.add('simp-full-form-modal');
+      mutationModal.dataset.menuWidth = '980';
+      mutationModal.dataset.menuHeight = '820';
+    }
     participantMutationForm.enctype = 'multipart/form-data';
     participantMutationForm.classList.add('registration-inline-payment-form');
     var mutationPaymentWrap = document.createElement('div');
     mutationPaymentWrap.setAttribute('data-mutation-payment-wrap', '');
     var mutationReasonWrap = participantMutationForm.querySelector('#registration-participant-replace-reason-wrap');
     participantMutationForm.insertBefore(mutationPaymentWrap, mutationReasonWrap || participantMutationForm.querySelector('.row.mb-0'));
-    function refreshMutationPayment(trigger, mode) {
+    refreshMutationPayment = function (trigger, mode) {
       mutationPaymentWrap.innerHTML = '';
       if (mode !== 'ubah' || !mutationPaymentConfig || mutationPaymentConfig.dataset.canRecordPayment !== '1') return;
       var villageId = mutationPaymentConfig.dataset.villageId || '';
@@ -1904,10 +1916,12 @@
       var targetKey = billing === 'per_participant' ? String(trigger.dataset.participantId || '') : 'village';
       var amount = billing === 'per_participant' ? canonicalMoney(trigger.dataset.participantRemaining || '0') : canonicalMoney(mutationPaymentConfig.dataset.villageRemaining || '0');
       var label = billing === 'per_participant' ? (trigger.dataset.participantName || 'Peserta') : 'Pembayaran tingkat desa';
-      if (!villageId || !targetKey) return;
+      /* A fully paid target has no useful inline form.  Hiding it also keeps
+       * the edit modal focused on identity changes when no balance remains. */
+      if (!villageId || !targetKey || moneyCents(amount) <= 0n) return;
       mutationPaymentWrap.innerHTML = inlinePaymentMarkup(villageId, targetKey, amount, label, inlinePaymentAccounts(participantMutationForm));
       initializeInlinePayments(mutationPaymentWrap);
-    }
+    };
   }
   var participantDeactivateForm = document.getElementById('registration-participant-deactivate-form');
   var registrationCancelForm = document.getElementById('registration-cancel-form');
