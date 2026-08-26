@@ -50,7 +50,7 @@ foreach ($accounts as $account) $accountPayload[] = array('id'=>(int)$account['i
     <div class="card card-style"><div class="content text-center py-5"><span class="icon icon-l rounded-xl bg-blue-light color-blue-dark mb-3"><i class="fa fa-calendar-times"></i></span><h3 class="font-20">Belum Ada Event Aktif</h3><p class="font-12 opacity-60 mb-0">Aktifkan event terlebih dahulu untuk menambahkan registrasi peserta.</p></div></div>
 <?php else: ?>
     <div class="content mb-0">
-        <div class="d-flex align-items-center mb-3"><div><p class="font-600 color-highlight mb-n1">Desa dan peserta</p><h3 class="font-20 mb-0">Daftar Registrasi</h3></div><span class="badge bg-blue-dark color-white ms-auto"><?= number_format($totalParticipants) ?> peserta</span></div>
+        <div class="d-flex align-items-center mb-3"><div><h3 class="font-20 mb-0">Data Registrasi</h3></div><span class="badge bg-blue-dark color-white ms-auto"><?= number_format($totalParticipants) ?> peserta</span></div>
         <?php if (!$registrations): ?>
             <div class="card card-style mx-0"><div class="content text-center py-5"><span class="icon icon-l rounded-xl bg-blue-light color-blue-dark mb-3"><i class="fa fa-inbox"></i></span><h4 class="font-18">Belum Ada Registrasi</h4><p class="font-12 opacity-60 mb-3">Tambahkan desa dan peserta pada event aktif.</p><?php if ($canCreate): ?><button type="button" class="btn btn-m gradient-highlight rounded-s font-600 font-12" data-registration-add-open><i class="fa fa-plus me-1"></i> Tambah Registrasi</button><?php endif; ?></div></div>
         <?php endif; ?>
@@ -72,7 +72,7 @@ foreach ($accounts as $account) $accountPayload[] = array('id'=>(int)$account['i
             $paymentStatus = payment_status($committedAmount, $row['expected_amount']);
             ?>
             <div class="card card-style mx-0 mb-3"><div class="content mb-3">
-                <div class="d-flex align-items-start"><span class="icon icon-m rounded-xl gradient-blue color-white shadow-s me-3 flex-shrink-0"><i class="fa fa-building"></i></span><div class="min-width-zero me-2"><p class="font-10 color-highlight text-uppercase font-600 mb-n1"><?= e($row['district_name']) ?></p><h3 class="font-20 mb-0 text-break"><?= e($row['village_name']) ?></h3></div><div class="ms-auto flex-shrink-0"><?= status_badge($paymentStatus) ?></div></div>
+                <div class="d-flex align-items-start"><div class="min-width-zero me-2"><p class="font-13 color-highlight text-uppercase font-700 mb-1"><?= e($row['district_name']) ?></p><h3 class="font-20 mb-0 text-break"><?= e($row['village_name']) ?></h3></div><div class="ms-auto flex-shrink-0"><?= status_badge($paymentStatus) ?></div></div>
                 <div class="divider mt-3 mb-2"></div>
                 <div class="d-flex py-2 border-bottom"><span class="font-12 opacity-60"><i class="fa fa-users color-highlight icon-20"></i> Peserta</span><strong class="font-13 ms-auto"><?= number_format((int) $row['participant_count']) ?> orang</strong></div>
                 <div class="d-flex py-2 border-bottom"><span class="font-12 opacity-60"><i class="fa fa-file-invoice-dollar color-highlight icon-20"></i> Tagihan</span><strong class="font-13 ms-auto simp-balance-value"><?= rupiah($row['expected_amount']) ?></strong></div>
@@ -89,7 +89,7 @@ foreach ($accounts as $account) $accountPayload[] = array('id'=>(int)$account['i
 <?php if ($canPrint && $activeEvents): ?>
     <?php $this->load->view('reports/print_modal', array(
         'printModalId' => 'registration-print-modal',
-        'printModalTitle' => 'Daftar Registrasi Peserta',
+        'printModalTitle' => 'Data Registrasi Peserta',
         'printPreviewUrl' => site_url('registrasi/cetak'),
         'printPdfUrl' => site_url('registrasi/pdf'),
         'printExcelUrl' => site_url('registrasi/excel'),
