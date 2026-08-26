@@ -274,24 +274,26 @@ class Excel_renderer
 
             // Keep the original Data Desa fields in A:C so an existing mailing
             // source remains compatible, then append the requested MOU fields.
-            $columns = array('A', 'B', 'C', 'D', 'E', 'F', 'G', 'H');
+            $columns = array('A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J');
             $headers = array(
                 'Kecamatan',
                 'Desa',
                 'Jumlah Peserta',
                 'No MOU',
                 'Jumlah Pembayaran Per Desa',
+                'Terbilang Jumlah Pembayaran Per Desa',
                 'Jumlah Pembayaran Tambahan',
+                'Terbilang Jumlah Pembayaran Tambahan',
                 'Total',
                 'Terbilang'
             );
-            $widths = array(28, 32, 16, 34, 24, 24, 22, 54);
+            $widths = array(28, 32, 16, 32, 24, 46, 24, 46, 22, 54);
             foreach ($columns as $index => $column) {
                 $sheet->getColumnDimension($column)->setWidth($widths[$index]);
                 $this->set_text($sheet, $column . '1', $headers[$index]);
             }
-            $sheet->getStyle('A1:H1')->applyFromArray($this->header_style());
-            $sheet->getRowDimension(1)->setRowHeight(34);
+            $sheet->getStyle('A1:J1')->applyFromArray($this->header_style());
+            $sheet->getRowDimension(1)->setRowHeight(48);
             $sheet->freezePane('A2');
 
             foreach ($rows as $index => $row) {
@@ -307,37 +309,52 @@ class Excel_renderer
                 if ($mouNo === '') {
                     throw new RuntimeException('Nomor MOU belum ditetapkan pada salah satu registrasi. Jalankan patch database lalu buka kembali ekspor Data Desa.');
                 }
+                // Kode kabupaten pada master lama menggunakan underscore
+                // (mis. 64_1). Nomor dokumen mailing ditampilkan tanpa
+                // underscore sebagaimana format MOU yang digunakan pengguna.
+                $mouNo = str_replace('_', '', $mouNo);
                 $this->set_text($sheet, 'D' . $excelRow, $mouNo);
                 $this->set_number($sheet, 'E' . $excelRow, $amounts['village']);
-                $this->set_number($sheet, 'F' . $excelRow, $amounts['additional']);
-                $this->set_number($sheet, 'G' . $excelRow, $amounts['total']);
-                $this->set_text($sheet, 'H' . $excelRow, $this->rupiah_in_words($amounts['total']));
-                $this->style_detail_row($sheet, $excelRow, 'H', $index);
-                $sheet->getRowDimension($excelRow)->setRowHeight(38);
-                $sheet->getStyle('A' . $excelRow . ':G' . $excelRow)
+                $this->set_text($sheet, 'F' . $excelRow, $this->rupiah_in_words($amounts['village']));
+                $this->set_number($sheet, 'G' . $excelRow, $amounts['additional']);
+                $this->set_text($sheet, 'H' . $excelRow, $this->rupiah_in_words($amounts['additional']));
+                $this->set_number($sheet, 'I' . $excelRow, $amounts['total']);
+                $this->set_text($sheet, 'J' . $excelRow, $this->rupiah_in_words($amounts['total']));
+                $this->style_detail_row($sheet, $excelRow, 'J', $index);
+                $sheet->getRowDimension($excelRow)->setRowHeight(48);
+                $sheet->getStyle('A' . $excelRow . ':J' . $excelRow)
                     ->getAlignment()->setVertical(Alignment::VERTICAL_CENTER)->setWrapText(FALSE);
-                $sheet->getStyle('H' . $excelRow)
+                $sheet->getStyle('F' . $excelRow . ':F' . $excelRow)
                     ->getAlignment()->setVertical(Alignment::VERTICAL_CENTER)->setWrapText(TRUE);
-                $sheet->getStyle('C' . $excelRow . ':G' . $excelRow)
-                    ->getAlignment()->setHorizontal(Alignment::HORIZONTAL_RIGHT);
+                $sheet->getStyle('H' . $excelRow . ':H' . $excelRow)
+                    ->getAlignment()->setVertical(Alignment::VERTICAL_CENTER)->setWrapText(TRUE);
+                $sheet->getStyle('J' . $excelRow)
+                    ->getAlignment()->setVertical(Alignment::VERTICAL_CENTER)->setWrapText(TRUE);
+                foreach (array('C', 'E', 'G', 'I') as $numericColumn) {
+                    $sheet->getStyle($numericColumn . $excelRow)
+                        ->getAlignment()->setHorizontal(Alignment::HORIZONTAL_RIGHT);
+                }
             }
 
             $lastRow = max(1, count($rows) + 1);
-            $sheet->getStyle('A1:H' . $lastRow)->getFont()->setSize(11);
-            $sheet->getStyle('A1:H' . $lastRow)->getBorders()->getBottom()
+            $sheet->getStyle('A1:J' . $lastRow)->getFont()->setSize(11);
+            $sheet->getStyle('A1:J' . $lastRow)->getBorders()->getBottom()
                 ->setBorderStyle(Border::BORDER_HAIR)->getColor()->setRGB(self::BORDER);
             if (count($rows) > 0) {
                 $sheet->getStyle('C2:C' . $lastRow)->getNumberFormat()->setFormatCode('#,##0');
-                $sheet->getStyle('E2:G' . $lastRow)->getNumberFormat()->setFormatCode(self::MOU_CURRENCY_FORMAT);
+                foreach (array('E', 'G', 'I') as $currencyColumn) {
+                    $sheet->getStyle($currencyColumn . '2:' . $currencyColumn . $lastRow)
+                        ->getNumberFormat()->setFormatCode(self::MOU_CURRENCY_FORMAT);
+                }
             }
-            $sheet->setAutoFilter('A1:H' . $lastRow);
+            $sheet->setAutoFilter('A1:J' . $lastRow);
             $sheet->getPageSetup()
                 ->setPaperSize(PageSetup::PAPERSIZE_FOLIO)
                 ->setOrientation(PageSetup::ORIENTATION_LANDSCAPE)
                 ->setFitToWidth(1)
                 ->setFitToHeight(0);
             $sheet->getPageMargins()->setTop(0.35)->setRight(0.35)->setBottom(0.45)->setLeft(0.35);
-            $sheet->getPageSetup()->setPrintArea('A1:H' . $lastRow);
+            $sheet->getPageSetup()->setPrintArea('A1:J' . $lastRow);
             $sheet->getHeaderFooter()->setOddFooter('&LDiekspor dari MVIN&C&F&RHalaman &P / &N');
 
             $spreadsheet->setActiveSheetIndex(0);
