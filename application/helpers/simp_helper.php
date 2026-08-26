@@ -274,7 +274,7 @@ if (!function_exists('simp_resolve_event_regencies')) {
 
         $catalog = array();
         if ($candidateIds) {
-            $matches = $regionDb->select('k.id AS regency_id,k.kota AS regency_name,p.id AS province_id,p.provinsi AS province_name')
+            $matches = $regionDb->select('k.id AS regency_id,k.kota AS regency_name,k.kode_kota AS regency_code,p.id AS province_id,p.provinsi AS province_name')
                 ->from('data_kota k')->join('data_provinsi p', 'p.id=k.id_provinsi')
                 ->where_in('k.id', array_keys($candidateIds))->get()->result_array();
             foreach ($matches as $match) $catalog[(string) $match['regency_id']] = $match;
@@ -282,7 +282,7 @@ if (!function_exists('simp_resolve_event_regencies')) {
 
         $nameCatalog = array();
         if ($provinceIds) {
-            $matches = $regionDb->select('k.id AS regency_id,k.kota AS regency_name,p.id AS province_id,p.provinsi AS province_name')
+            $matches = $regionDb->select('k.id AS regency_id,k.kota AS regency_name,k.kode_kota AS regency_code,p.id AS province_id,p.provinsi AS province_name')
                 ->from('data_kota k')->join('data_provinsi p', 'p.id=k.id_provinsi')
                 ->where_in('p.id', array_keys($provinceIds))->get()->result_array();
             foreach ($matches as $match) {

@@ -89,6 +89,8 @@ class Registration_model extends CI_Model
     {
         $this->db->select('r.*,e.name AS event_name,e.code AS event_code,e.status AS event_status,
             e.start_date AS event_start_date,e.end_date AS event_end_date,e.location AS event_location,e.billing_mode,
+            e.village_fee AS event_village_fee,e.participant_fee AS event_participant_fee,
+            e.included_participant_count AS event_included_participant_count,
             canceller.name AS canceller_name,
             (SELECT COUNT(*) FROM participants p WHERE p.registration_id=r.id AND p.is_active=1 AND p.deleted_at IS NULL) AS participant_count,
             (SELECT COALESCE(SUM(py.amount),0) FROM payments py WHERE py.registration_id=r.id AND py.status="verified") AS paid_amount,
@@ -104,6 +106,41 @@ class Registration_model extends CI_Model
             $this->db->limit($limit, $offset);
         }
         return $this->db->get()->result_array();
+    }
+
+    /**
+     * Add the official regency code used by the village MOU export.
+     *
+     * Registration rows keep region names/IDs as immutable snapshots. We only
+     * attach the current master code here and deliberately leave every snapshot
+     * field untouched, so an update to the regional catalog cannot rewrite a
+     * historical registration name.
+     */
+    public function with_regency_codes(array $rows)
+    {
+        if (!$rows) return $rows;
+
+        $lookupRows = array();
+        foreach ($rows as $key => $row) {
+            $lookupRows[$key] = array(
+                'province_id' => isset($row['province_id']) ? $row['province_id'] : '',
+                'province_name' => isset($row['province_name']) ? $row['province_name'] : '',
+                'regency_id' => isset($row['regency_id']) ? $row['regency_id'] : '',
+                'regency_name' => isset($row['regency_name']) ? $row['regency_name'] : ''
+            );
+        }
+
+        $resolvedRows = simp_resolve_event_regencies($this->regionDb, $lookupRows);
+        foreach ($rows as $key => &$row) {
+            $resolvedCode = isset($resolvedRows[$key]['regency_code'])
+                ? trim((string) $resolvedRows[$key]['regency_code']) : '';
+            $row['regency_code'] = $resolvedCode !== ''
+                ? $resolvedCode
+                : trim((string) (isset($row['regency_id']) ? $row['regency_id'] : ''));
+        }
+        unset($row);
+
+        return $rows;
     }
 
     /** Summary for the registration index, independent of the current page. */

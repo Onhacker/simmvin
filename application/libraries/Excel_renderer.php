@@ -29,6 +29,9 @@ class Excel_renderer
     const GREEN = '18743D';
     const RED = 'B42318';
     const CURRENCY_FORMAT = '"Rp" #,##0.00;[Red]("Rp" #,##0.00);-';
+    // MOU component columns should show an explicit zero instead of the dash
+    // used by analytical report sheets.
+    const MOU_CURRENCY_FORMAT = '"Rp" #,##0.00;[Red]("Rp" #,##0.00);"Rp" 0.00';
 
     public function render_income(array $data, array $villageReport)
     {
@@ -248,10 +251,10 @@ class Excel_renderer
     }
 
     /**
-     * Export the active village directory using the same three columns shown
-     * by the Data Desa print view.  Unlike the participant mailing export,
-     * this workbook deliberately keeps a header row: it is the source sheet
-     * used when preparing village-level MOU mail merges.
+     * Export the active village directory as a source sheet for MOU mail merge.
+     * Contract values use the registration's immutable expected_amount
+     * snapshot. For a package event, the village tariff is separated from the
+     * additional-participant component without depending on payment status.
      */
     public function render_registration_village_mailing(array $rows)
     {
@@ -269,41 +272,66 @@ class Excel_renderer
             $sheet->setTitle('Data Desa');
             $sheet->setShowGridlines(FALSE);
 
-            $columns = array('A', 'B', 'C');
-            $headers = array('Kecamatan', 'Desa', 'Jumlah Peserta');
-            $widths = array(30, 36, 20);
+            // Keep the original Data Desa fields in A:C so an existing mailing
+            // source remains compatible, then append the requested MOU fields.
+            $columns = array('A', 'B', 'C', 'D', 'E', 'F', 'G', 'H');
+            $headers = array(
+                'Kecamatan',
+                'Desa',
+                'Jumlah Peserta',
+                'No MOU',
+                'Jumlah Pembayaran Per Desa',
+                'Jumlah Pembayaran Tambahan',
+                'Total',
+                'Terbilang'
+            );
+            $widths = array(28, 32, 16, 34, 24, 24, 22, 54);
             foreach ($columns as $index => $column) {
                 $sheet->getColumnDimension($column)->setWidth($widths[$index]);
                 $this->set_text($sheet, $column . '1', $headers[$index]);
             }
-            $sheet->getStyle('A1:C1')->applyFromArray($this->header_style());
-            $sheet->getRowDimension(1)->setRowHeight(28);
+            $sheet->getStyle('A1:H1')->applyFromArray($this->header_style());
+            $sheet->getRowDimension(1)->setRowHeight(34);
             $sheet->freezePane('A2');
 
+            $mouSequences = array();
             foreach ($rows as $index => $row) {
                 $excelRow = $index + 2;
+                $amounts = $this->registration_village_contract_amounts($row);
                 $this->set_text($sheet, 'A' . $excelRow, isset($row['district_name']) ? $row['district_name'] : '');
                 $this->set_text($sheet, 'B' . $excelRow, isset($row['village_name']) ? $row['village_name'] : '');
                 $this->set_number($sheet, 'C' . $excelRow, isset($row['participant_count']) ? $row['participant_count'] : 0);
-                $this->style_detail_row($sheet, $excelRow, 'C', $index);
-                $sheet->getStyle('A' . $excelRow . ':C' . $excelRow)
+                $this->set_text($sheet, 'D' . $excelRow, $this->registration_mou_number($row, $mouSequences));
+                $this->set_number($sheet, 'E' . $excelRow, $amounts['village']);
+                $this->set_number($sheet, 'F' . $excelRow, $amounts['additional']);
+                $this->set_number($sheet, 'G' . $excelRow, $amounts['total']);
+                $this->set_text($sheet, 'H' . $excelRow, $this->rupiah_in_words($amounts['total']));
+                $this->style_detail_row($sheet, $excelRow, 'H', $index);
+                $sheet->getRowDimension($excelRow)->setRowHeight(38);
+                $sheet->getStyle('A' . $excelRow . ':G' . $excelRow)
                     ->getAlignment()->setVertical(Alignment::VERTICAL_CENTER)->setWrapText(FALSE);
-                $sheet->getStyle('C' . $excelRow)
+                $sheet->getStyle('H' . $excelRow)
+                    ->getAlignment()->setVertical(Alignment::VERTICAL_CENTER)->setWrapText(TRUE);
+                $sheet->getStyle('C' . $excelRow . ':G' . $excelRow)
                     ->getAlignment()->setHorizontal(Alignment::HORIZONTAL_RIGHT);
             }
 
             $lastRow = max(1, count($rows) + 1);
-            $sheet->getStyle('A1:C' . $lastRow)->getFont()->setSize(11);
-            $sheet->getStyle('A1:C' . $lastRow)->getBorders()->getBottom()
+            $sheet->getStyle('A1:H' . $lastRow)->getFont()->setSize(11);
+            $sheet->getStyle('A1:H' . $lastRow)->getBorders()->getBottom()
                 ->setBorderStyle(Border::BORDER_HAIR)->getColor()->setRGB(self::BORDER);
-            $sheet->setAutoFilter('A1:C' . $lastRow);
+            if (count($rows) > 0) {
+                $sheet->getStyle('C2:C' . $lastRow)->getNumberFormat()->setFormatCode('#,##0');
+                $sheet->getStyle('E2:G' . $lastRow)->getNumberFormat()->setFormatCode(self::MOU_CURRENCY_FORMAT);
+            }
+            $sheet->setAutoFilter('A1:H' . $lastRow);
             $sheet->getPageSetup()
                 ->setPaperSize(PageSetup::PAPERSIZE_FOLIO)
-                ->setOrientation(PageSetup::ORIENTATION_PORTRAIT)
+                ->setOrientation(PageSetup::ORIENTATION_LANDSCAPE)
                 ->setFitToWidth(1)
                 ->setFitToHeight(0);
             $sheet->getPageMargins()->setTop(0.35)->setRight(0.35)->setBottom(0.45)->setLeft(0.35);
-            $sheet->getPageSetup()->setPrintArea('A1:C' . $lastRow);
+            $sheet->getPageSetup()->setPrintArea('A1:H' . $lastRow);
             $sheet->getHeaderFooter()->setOddFooter('&LDiekspor dari MVIN&C&F&RHalaman &P / &N');
 
             $spreadsheet->setActiveSheetIndex(0);
@@ -969,6 +997,130 @@ class Excel_renderer
             'per_village_extra' => 'Paket Desa + Peserta Tambahan'
         );
         return isset($labels[$mode]) ? $labels[$mode] : ucwords(str_replace('_', ' ', (string) $mode));
+    }
+
+    /** Split one village's immutable tagihan into base and additional amounts. */
+    private function registration_village_contract_amounts(array $row)
+    {
+        $totalCents = simp_money_cents(isset($row['expected_amount']) ? $row['expected_amount'] : '0');
+        if ($totalCents === NULL || $totalCents < 0) $totalCents = 0;
+
+        $villageCents = $totalCents;
+        $additionalCents = 0;
+        if (isset($row['billing_mode']) && $row['billing_mode'] === 'per_village_extra') {
+            $configuredVillageCents = simp_money_cents(
+                isset($row['event_village_fee']) ? $row['event_village_fee'] : NULL
+            );
+            if ($configuredVillageCents === NULL || $configuredVillageCents < 0) {
+                // Old/imported events may not have a tariff snapshot. Keep the
+                // full immutable total in the base column rather than silently
+                // classifying it as an additional-participant charge.
+                $villageCents = $totalCents;
+            } else {
+                $villageCents = min($totalCents, $configuredVillageCents);
+                $additionalCents = max(0, $totalCents - $villageCents);
+            }
+        }
+
+        return array(
+            'village' => simp_money_from_cents($villageCents),
+            'additional' => simp_money_from_cents($additionalCents),
+            'total' => simp_money_from_cents($totalCents)
+        );
+    }
+
+    /** Build a deterministic sequence within each regency and event year. */
+    private function registration_mou_number(array $row, array &$sequences)
+    {
+        $dateValue = isset($row['event_start_date']) ? (string) $row['event_start_date'] : '';
+        $date = DateTime::createFromFormat('!Y-m-d', substr($dateValue, 0, 10));
+        if (!$date || $date->format('Y-m-d') !== substr($dateValue, 0, 10)) {
+            $createdAt = isset($row['created_at']) ? substr((string) $row['created_at'], 0, 10) : '';
+            $date = DateTime::createFromFormat('!Y-m-d', $createdAt);
+        }
+        if (!$date) $date = new DateTime('today');
+
+        $regencyCode = trim((string) (isset($row['regency_code']) ? $row['regency_code'] : ''));
+        if ($regencyCode === '') $regencyCode = trim((string) (isset($row['regency_id']) ? $row['regency_id'] : ''));
+        if ($regencyCode === '') {
+            $regencyCode = preg_replace('/^(KABUPATEN|KOTA)\s+/iu', '', trim((string) (isset($row['regency_name']) ? $row['regency_name'] : '')));
+        }
+        $regencyCode = preg_replace('/[^A-Z0-9._-]+/u', '-', strtoupper($regencyCode));
+        $regencyCode = trim((string) $regencyCode, '-');
+        if ($regencyCode === '') $regencyCode = 'KAB';
+
+        $year = $date->format('Y');
+        $sequenceKey = $regencyCode . '|' . $year;
+        $sequences[$sequenceKey] = isset($sequences[$sequenceKey]) ? $sequences[$sequenceKey] + 1 : 1;
+
+        return sprintf(
+            '%03d.RAB/%s/SPK/%s/%s',
+            $sequences[$sequenceKey],
+            $regencyCode,
+            $this->roman_month((int) $date->format('n')),
+            $year
+        );
+    }
+
+    private function roman_month($month)
+    {
+        $months = array(1 => 'I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X', 'XI', 'XII');
+        return isset($months[(int) $month]) ? $months[(int) $month] : 'I';
+    }
+
+    private function rupiah_in_words($value)
+    {
+        $cents = simp_money_cents($value);
+        if ($cents === NULL) $cents = 0;
+        $negative = $cents < 0;
+        $cents = abs($cents);
+        $rupiah = intdiv($cents, 100);
+        $sen = $cents % 100;
+
+        $words = $this->indonesian_number_words($rupiah) . ' rupiah';
+        if ($sen > 0) $words .= ' ' . $this->indonesian_number_words($sen) . ' sen';
+        if ($negative) $words = 'minus ' . $words;
+
+        return function_exists('mb_strtoupper') ? mb_strtoupper($words, 'UTF-8') : strtoupper($words);
+    }
+
+    private function indonesian_number_words($number)
+    {
+        $number = (int) $number;
+        $units = array('nol', 'satu', 'dua', 'tiga', 'empat', 'lima', 'enam', 'tujuh', 'delapan', 'sembilan', 'sepuluh', 'sebelas');
+        if ($number < 0) return 'minus ' . $this->indonesian_number_words(abs($number));
+        if ($number < 12) return $units[$number];
+        if ($number < 20) return $this->indonesian_number_words($number - 10) . ' belas';
+        if ($number < 100) {
+            $words = $this->indonesian_number_words(intdiv($number, 10)) . ' puluh';
+            return $number % 10 ? $words . ' ' . $this->indonesian_number_words($number % 10) : $words;
+        }
+        if ($number < 200) {
+            return $number === 100 ? 'seratus' : 'seratus ' . $this->indonesian_number_words($number - 100);
+        }
+        if ($number < 1000) {
+            $words = $this->indonesian_number_words(intdiv($number, 100)) . ' ratus';
+            return $number % 100 ? $words . ' ' . $this->indonesian_number_words($number % 100) : $words;
+        }
+        if ($number < 2000) {
+            return $number === 1000 ? 'seribu' : 'seribu ' . $this->indonesian_number_words($number - 1000);
+        }
+
+        $scales = array(
+            1000000000000000 => 'kuadriliun',
+            1000000000000 => 'triliun',
+            1000000000 => 'miliar',
+            1000000 => 'juta',
+            1000 => 'ribu'
+        );
+        foreach ($scales as $divisor => $label) {
+            if ($number < $divisor) continue;
+            $words = $this->indonesian_number_words(intdiv($number, $divisor)) . ' ' . $label;
+            $remainder = $number % $divisor;
+            return $remainder ? $words . ' ' . $this->indonesian_number_words($remainder) : $words;
+        }
+
+        return 'nol';
     }
 
     private function event_scope(array $data)

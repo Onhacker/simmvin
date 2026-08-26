@@ -83,6 +83,8 @@ Pembayaran awal dapat dicatat langsung pada form registrasi dan bersifat opsiona
 
 Total tagihan disimpan pada `registrations.expected_amount` sebagai snapshot. Komponen biaya peserta juga disimpan pada `participants.expected_amount`, termasuk penanda peserta tambahan pada skema paket. Karena itu detail dan laporan lama tidak menghitung ulang tagihan dari tarif event. Mode, tarif terkait, dan kuota paket dikunci setelah event mempunyai registrasi.
 
+Ekspor **Excel MOU** pada menu Registrasi > Cetak Desa mempertahankan kolom Kecamatan, Desa, dan Jumlah Peserta, lalu menambahkan No MOU, Jumlah Pembayaran Per Desa, Jumlah Pembayaran Tambahan, Total, dan Terbilang. Nomor MOU dibuat berurutan per kode kabupaten/tahun dengan format `001.RAB/kode_kab/SPK/romawi_bulan/tahun`; kode kabupaten diambil dari `data_kota.kode_kota`, sedangkan bulan/tahun memakai tanggal mulai event. Nilai pembayaran memakai snapshot tagihan registrasi, sehingga komponen paket desa dan peserta tambahan tetap konsisten dengan transaksi yang sudah tercatat.
+
 Untuk instalasi lama yang sudah memiliki tabel `training_events`, jalankan `database/patch_hybrid_billing.sql` sebelum memakai skema paket. Instalasi baru sudah memuat kolom dan nilai enum tersebut melalui `database/schema.sql`.
 
 ## Keamanan produksi

@@ -789,6 +789,7 @@ class Registrations extends App_Controller
         $activeEvents = $this->registration->events_for_registration();
         $eventIds = array_map(function ($event) { return (int) $event['id']; }, $activeEvents);
         $rows = $eventIds ? $this->registration->get_all(array('event_ids' => $eventIds, 'active_only' => TRUE)) : array();
+        $rows = $this->registration->with_regency_codes($rows);
         $eventOrder = array();
         foreach ($activeEvents as $eventIndex => $event) {
             $eventOrder[(int) (isset($event['id']) ? $event['id'] : 0)] = $eventIndex;
