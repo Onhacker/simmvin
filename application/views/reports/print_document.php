@@ -21,6 +21,17 @@ $expenseStatusLabels = array('verified' => 'Terverifikasi', 'pending' => 'Menung
 $printRupiah = function ($value, $withPrefix = TRUE) {
     return rupiah($value, $withPrefix);
 };
+$printDate = function ($value) {
+    $value = trim((string) $value);
+    if ($value === '') return '-';
+    $timestamp = strtotime($value);
+    return $timestamp !== FALSE ? date('d/m/Y', $timestamp) : $value;
+};
+$printCategory = function ($value) {
+    $value = trim((string) $value);
+    if ($value === '') return 'TANPA KATEGORI';
+    return function_exists('mb_strtoupper') ? mb_strtoupper($value, 'UTF-8') : strtoupper($value);
+};
 $moneyCents = function ($value) {
     $cents = simp_money_cents($value);
     return $cents === NULL ? 0 : $cents;
@@ -146,6 +157,8 @@ $accountSummary = array_merge(array(
         .expense-grand-total .money-label { text-align: right; }
         .expense-category-table .category-total-row .money,
         .expense-grand-total .money { white-space: nowrap; overflow: visible; }
+        .expense-category-table tbody td,
+        .expense-category-table tbody td .primary { font-weight: 400; }
         .expense-grand-total { margin-top: 4px; page-break-before: avoid; break-before: avoid; }
         .expense-grand-total td { background: #dcecff !important; border-top: 2px solid #174b8b; color: #111827; font-size: 12px; font-weight: 800; }
         .status { display: block; width: 100%; max-width: 100%; padding: 2px 4px; border-radius: 3px; color: #fff; font-size: 12px; font-weight: 700; line-height: 1.15; text-align: center; white-space: normal; overflow-wrap: normal; word-break: normal; }
@@ -236,7 +249,7 @@ $accountSummary = array_merge(array(
             <?php else: ?>
                 <?php foreach ($expenseGroups as $expenseSummaryGroup): ?>
                     <?php $expenseSummaryTotalCents += (int) $expenseSummaryGroup['total_cents']; ?>
-                    <tr><td><?= e($expenseSummaryGroup['name']) ?></td><td><?= e($printRupiah(simp_money_from_cents((int) $expenseSummaryGroup['total_cents']))) ?></td></tr>
+                    <tr><td><?= e($printCategory($expenseSummaryGroup['name'])) ?></td><td><?= e($printRupiah(simp_money_from_cents((int) $expenseSummaryGroup['total_cents']))) ?></td></tr>
                 <?php endforeach; ?>
             <?php endif; ?>
             </tbody>
@@ -341,8 +354,8 @@ $accountSummary = array_merge(array(
     <?php elseif ($reportKind === 'expense'): ?>
         <?php if (!$expenseGroups): ?>
             <table class="report-table">
-                <colgroup><col width="3%" style="width:3%"><col width="12%" style="width:12%"><col width="44%" style="width:44%"><col width="19%" style="width:19%"><col width="8%" style="width:8%"><col width="14%" style="width:14%"></colgroup>
-                <thead><tr><th width="3%">No.</th><th width="12%">Tanggal</th><th width="44%">Deskripsi</th><th width="19%">Akun / Metode</th><th width="8%">Status</th><th width="14%" class="money">Total</th></tr></thead>
+                <colgroup><col width="5%" style="width:5%"><col width="12%" style="width:12%"><col width="42%" style="width:42%"><col width="19%" style="width:19%"><col width="8%" style="width:8%"><col width="14%" style="width:14%"></colgroup>
+                <thead><tr><th width="5%">No.</th><th width="12%">Tanggal</th><th width="42%">Deskripsi</th><th width="19%">Akun / Metode</th><th width="8%">Status</th><th width="14%" class="money">Total</th></tr></thead>
                 <tbody><tr class="empty-row"><td colspan="6">Belum ada transaksi pengeluaran pada event aktif.</td></tr></tbody>
             </table>
         <?php else: ?>
@@ -354,10 +367,10 @@ $accountSummary = array_merge(array(
                 $categoryTotal = simp_money_from_cents($categoryTotalCents);
                 ?>
                 <div class="expense-category-group">
-                <div class="expense-category-heading"><span>Kategori</span><strong><?= e($expenseGroup['name']) ?></strong></div>
+                <div class="expense-category-heading"><span>Kategori</span><strong><?= e($printCategory($expenseGroup['name'])) ?></strong></div>
                 <table class="report-table expense-category-table">
-                    <colgroup><col width="3%" style="width:3%"><col width="12%" style="width:12%"><col width="44%" style="width:44%"><col width="19%" style="width:19%"><col width="8%" style="width:8%"><col width="14%" style="width:14%"></colgroup>
-                    <thead><tr><th width="3%">No.</th><th width="12%">Tanggal</th><th width="44%">Deskripsi</th><th width="19%">Akun / Metode</th><th width="8%">Status</th><th width="14%" class="money">Total</th></tr></thead>
+                    <colgroup><col width="5%" style="width:5%"><col width="12%" style="width:12%"><col width="42%" style="width:42%"><col width="19%" style="width:19%"><col width="8%" style="width:8%"><col width="14%" style="width:14%"></colgroup>
+                    <thead><tr><th width="5%">No.</th><th width="12%">Tanggal</th><th width="42%">Deskripsi</th><th width="19%">Akun / Metode</th><th width="8%">Status</th><th width="14%" class="money">Total</th></tr></thead>
                     <tbody>
                     <?php foreach ($expenseGroup['rows'] as $row): ?>
                         <?php
@@ -371,7 +384,7 @@ $accountSummary = array_merge(array(
                         ?>
                         <tr>
                             <td class="number"><?= number_format($expenseNo) ?></td>
-                            <td><span class="primary"><?= e(tanggal_id($row['expense_date'])) ?></span></td>
+                            <td><span class="primary"><?= e($printDate($row['expense_date'])) ?></span></td>
                             <td><span class="primary"><?= e($row['description']) ?></span><?php if (!empty($row['debt_id'])): ?><span class="secondary">Pembayaran hutang <?= e($row['debt_no']) ?> · <?= e($row['debt_creditor']) ?></span><?php endif; ?></td>
                             <td><span class="primary"><?= e($row['account_name']) ?></span><span class="secondary"><?= e(isset($methodLabels[$row['method']]) ? $methodLabels[$row['method']] : ucfirst((string) $row['method'])) ?></span></td>
                             <td><?php if ($status === 'verified'): ?><span class="status status-icon <?= $statusClass ?>" role="img" aria-label="Terverifikasi" title="Terverifikasi">&#10003;</span><?php else: ?><span class="status <?= $statusClass ?>"><?= e(isset($expenseStatusLabels[$status]) ? $expenseStatusLabels[$status] : ucwords(str_replace('_', ' ', $status))) ?></span><?php endif; ?></td>
@@ -379,13 +392,13 @@ $accountSummary = array_merge(array(
                         </tr>
                     <?php endforeach; ?>
                     </tbody>
-                    <tfoot><tr class="category-total-row"><td colspan="5" class="money-label">Total <?= e($expenseGroup['name']) ?></td><td class="money"><?= e($printRupiah($categoryTotal)) ?></td></tr></tfoot>
+                    <tfoot><tr class="category-total-row"><td colspan="5" class="money-label">Total <?= e($printCategory($expenseGroup['name'])) ?></td><td class="money"><?= e($printRupiah($categoryTotal)) ?></td></tr></tfoot>
                 </table>
                 </div>
             <?php endforeach; ?>
             <?php $grandExpense = simp_money_from_cents($grandExpenseCents); ?>
             <table class="report-table expense-grand-total">
-                <colgroup><col width="3%" style="width:3%"><col width="12%" style="width:12%"><col width="44%" style="width:44%"><col width="19%" style="width:19%"><col width="8%" style="width:8%"><col width="14%" style="width:14%"></colgroup>
+                <colgroup><col width="5%" style="width:5%"><col width="12%" style="width:12%"><col width="42%" style="width:42%"><col width="19%" style="width:19%"><col width="8%" style="width:8%"><col width="14%" style="width:14%"></colgroup>
                 <tfoot><tr><td width="86%" colspan="5" class="money-label">TOTAL SELURUH PENGELUARAN</td><td width="14%" class="money"><?= e($printRupiah($grandExpense)) ?></td></tr></tfoot>
             </table>
         <?php endif; ?>
