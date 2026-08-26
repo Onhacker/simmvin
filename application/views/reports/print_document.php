@@ -46,6 +46,7 @@ if (count($activeEvents) === 1 && !$hasEventScope) {
 }
 
 $expenseGroups = array();
+$expenseMethodTotals = array();
 if ($reportKind === 'expense') {
     // Rejected transactions are kept in the operational list for audit
     // purposes, but they must never be part of a printed financial report.
@@ -58,6 +59,20 @@ if ($reportKind === 'expense') {
 
     foreach ($rows as $expenseRow) {
         $total = $moneyCents($expenseRow['amount']) + $moneyCents($expenseRow['admin_fee']);
+
+        $methodKey = strtolower(trim((string) (isset($expenseRow['method']) ? $expenseRow['method'] : '')));
+        if ($methodKey === '') $methodKey = 'other';
+        if (!isset($expenseMethodTotals[$methodKey])) {
+            $expenseMethodTotals[$methodKey] = array(
+                'label' => isset($methodLabels[$methodKey])
+                    ? $methodLabels[$methodKey]
+                    : ucwords(str_replace('_', ' ', $methodKey)),
+                'total_cents' => 0,
+                'count' => 0
+            );
+        }
+        $expenseMethodTotals[$methodKey]['total_cents'] += $total;
+        $expenseMethodTotals[$methodKey]['count']++;
 
         // Keep the printout in the same order as the master category list,
         // with uncategorised transactions collected at the end.
@@ -81,6 +96,21 @@ if ($reportKind === 'expense') {
         $expenseGroups[$groupKey]['total_cents'] += $total;
     }
     ksort($expenseGroups, SORT_STRING);
+
+    // Keep the familiar payment-method order, then append any future/custom
+    // method values after the supported methods.
+    $orderedExpenseMethodTotals = array();
+    foreach (array('cash', 'transfer', 'qris') as $methodKey) {
+        if (isset($expenseMethodTotals[$methodKey])) {
+            $orderedExpenseMethodTotals[$methodKey] = $expenseMethodTotals[$methodKey];
+        }
+    }
+    foreach ($expenseMethodTotals as $methodKey => $methodTotal) {
+        if (!isset($orderedExpenseMethodTotals[$methodKey])) {
+            $orderedExpenseMethodTotals[$methodKey] = $methodTotal;
+        }
+    }
+    $expenseMethodTotals = $orderedExpenseMethodTotals;
 }
 $accountSummary = array_merge(array(
     'account_count'=>count($accounts), 'active_count'=>0, 'inactive_count'=>0,
@@ -134,6 +164,10 @@ $accountSummary = array_merge(array(
         .expense-summary-table tbody tr:nth-child(even) td { background: #f7f9fc; }
         .expense-summary-table tfoot td { background: #dcecff !important; border-top: 2px solid #174b8b; color: #111827; font-size: 12px; font-weight: 800; }
         .expense-summary-table .empty-summary { color: #6b7280; text-align: center; }
+        .expense-method-table { width: 100%; margin: 4px 0 4px; border-collapse: collapse; table-layout: fixed; }
+        .expense-method-table td { padding: 3px 8px; border: 1px solid #cfd7e2; background: #f3f7fc; font-size: 12px; line-height: 1.15; }
+        .expense-method-table td:first-child { width: 86%; color: #174b8b; font-weight: 700; text-align: right; }
+        .expense-method-table td:last-child { width: 14%; color: #111827; font-weight: 800; text-align: right; white-space: nowrap; }
         .report-table { table-layout: fixed; }
         .report-table thead { display: table-header-group; }
         .report-table tr { page-break-inside: avoid; }
@@ -397,6 +431,15 @@ $accountSummary = array_merge(array(
                 </div>
             <?php endforeach; ?>
             <?php $grandExpense = simp_money_from_cents($grandExpenseCents); ?>
+            <?php if ($expenseMethodTotals): ?>
+                <table class="expense-method-table">
+                    <tbody>
+                    <?php foreach ($expenseMethodTotals as $expenseMethodTotal): ?>
+                        <tr><td>Total berdasarkan Metode · <?= e($expenseMethodTotal['label']) ?></td><td><?= e($printRupiah(simp_money_from_cents((int) $expenseMethodTotal['total_cents']))) ?></td></tr>
+                    <?php endforeach; ?>
+                    </tbody>
+                </table>
+            <?php endif; ?>
             <table class="report-table expense-grand-total">
                 <colgroup><col width="5%" style="width:5%"><col width="12%" style="width:12%"><col width="42%" style="width:42%"><col width="19%" style="width:19%"><col width="8%" style="width:8%"><col width="14%" style="width:14%"></colgroup>
                 <tfoot><tr><td width="86%" colspan="5" class="money-label">TOTAL SELURUH PENGELUARAN</td><td width="14%" class="money"><?= e($printRupiah($grandExpense)) ?></td></tr></tfoot>
