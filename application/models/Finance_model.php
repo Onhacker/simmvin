@@ -1251,7 +1251,7 @@ class Finance_model extends CI_Model
             $this->db->select($select, FALSE)->from('participants pt')
                 ->join('registrations r', 'r.id=pt.registration_id')->join('training_events e', 'e.id=r.event_id')
                 ->where(array('r.status' => 'active', 'pt.is_active' => 1))->where('pt.deleted_at IS NULL', NULL, FALSE)
-                ->order_by('e.start_date', 'DESC')->order_by('r.village_name')->order_by('pt.full_name');
+                ->order_by('e.start_date', 'DESC')->order_by('r.district_name')->order_by('r.village_name')->order_by('pt.full_name');
             $this->apply_event_scope('r.event_id', $eventIds, $restrictEvents);
         } else {
             $villagePayment = $paymentConditions . ' AND py.registration_id=r.id';
@@ -1263,7 +1263,7 @@ class Finance_model extends CI_Model
                 "(SELECT COALESCE(SUM(py.amount),0) FROM payments py WHERE {$villagePayment} AND py.method='transfer') transfer_total," .
                 "(SELECT COALESCE(SUM(py.amount),0) FROM payments py WHERE {$villagePayment} AND py.method='qris') qris_total";
             $this->db->select($select, FALSE)->from('registrations r')->join('training_events e', 'e.id=r.event_id')
-                ->where('r.status', 'active')->order_by('e.start_date', 'DESC')->order_by('r.village_name');
+                ->where('r.status', 'active')->order_by('e.start_date', 'DESC')->order_by('r.district_name')->order_by('r.village_name');
             $this->apply_event_scope('r.event_id', $eventIds, $restrictEvents);
         }
 

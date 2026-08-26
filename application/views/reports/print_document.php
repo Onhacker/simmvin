@@ -376,6 +376,7 @@ $accountSummary = array_merge(array(
                     $phone = trim((string) (isset($row['phone']) ? $row['phone'] : ''));
                     $phoneDigits = preg_replace('/\D+/', '', $phone);
                     if ($phoneDigits !== '' && strpos($phoneDigits, '0') === 0) $phoneDigits = '62' . substr($phoneDigits, 1);
+                    elseif ($phoneDigits !== '' && strpos($phoneDigits, '8') === 0) $phoneDigits = '62' . $phoneDigits;
                     $statusDueCents = $villageBillingParticipant ? $moneyCents(isset($row['village_due']) ? $row['village_due'] : 0) : $dueCents;
                     $statusPaidCents = $villageBillingParticipant ? $moneyCents(isset($row['village_paid']) ? $row['village_paid'] : 0) : $paidCents;
                     if ($statusDueCents === NULL) $statusDueCents = 0;
@@ -443,7 +444,7 @@ $accountSummary = array_merge(array(
                         </tr>
                     <?php endforeach; ?>
                     </tbody>
-                    <tfoot><tr class="category-total-row"><td colspan="5" class="money-label">Total <?= e($printCategory($expenseGroup['name'])) ?></td><td class="money"><?= e($printRupiah($categoryTotal)) ?></td></tr></tfoot>
+                    <tfoot><tr class="category-total-row"><td colspan="5" class="money-label">Total <?= e($printCategoryTitle($expenseGroup['name'])) ?></td><td class="money"><?= e($printRupiah($categoryTotal)) ?></td></tr></tfoot>
                 </table>
                 </div>
             <?php endforeach; ?>
