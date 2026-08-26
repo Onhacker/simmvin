@@ -161,7 +161,7 @@ if (!$pages) {
     <style>
         @page { size: <?= $sheetWidth . ' ' . $sheetHeight ?>; margin: 0; }
         * { box-sizing: border-box; }
-        html, body { margin: 0; padding: 0; color: #000; font-family: "DejaVu Sans", Arial, sans-serif; font-size: 9px; line-height: 1.3; touch-action: pan-x pan-y; }
+        html, body { margin: 0; padding: 0; color: #000; font-family: "DejaVu Sans", Arial, sans-serif; font-size: 12px; line-height: 1.2; touch-action: pan-x pan-y; }
         body { background: #e9eef5; }
         .sheet-stage { width: <?= $sheetWidth ?>; min-height: <?= $sheetHeight ?>; margin: 14px auto 24px; }
         .sheet { width: <?= $sheetWidth ?>; margin: 0; transform-origin: top left; }
@@ -174,8 +174,8 @@ if (!$pages) {
         .attendance-head .logo-cell { text-align: center; }
         .attendance-head .logo-cell img { display: block; width: 27mm; height: auto; margin: 0 auto; }
         .attendance-head .title-cell { padding-left: 2mm; padding-right: 2mm; text-align: center; }
-        .attendance-head h1 { margin: 0; color: #000; font-size: 14px; font-weight: 800; line-height: 1.15; white-space: nowrap; }
-        .attendance-head p { margin: 2mm 0 0; color: #000; font-size: 12.5px; font-weight: 800; line-height: 1.2; }
+        .attendance-head h1 { margin: 0; color: #000; font-size: 14px; font-weight: 800; line-height: 1.15; white-space: normal; overflow-wrap: anywhere; }
+        .attendance-head p { margin: 2mm 0 0; color: #000; font-size: 12px; font-weight: 800; line-height: 1.2; }
         .attendance-head .organizer-name { margin-top: 1.4mm; color: #000; font-size: 14px; font-weight: 800; letter-spacing: .65px; line-height: 1.15; }
         /* Directory sheets are portrait reference lists, so keep the header
          * and rows compact enough for one continuous page. Attendance sheets
@@ -185,12 +185,12 @@ if (!$pages) {
         .report-directory .attendance-head .title-cell { width: 76%; }
         .report-directory .attendance-head .logo-cell img { width: 21mm; }
         .report-directory .attendance-head h1 { font-size: 12px; white-space: normal; }
-        .report-directory .attendance-head p { margin-top: 1.2mm; font-size: 9.3px; }
-        .report-directory .attendance-head .organizer-name { margin-top: 1mm; font-size: 10px; }
+        .report-directory .attendance-head p { margin-top: 1.2mm; font-size: 12px; }
+        .report-directory .attendance-head .organizer-name { margin-top: 1mm; font-size: 12px; }
         .district-bar { display: table; width: 100%; height: 9mm; margin: 2.5mm 0 2mm; padding: 1.8mm 2.5mm; border: 1px solid #6b7280; background: #f1f1f1; }
         .district-bar strong, .district-bar span { display: table-cell; vertical-align: middle; }
-        .district-bar strong { color: #000; font-size: 10px; letter-spacing: .25px; }
-        .district-bar span { width: 38%; color: #111; font-size: 8.4px; font-weight: 700; text-align: right; }
+        .district-bar strong { color: #000; font-size: 12px; letter-spacing: .25px; }
+        .district-bar span { width: 38%; color: #111; font-size: 12px; font-weight: 700; text-align: right; }
         .report-table { width: 100%; border-collapse: collapse; table-layout: fixed; }
         .report-table .col-number { width: 4%; }
         .report-table .col-district { width: 14%; }
@@ -211,21 +211,21 @@ if (!$pages) {
         .report-table.directory-villages .col-village { width: 45%; }
         .report-table.directory-villages .col-count { width: 20%; }
         .report-table.directory-villages .col-number { width: 5%; }
-        .report-table th { height: 5.6mm; padding: 1.1mm .8mm; border: 1px solid #111; background: #e8e8e8; color: #000; font-size: 9.1px; line-height: 1.12; text-align: center; text-transform: uppercase; }
-        .report-table td { height: 10.5mm; padding: 1mm 1.2mm; border: 1px solid #111; vertical-align: middle; color: #000; font-size: 10.3px; line-height: 1.17; overflow-wrap: anywhere; word-wrap: break-word; }
-        .report-directory .report-table th { height: 4.8mm; padding: .7mm .65mm; font-size: 8.2px; line-height: 1.05; }
-        .report-directory .report-table td { height: 7.2mm; padding: .45mm .75mm; font-size: 8.5px; line-height: 1.05; }
+        .report-table th { height: 5.6mm; padding: 1.1mm .8mm; border: 1px solid #111; background: #e8e8e8; color: #000; font-size: 12px; line-height: 1.05; text-align: center; text-transform: uppercase; }
+        .report-table td { height: 10.5mm; padding: 1mm 1.2mm; border: 1px solid #111; vertical-align: middle; color: #000; font-size: 12px; line-height: 1.1; overflow-wrap: anywhere; word-wrap: break-word; }
+        .report-directory .report-table th { height: 4.8mm; padding: .7mm .65mm; font-size: 12px; line-height: 1.05; }
+        .report-directory .report-table td { height: 7.2mm; padding: .45mm .75mm; font-size: 12px; line-height: 1.05; }
         .report-directory .district-bar { height: 7mm; margin: 1.5mm 0 1.2mm; padding: 1.2mm 2mm; }
-        .report-directory .district-bar strong { font-size: 9px; }
-        .report-directory .district-bar span { font-size: 7.6px; }
-        .report-directory .document-foot { margin-top: 1.2mm; font-size: 6.6px; }
+        .report-directory .district-bar strong { font-size: 12px; }
+        .report-directory .district-bar span { font-size: 12px; }
+        .report-directory .document-foot { margin-top: 1.2mm; font-size: 12px; }
         .report-table tr { page-break-inside: avoid; }
         .report-table .number { text-align: center; }
-        .report-table .contact { white-space: nowrap; }
+        .report-table .contact { white-space: normal; overflow-wrap: anywhere; word-break: break-word; }
         .report-table .signature, .report-table .room, .report-table .note { background: #fff; }
         .report-table .blank-line { display: block; height: 6mm; }
         .empty-row td { height: 20mm; color: #4b5563; text-align: center; }
-        .document-foot { width: 100%; margin-top: 2.2mm; border-collapse: collapse; table-layout: fixed; color: #111; font-size: 7.3px; }
+        .document-foot { width: 100%; margin-top: 2.2mm; border-collapse: collapse; table-layout: fixed; color: #111; font-size: 12px; }
         .document-foot td { padding: 0; vertical-align: top; }
         .document-foot td:last-child { width: 34%; padding-right: 1mm; text-align: right; white-space: nowrap; }
         @media print {
@@ -236,7 +236,7 @@ if (!$pages) {
             .report-directory .print-page { min-height: 0; height: auto; margin: 0; }
         }
         @media screen {
-            .report-attendance .print-page { height: 210mm; overflow: hidden; }
+            .report-attendance .print-page { min-height: 210mm; height: auto; overflow: visible; }
             .report-directory .print-page { height: auto; min-height: 330mm; overflow: visible; }
         }
         @media screen and (max-width: 1100px) {

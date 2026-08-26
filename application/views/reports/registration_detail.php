@@ -69,7 +69,7 @@ if ($eventLocation === '') $eventLocation = '-';
     <style>
         @page { size: 210mm 330mm; margin: 12mm 10mm 14mm; }
         * { box-sizing: border-box; }
-        html { padding: 0; color: #111827; font-family: "DejaVu Sans", Arial, sans-serif; font-size: 9px; line-height: 1.4; touch-action: pan-x pan-y; }
+        html { padding: 0; color: #111827; font-family: "DejaVu Sans", Arial, sans-serif; font-size: 12px; line-height: 1.3; touch-action: pan-x pan-y; }
         body { margin: 0; padding: 0; color: #111827; font-family: inherit; font-size: inherit; line-height: inherit; touch-action: inherit; }
         body { background: #e9eef5; }
         .sheet-stage { width: 210mm; min-height: 330mm; margin: 14px auto 24px; }
@@ -81,32 +81,32 @@ if ($eventLocation === '') $eventLocation = '-';
         .brand-code { color: #1f5fab; font-size: 23px; font-weight: 800; letter-spacing: 1px; }
         .title-block { text-align: right; }
         .title-block h1 { margin: 0; color: #111827; font-size: 18px; line-height: 1.15; }
-        .title-block p { margin: 3px 0 0; color: #4b5563; font-size: 9px; font-weight: 700; }
+        .title-block p { margin: 3px 0 0; color: #4b5563; font-size: 12px; font-weight: 700; }
         .meta-table { margin: 8px 0 9px; }
         .meta-table td { padding: 2px 0; vertical-align: top; }
         .meta-label { width: 27mm; color: #6b7280; }
         .meta-separator { width: 4mm; color: #6b7280; }
         .meta-value { font-weight: 700; }
-        .section-title { margin: 10px 0 5px; color: #1f5fab; font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: .35px; }
+        .section-title { margin: 10px 0 5px; color: #1f5fab; font-size: 12px; font-weight: 800; text-transform: uppercase; letter-spacing: .35px; }
         .summary-grid { table-layout: fixed; margin-bottom: 8px; }
         .summary-grid td { width: 33.333%; padding: 6px 7px; border: 1px solid #d7dee8; vertical-align: top; }
-        .summary-label { display: block; color: #6b7280; font-size: 7.2px; text-transform: uppercase; letter-spacing: .2px; }
-        .summary-value { display: block; margin-top: 2px; color: #111827; font-size: 11px; font-weight: 800; overflow-wrap: anywhere; }
+        .summary-label { display: block; color: #6b7280; font-size: 12px; text-transform: uppercase; letter-spacing: .2px; }
+        .summary-value { display: block; margin-top: 2px; color: #111827; font-size: 12px; font-weight: 800; overflow-wrap: anywhere; }
         .summary-value.positive { color: #18743d; }
         .summary-value.negative { color: #b42318; }
         .summary-value.warning { color: #9a5b06; }
-        .report-note { margin: -1px 0 6px; padding: 5px 7px; border-left: 3px solid #1f5fab; background: #f3f7fc; color: #4b5563; font-size: 7.8px; }
+        .report-note { margin: -1px 0 6px; padding: 5px 7px; border-left: 3px solid #1f5fab; background: #f3f7fc; color: #4b5563; font-size: 12px; }
         .report-table { table-layout: fixed; }
         .report-table thead { display: table-header-group; }
         .report-table tr { page-break-inside: avoid; }
-        .report-table th { padding: 5px 3px; border: 1px solid #9eacbd; background: #1f5fab; color: #fff; font-size: 7px; line-height: 1.2; text-align: left; text-transform: uppercase; }
-        .report-table td { padding: 5px 3px; border: 1px solid #cfd7e2; vertical-align: top; font-size: 7.8px; overflow-wrap: break-word; word-wrap: break-word; }
+        .report-table th { padding: 5px 3px; border: 1px solid #9eacbd; background: #1f5fab; color: #fff; font-size: 12px; line-height: 1.15; text-align: left; text-transform: uppercase; }
+        .report-table td { padding: 5px 3px; border: 1px solid #cfd7e2; vertical-align: top; font-size: 12px; line-height: 1.2; overflow-wrap: break-word; word-wrap: break-word; }
         .report-table tbody tr:nth-child(even) td { background: #f7f9fc; }
         .report-table .number { text-align: center; }
-        .report-table .money { text-align: right; white-space: nowrap; }
+        .report-table .money { text-align: right; white-space: normal; overflow-wrap: anywhere; word-break: break-word; }
         .primary { display: block; font-weight: 700; }
-        .secondary { display: block; margin-top: 1px; color: #5f6b7a; font-size: 7px; line-height: 1.3; }
-        .status { display: inline-block; padding: 2px 4px; border-radius: 3px; color: #fff; font-size: 6.5px; font-weight: 700; line-height: 1.25; text-align: center; }
+        .secondary { display: block; margin-top: 1px; color: #5f6b7a; font-size: 12px; line-height: 1.2; }
+        .status { display: block; width: 100%; max-width: 100%; padding: 2px 4px; border-radius: 3px; color: #fff; font-size: 12px; font-weight: 700; line-height: 1.15; text-align: center; white-space: normal; overflow-wrap: normal; word-break: normal; }
         .status.green { background: #1f7a45; }
         .status.yellow { background: #a76608; }
         .status.red { background: #b42318; }
@@ -117,7 +117,7 @@ if ($eventLocation === '') $eventLocation = '-';
         .cancellation-note { margin: 7px 0; padding: 6px 8px; border: 1px solid #efb4b4; background: #fff1f1; color: #8f1d1d; }
         .registration-note { margin: 7px 0; padding: 6px 8px; border: 1px solid #cfd7e2; background: #f8fafc; }
         .document-foot { margin-top: 10px; border-top: 1px solid #cfd7e2; }
-        .document-foot td { padding-top: 5px; color: #6b7280; font-size: 7.5px; vertical-align: top; }
+        .document-foot td { padding-top: 5px; color: #6b7280; font-size: 12px; vertical-align: top; }
         .document-foot .right { text-align: right; }
         @media print {
             html, body { background: #fff; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
@@ -169,8 +169,8 @@ if ($eventLocation === '') $eventLocation = '-';
     <div class="section-title">Rincian Peserta</div>
     <?php if ($billingMode !== 'per_participant'): ?><p class="report-note">Pembayaran event ini dicatat pada tingkat desa. Status pada setiap peserta mengikuti status pembayaran registrasi desa dan bukan transaksi individual.</p><?php endif; ?>
     <table class="report-table">
-        <colgroup><col width="4%" style="width:4%"><col width="22%" style="width:22%"><col width="12%" style="width:12%"><col width="14%" style="width:14%"><col width="12%" style="width:12%"><col width="11%" style="width:11%"><col width="12%" style="width:12%"><col width="13%" style="width:13%"></colgroup>
-        <thead><tr><th width="4%">No.</th><th width="22%">Nama / Jabatan</th><th width="12%">Kontak</th><th width="14%">Komponen Tagihan</th><th width="12%" class="money">Terverifikasi</th><th width="11%" class="money">Menunggu</th><th width="12%" class="money">Sisa</th><th width="13%">Status</th></tr></thead>
+        <colgroup><col width="4%" style="width:4%"><col width="20%" style="width:20%"><col width="12%" style="width:12%"><col width="14%" style="width:14%"><col width="14%" style="width:14%"><col width="12%" style="width:12%"><col width="12%" style="width:12%"><col width="12%" style="width:12%"></colgroup>
+        <thead><tr><th width="4%">No.</th><th width="20%">Nama / Jabatan</th><th width="12%">Kontak</th><th width="14%">Komponen Tagihan</th><th width="14%" class="money">Terverifikasi</th><th width="12%" class="money">Menunggu</th><th width="12%" class="money">Sisa</th><th width="12%">Status</th></tr></thead>
         <tbody>
         <?php if (!$participants): ?><tr class="empty-row"><td colspan="8">Tidak ada peserta aktif pada registrasi ini.</td></tr><?php endif; ?>
         <?php foreach ($participants as $index => $participant): ?>

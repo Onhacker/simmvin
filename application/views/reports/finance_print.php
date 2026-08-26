@@ -71,47 +71,47 @@ $tariffFormula = function ($event) use ($printRupiah) {
     <style>
         @page { size: 330mm 210mm; margin: 10mm 10mm 12mm; }
         * { box-sizing: border-box; }
-        html { padding: 0; color: #111827; background: #e9eef5; font-family: "DejaVu Sans", Arial, sans-serif; font-size: 9px; line-height: 1.4; touch-action: pan-x pan-y; }
+        html { padding: 0; color: #111827; background: #e9eef5; font-family: "DejaVu Sans", Arial, sans-serif; font-size: 12px; line-height: 1.3; touch-action: pan-x pan-y; }
         body { margin: 0; padding: 0; color: #111827; font-family: inherit; font-size: inherit; line-height: inherit; touch-action: inherit; }
         .sheet-stage { width: 330mm; min-height: 210mm; margin: 14px auto 24px; }
         .sheet { width: 330mm; min-height: 210mm; margin: 0; padding: 10mm 10mm 12mm; background: #fff; box-shadow: 0 10px 34px rgba(15,23,42,.14); transform-origin: top left; }
         .document-head, .meta-table, .summary-grid, .report-table, .document-foot { width: 100%; border-collapse: collapse; }
-        .document-head td { vertical-align: top; padding: 0 0 7px; border-bottom: 2px solid #1f5fab; }
+        .document-head td { vertical-align: top; padding: 0 0 5px; border-bottom: 2px solid #1f5fab; }
         .brand-code { color: #1f5fab; font-size: 23px; font-weight: 800; letter-spacing: 1px; line-height: 1; }
-        .organization { margin-top: 4px; color: #374151; font-size: 10px; font-weight: 700; }
+        .organization { margin-top: 4px; color: #374151; font-size: 12px; font-weight: 700; }
         .title-block { text-align: right; }
         .title-block h1 { margin: 0; color: #111827; font-size: 19px; line-height: 1.15; }
-        .title-block p { margin: 4px 0 0; color: #4b5563; font-size: 9px; }
-        .meta-table { margin: 8px 0 10px; }
-        .meta-table td { padding: 2px 0; vertical-align: top; }
+        .title-block p { margin: 4px 0 0; color: #4b5563; font-size: 12px; }
+        .meta-table { margin: 5px 0 6px; }
+        .meta-table td { padding: 1px 0; vertical-align: top; }
         .meta-label { width: 95px; color: #6b7280; }
         .meta-separator { width: 10px; color: #6b7280; }
         .meta-value { font-weight: 700; }
-        .section-title { margin: 11px 0 5px; color: #1f5fab; font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: .35px; }
-        .summary-grid { table-layout: fixed; margin-bottom: 9px; }
-        .summary-grid td { width: 16.66%; padding: 7px 8px; border: 1px solid #d7dee8; vertical-align: top; }
-        .summary-label { display: block; color: #6b7280; font-size: 7.5px; text-transform: uppercase; letter-spacing: .2px; }
-        .summary-value { display: block; margin-top: 3px; color: #111827; font-size: 11px; font-weight: 800; white-space: nowrap; }
+        .section-title { margin: 7px 0 4px; color: #1f5fab; font-size: 12px; font-weight: 800; text-transform: uppercase; letter-spacing: .35px; }
+        .summary-grid { table-layout: fixed; margin-bottom: 5px; }
+        .summary-grid td { width: 16.66%; padding: 5px 6px; border: 1px solid #d7dee8; vertical-align: top; }
+        .summary-label { display: block; color: #6b7280; font-size: 12px; text-transform: uppercase; letter-spacing: .2px; }
+        .summary-value { display: block; margin-top: 3px; color: #111827; font-size: 12px; font-weight: 800; white-space: normal; overflow-wrap: anywhere; word-break: break-word; }
         .summary-value.positive { color: #18743d; }
         .summary-value.negative { color: #b42318; }
-        .report-note { margin: 0 0 7px; padding: 5px 7px; border-left: 3px solid #1f5fab; background: #f3f7fc; color: #4b5563; font-size: 7.8px; }
-        .report-table { table-layout: fixed; margin-bottom: 9px; }
+        .report-note { margin: 0 0 4px; padding: 4px 6px; border-left: 3px solid #1f5fab; background: #f3f7fc; color: #4b5563; font-size: 12px; }
+        .report-table { table-layout: fixed; margin-bottom: 5px; }
         .report-table thead { display: table-header-group; }
         .report-table tr { page-break-inside: avoid; }
-        .report-table th { padding: 5px 5px; border: 1px solid #9eacbd; background: #1f5fab; color: #fff; font-size: 7.4px; line-height: 1.25; text-align: left; text-transform: uppercase; }
-        .report-table td { padding: 5px 5px; border: 1px solid #cfd7e2; vertical-align: top; overflow-wrap: break-word; word-wrap: break-word; }
+        .report-table th { padding: 3px 4px; border: 1px solid #9eacbd; background: #1f5fab; color: #fff; font-size: 12px; line-height: 1.15; text-align: left; text-transform: uppercase; }
+        .report-table td { padding: 3px 4px; border: 1px solid #cfd7e2; font-size: 12px; line-height: 1.18; vertical-align: top; overflow-wrap: break-word; word-wrap: break-word; }
         .report-table tbody tr:nth-child(even) td { background: #f7f9fc; }
         .report-table .number { text-align: center; }
         /* Keep ordinal columns genuinely narrow in Dompdf as well as in the browser. */
-        .report-table th.number-col, .report-table td.number-col { width: 24px; min-width: 24px; max-width: 24px; padding-left: 2px; padding-right: 2px; white-space: nowrap; overflow: hidden; }
-        .report-table .money { text-align: right; white-space: nowrap; }
+        .report-table th.number-col, .report-table td.number-col { width: 28px; min-width: 28px; max-width: 28px; padding-left: 2px; padding-right: 2px; white-space: nowrap; overflow: visible; }
+        .report-table .money { text-align: right; white-space: normal; overflow-wrap: anywhere; word-break: break-word; }
         .report-table .primary { display: block; font-weight: 700; }
-        .report-table .secondary { display: block; margin-top: 1px; color: #5f6b7a; font-size: 7.2px; line-height: 1.3; }
-        .report-table tfoot td { background: #dcecff !important; border-top: 2px solid #174b8b; color: #111827; font-size: 10px; font-weight: 800; }
+        .report-table .secondary { display: block; margin-top: 1px; color: #5f6b7a; font-size: 12px; line-height: 1.2; }
+        .report-table tfoot td { background: #dcecff !important; border-top: 2px solid #174b8b; color: #111827; font-size: 12px; font-weight: 800; }
         .empty-row td { padding: 18px 8px; color: #6b7280; text-align: center; }
-        .mode-badge { display: inline-block; padding: 2px 4px; border-radius: 3px; background: #eaf2fc; color: #174b8b; font-size: 7px; font-weight: 700; }
-        .document-foot { margin-top: 10px; border-top: 1px solid #cfd7e2; }
-        .document-foot td { padding-top: 5px; color: #6b7280; font-size: 7.5px; }
+        .mode-badge { display: inline-block; padding: 2px 4px; border-radius: 3px; background: #eaf2fc; color: #174b8b; font-size: 12px; font-weight: 700; }
+        .document-foot { margin-top: 2px; border-top: 1px solid #cfd7e2; }
+        .document-foot td { padding-top: 3px; color: #6b7280; font-size: 12px; }
         @media print {
             html, body { background: #fff; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
             .sheet-stage { width: auto !important; height: auto !important; min-height: 0 !important; margin: 0 !important; }

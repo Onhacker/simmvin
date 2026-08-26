@@ -42,7 +42,7 @@ elseif (count($reportEvents) > 1) $eventScope = number_format(count($reportEvent
     <style>
         @page { size: 330mm 210mm; margin: 9mm 9mm 11mm; }
         * { box-sizing: border-box; }
-        html { padding: 0; color: #111; font-family: "DejaVu Sans", Arial, sans-serif; font-size: 9.5px; line-height: 1.35; touch-action: pan-x pan-y; }
+        html { padding: 0; color: #111; font-family: "DejaVu Sans", Arial, sans-serif; font-size: 12px; line-height: 1.3; touch-action: pan-x pan-y; }
         body { margin: 0; padding: 0; color: #111; font-family: inherit; font-size: inherit; line-height: inherit; touch-action: inherit; }
         body { background: #e9eef5; }
         .sheet-stage { width: 330mm; min-height: 210mm; margin: 14px auto 24px; }
@@ -53,48 +53,50 @@ elseif (count($reportEvents) > 1) $eventScope = number_format(count($reportEvent
         .logo-cell img { display: block; width: 24mm; height: auto; }
         .title-cell { text-align: center; }
         .title-cell h1 { margin: 0; color: #111; font-size: 21px; line-height: 1.15; letter-spacing: .4px; text-transform: uppercase; }
-        .title-cell p { margin: 3px 0 0; color: #1f5fab; font-size: 10px; font-weight: 700; }
+        .title-cell p { margin: 3px 0 0; color: #1f5fab; font-size: 12px; font-weight: 700; }
         .balance-cell { width: 30mm; }
         .meta-table { margin: 7px 0; }
         .meta-table td { padding: 1.5px 0; vertical-align: top; }
         .meta-label { width: 25mm; color: #4b5563; }
         .meta-separator { width: 4mm; color: #4b5563; }
         .meta-value { color: #111; font-weight: 700; }
-        .event-list { margin: 0 0 7px; padding: 5px 7px; border-left: 3px solid #1f5fab; background: #f3f7fc; font-size: 8px; }
+        .event-list { margin: 0 0 7px; padding: 5px 7px; border-left: 3px solid #1f5fab; background: #f3f7fc; font-size: 12px; }
         .event-list strong { color: #1f5fab; }
         .event-list span { display: inline; }
         .event-list span + span::before { content: "  |  "; color: #8291a4; }
-        .section-title { margin: 7px 0 4px; color: #1f5fab; font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: .25px; }
+        .section-title { margin: 7px 0 4px; color: #1f5fab; font-size: 12px; font-weight: 800; text-transform: uppercase; letter-spacing: .25px; }
         .summary-grid { table-layout: fixed; margin-bottom: 7px; }
         .summary-grid td { width: 12.5%; padding: 5px 6px; border: 1px solid #cfd7e2; vertical-align: top; }
-        .summary-label { display: block; color: #4b5563; font-size: 7px; text-transform: uppercase; }
-        .summary-value { display: block; margin-top: 1px; color: #111; font-size: 10px; font-weight: 800; }
+        .summary-label { display: block; color: #4b5563; font-size: 12px; text-transform: uppercase; }
+        .summary-value { display: block; margin-top: 1px; color: #111; font-size: 12px; font-weight: 800; }
         .summary-value.positive { color: #18743d; }
         .summary-value.negative { color: #b42318; }
         .report-table { table-layout: fixed; }
         .report-table thead { display: table-header-group; }
         .report-table tr { page-break-inside: avoid; }
-        .report-table th { padding: 5px 4px; border: 1px solid #8795a7; background: #1f5fab; color: #fff; font-size: 7.8px; line-height: 1.2; text-align: left; text-transform: uppercase; }
-        .report-table td { padding: 5px 4px; border: 1px solid #c8d1dd; color: #111; font-size: 8.1px; vertical-align: top; overflow-wrap: break-word; word-wrap: break-word; }
+        .report-table th { padding: 5px 4px; border: 1px solid #8795a7; background: #1f5fab; color: #fff; font-size: 12px; line-height: 1.15; text-align: left; text-transform: uppercase; }
+        .report-table td { padding: 5px 4px; border: 1px solid #c8d1dd; color: #111; font-size: 12px; line-height: 1.2; vertical-align: top; overflow-wrap: break-word; word-wrap: break-word; }
         .report-table tbody tr:nth-child(even) td { background: #f8fafc; }
         .report-table tbody tr + tr td { border-top: 2px solid #1f5fab; }
         .number { text-align: center; }
-        .money-cell { text-align: right; white-space: nowrap; }
+        /* Keep amounts readable at the requested 12px size without allowing a
+         * narrow column to paint over its neighbour. */
+        .money-cell { text-align: right; white-space: normal; overflow-wrap: anywhere; word-break: break-word; }
         .primary { display: block; color: #111; font-weight: 700; }
-        .secondary { display: block; margin-top: 1px; color: #4b5563; font-size: 7px; line-height: 1.25; white-space: normal; }
+        .secondary { display: block; margin-top: 1px; color: #4b5563; font-size: 12px; line-height: 1.2; white-space: normal; }
         .participant-list { margin: 0; padding: 0; list-style: none; }
         .participant-list li { margin: 0 0 1px; line-height: 1.25; }
-        .participant-number { display: inline-block; width: 14px; color: #4b5563; font-size: 7px; vertical-align: top; }
+        .participant-number { display: inline-block; width: 28px; min-width: 28px; color: #4b5563; font-size: 12px; vertical-align: top; white-space: nowrap; }
         .participant-name { display: inline; }
         .participant-empty { color: #4b5563; font-style: italic; }
-        .status { display: inline-block; max-width: 100%; padding: 2px 4px; border-radius: 3px; color: #fff; font-size: 6.8px; font-weight: 700; line-height: 1.25; text-align: center; }
+        .status { display: inline-block; max-width: 100%; padding: 2px 4px; border-radius: 3px; color: #fff; font-size: 12px; font-weight: 700; line-height: 1.15; text-align: center; }
         .status.green { background: #1f7a45; }
         .status.yellow { background: #a76608; }
         .status.red { background: #b42318; }
         .status.blue { background: #1f5fab; }
         .empty-row td { padding: 18px 8px; text-align: center; }
         .document-foot { margin-top: 8px; border-top: 1px solid #cfd7e2; }
-        .document-foot td { padding-top: 4px; color: #4b5563; font-size: 7px; }
+        .document-foot td { padding-top: 4px; color: #4b5563; font-size: 12px; }
         .document-foot td:last-child { text-align: right; }
         @media print {
             html, body { background: #fff; -webkit-print-color-adjust: exact; print-color-adjust: exact; }

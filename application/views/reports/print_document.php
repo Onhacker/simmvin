@@ -87,7 +87,7 @@ $accountSummary = array_merge(array(
     <style>
         @page { size: 210mm 330mm; margin: 12mm 10mm 14mm; }
         * { box-sizing: border-box; }
-        html { padding: 0; color: #111827; font-family: "DejaVu Sans", Arial, sans-serif; font-size: 9px; line-height: 1.45; touch-action: pan-x pan-y; }
+        html { padding: 0; color: #111827; font-family: "DejaVu Sans", Arial, sans-serif; font-size: 12px; line-height: 1.3; touch-action: pan-x pan-y; }
         body { margin: 0; padding: 0; color: #111827; font-family: inherit; font-size: inherit; line-height: inherit; touch-action: inherit; }
         body { background: #e9eef5; }
         .sheet-stage { width: 210mm; min-height: 330mm; margin: 14px auto 24px; }
@@ -95,10 +95,10 @@ $accountSummary = array_merge(array(
         .document-head, .meta-table, .summary-grid, .report-table, .document-foot { width: 100%; border-collapse: collapse; }
         .document-head td { vertical-align: top; padding: 0 0 7px; border-bottom: 2px solid #1f5fab; }
         .brand-code { color: #1f5fab; font-size: 23px; font-weight: 800; letter-spacing: 1px; line-height: 1; }
-        .organization { margin-top: 4px; color: #374151; font-size: 10px; font-weight: 700; }
+        .organization { margin-top: 4px; color: #374151; font-size: 12px; font-weight: 700; }
         .title-block { text-align: right; }
         .title-block h1 { margin: 0; color: #111827; font-size: 19px; line-height: 1.15; }
-        .title-block p { margin: 4px 0 0; color: #4b5563; font-size: 9px; }
+        .title-block p { margin: 4px 0 0; color: #4b5563; font-size: 12px; }
         .meta-table { margin: 8px 0 9px; }
         .meta-table td { padding: 2px 0; vertical-align: top; }
         .meta-label { width: 82px; color: #6b7280; }
@@ -107,52 +107,56 @@ $accountSummary = array_merge(array(
         .event-list { margin: 0 0 9px; padding: 6px 8px; border-left: 3px solid #1f5fab; background: #f3f7fc; }
         .event-list strong { display: block; margin-bottom: 2px; color: #1f5fab; }
         .event-list span { display: block; }
-        .section-title { margin: 10px 0 5px; color: #1f5fab; font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: .35px; }
+        .section-title { margin: 10px 0 5px; color: #1f5fab; font-size: 12px; font-weight: 800; text-transform: uppercase; letter-spacing: .35px; }
         .summary-grid { table-layout: fixed; margin-bottom: 8px; }
         .summary-grid td { width: 25%; padding: 6px 7px; border: 1px solid #d7dee8; vertical-align: top; }
-        .summary-label { display: block; color: #6b7280; font-size: 7.5px; text-transform: uppercase; letter-spacing: .2px; }
-        .summary-value { display: block; margin-top: 2px; color: #111827; font-size: 11px; font-weight: 800; }
+        .summary-label { display: block; color: #6b7280; font-size: 12px; text-transform: uppercase; letter-spacing: .2px; }
+        .summary-value { display: block; margin-top: 2px; color: #111827; font-size: 12px; font-weight: 800; }
         .summary-value.positive { color: #18743d; }
         .summary-value.negative { color: #b42318; }
         .expense-summary-table { width: 100%; margin-bottom: 8px; border-collapse: collapse; table-layout: fixed; }
         .expense-summary-table th, .expense-summary-table td { padding: 6px 8px; border: 1px solid #d7dee8; vertical-align: middle; }
-        .expense-summary-table th { background: #1f5fab; color: #fff; font-size: 8px; line-height: 1.2; text-align: left; text-transform: uppercase; }
+        .expense-summary-table th { background: #1f5fab; color: #fff; font-size: 12px; line-height: 1.15; text-align: left; text-transform: uppercase; }
         .expense-summary-table th:first-child, .expense-summary-table td:first-child { width: 70%; }
         .expense-summary-table th:last-child, .expense-summary-table td:last-child { width: 30%; }
         .expense-summary-table td:last-child { text-align: right; white-space: nowrap; }
         .expense-summary-table tbody tr:nth-child(even) td { background: #f7f9fc; }
-        .expense-summary-table tfoot td { background: #dcecff !important; border-top: 2px solid #174b8b; color: #111827; font-size: 10px; font-weight: 800; }
+        .expense-summary-table tfoot td { background: #dcecff !important; border-top: 2px solid #174b8b; color: #111827; font-size: 12px; font-weight: 800; }
         .expense-summary-table .empty-summary { color: #6b7280; text-align: center; }
         .report-table { table-layout: fixed; }
         .report-table thead { display: table-header-group; }
         .report-table tr { page-break-inside: avoid; }
-        .report-table th { padding: 5px 4px; border: 1px solid #9eacbd; background: #1f5fab; color: #fff; font-size: 7.3px; line-height: 1.25; text-align: left; text-transform: uppercase; }
-        .report-table td { padding: 5px 4px; border: 1px solid #cfd7e2; vertical-align: top; overflow-wrap: break-word; word-wrap: break-word; }
+        .report-table th { padding: 5px 4px; border: 1px solid #9eacbd; background: #1f5fab; color: #fff; font-size: 12px; line-height: 1.15; text-align: left; text-transform: uppercase; }
+        .report-table td { padding: 5px 4px; border: 1px solid #cfd7e2; font-size: 12px; line-height: 1.2; vertical-align: top; overflow-wrap: break-word; word-wrap: break-word; }
         .report-table tbody tr:nth-child(even) td { background: #f7f9fc; }
         .report-table .number { text-align: center; }
-        .report-table .money { text-align: right; white-space: nowrap; }
+        /* Amounts may wrap inside their fixed column at 12px; this prevents
+         * long currency values and headers from overlapping adjacent cells. */
+        .report-table .money { text-align: right; white-space: normal; overflow-wrap: anywhere; word-break: break-word; }
         .report-table .primary { display: block; font-weight: 700; }
-        .report-table .secondary { display: block; margin-top: 1px; color: #5f6b7a; font-size: 7.2px; line-height: 1.3; }
-        .report-note { margin: -1px 0 6px; padding: 5px 7px; border-left: 3px solid #1f5fab; background: #f3f7fc; color: #4b5563; font-size: 7.8px; }
-        .expense-category-heading { margin: 12px 0 4px; padding: 6px 8px; border-left: 4px solid #1f5fab; background: #eaf2fc; color: #174b8b; page-break-after: avoid; break-after: avoid; }
-        .expense-category-heading span { display: block; color: #6b7280; font-size: 7px; font-weight: 700; letter-spacing: .25px; line-height: 1.1; text-transform: uppercase; }
+        .report-table .secondary { display: block; margin-top: 1px; color: #5f6b7a; font-size: 12px; line-height: 1.2; }
+        .report-note { margin: -1px 0 6px; padding: 5px 7px; border-left: 3px solid #1f5fab; background: #f3f7fc; color: #4b5563; font-size: 12px; }
+        .expense-category-heading { margin: 8px 0 3px; padding: 4px 8px; border-left: 4px solid #1f5fab; background: #eaf2fc; color: #174b8b; page-break-after: avoid; break-after: avoid; }
+        .expense-category-heading span { display: block; color: #6b7280; font-size: 12px; font-weight: 700; letter-spacing: .25px; line-height: 1.1; text-transform: uppercase; }
         .expense-category-heading strong { display: block; margin-top: 2px; color: #174b8b; font-size: 12px; line-height: 1.2; }
         .expense-category-group { page-break-inside: avoid; break-inside: avoid; }
-        .expense-category-table { margin-bottom: 7px; page-break-before: avoid; break-before: avoid; }
+        .expense-category-table { margin-bottom: 4px; page-break-before: avoid; break-before: avoid; }
         .expense-category-table .category-total-row td { background: #eef5ff !important; border-top: 2px solid #1f5fab; color: #174b8b; font-weight: 800; }
         .expense-category-table .category-total-row .money-label,
         .expense-grand-total .money-label { text-align: right; }
-        .expense-grand-total { margin-top: 12px; }
-        .expense-grand-total td { background: #dcecff !important; border-top: 2px solid #174b8b; color: #111827; font-size: 10px; font-weight: 800; }
-        .status { display: inline-block; padding: 2px 4px; border-radius: 3px; color: #fff; font-size: 6.8px; font-weight: 700; line-height: 1.25; text-align: center; }
+        .expense-category-table .category-total-row .money,
+        .expense-grand-total .money { white-space: nowrap; overflow: visible; }
+        .expense-grand-total { margin-top: 4px; page-break-before: avoid; break-before: avoid; }
+        .expense-grand-total td { background: #dcecff !important; border-top: 2px solid #174b8b; color: #111827; font-size: 12px; font-weight: 800; }
+        .status { display: block; width: 100%; max-width: 100%; padding: 2px 4px; border-radius: 3px; color: #fff; font-size: 12px; font-weight: 700; line-height: 1.15; text-align: center; white-space: normal; overflow-wrap: normal; word-break: normal; }
         .status.green { background: #1f7a45; }
         .status.yellow { background: #a76608; }
         .status.red { background: #b42318; }
         .status.blue { background: #1f5fab; }
-        .status-icon { min-width: 16px; padding: 2px 4px; font-size: 9px; line-height: 1.1; }
+        .status-icon { display: inline-block; width: auto; min-width: 16px; padding: 2px 4px; font-size: 12px; line-height: 1.1; }
         .empty-row td { padding: 20px 8px; color: #6b7280; text-align: center; }
-        .document-foot { margin-top: 10px; border-top: 1px solid #cfd7e2; }
-        .document-foot td { padding-top: 5px; color: #6b7280; font-size: 7.5px; vertical-align: top; }
+        .document-foot { margin-top: 6px; border-top: 1px solid #cfd7e2; }
+        .document-foot td { padding-top: 5px; color: #6b7280; font-size: 12px; vertical-align: top; }
         @media print {
             html, body { background: #fff; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
             .sheet-stage { width: auto !important; height: auto !important; min-height: 0 !important; margin: 0 !important; }
