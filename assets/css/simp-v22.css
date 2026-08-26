@@ -1226,6 +1226,30 @@ body {
 
 #expense-list [data-expense-status-submit] {
   align-self: center;
+  min-height: 32px;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
+#expense-list .expense-status-editor {
+  gap: 8px;
+}
+
+#expense-list .expense-status-control {
+  margin-bottom: 0 !important;
+}
+
+#expense-list .expense-status-control select {
+  height: 38px !important;
+  min-height: 38px !important;
+  line-height: 38px !important;
+  padding: 0 24px 0 8px !important;
+  font-size: 12px;
+}
+
+#expense-list .expense-status-control {
+  height: 38px !important;
+  min-height: 38px !important;
 }
 
 @media (max-width: 575.98px) {
@@ -1247,6 +1271,15 @@ body {
 
   #expense-list .expense-card-value {
     font-size: 12px;
+  }
+
+  #expense-list .expense-status-editor {
+    gap: 6px;
+  }
+
+  #expense-list .expense-status-editor [data-expense-status-submit] {
+    align-self: flex-start;
+    margin-left: 0 !important;
   }
 }
 

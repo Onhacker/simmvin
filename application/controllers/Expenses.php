@@ -22,12 +22,13 @@ class Expenses extends App_Controller
             'category_id' => $this->expense_query_integer($this->input->get('category_id', TRUE)),
             'page' => max(1, $this->expense_query_integer($this->input->get('page', TRUE)))
         );
-        $filterCategories = $this->finance->expense_categories_in_use($activeEventIds);
+        $filterCategories = $this->finance->expense_categories_in_use($activeEventIds, 'rejected');
         $availableCategoryIds = array_map(function ($category) { return (int)$category['id']; }, $filterCategories);
         if ($filters['category_id'] > 0 && !in_array($filters['category_id'], $availableCategoryIds, TRUE)) {
             $filters['category_id'] = 0;
         }
-        $queryFilters = array('event_ids' => $activeEventIds);
+        // Ditolak tidak ikut daftar aktif, jumlah data, maupun total keuangan.
+        $queryFilters = array('event_ids' => $activeEventIds, 'exclude_status' => 'rejected');
         if ($filters['q'] !== '') $queryFilters['search'] = $filters['q'];
         if ($filters['category_id'] > 0) $queryFilters['category_id'] = $filters['category_id'];
         $summaryFilters = $queryFilters;
@@ -253,7 +254,6 @@ class Expenses extends App_Controller
             if ($noteRaw !== NULL && !is_scalar($noteRaw)) throw new InvalidArgumentException('Catatan pengeluaran tidak valid.');
             $note = trim((string)$noteRaw);
             if (strlen($note) > 2000) throw new InvalidArgumentException('Catatan maksimal 2.000 karakter.');
-
             $folder = 'expenses';
             $uploadPath = FCPATH . 'uploads/' . $folder;
             if (!is_dir($uploadPath) && !mkdir($uploadPath, 0755, TRUE) && !is_dir($uploadPath)) throw new RuntimeException('Folder bukti pengeluaran tidak dapat dibuat.');
@@ -289,6 +289,101 @@ class Expenses extends App_Controller
             if ($e->getPrevious()) $detail .= ' | Penyebab: ' . $e->getPrevious()->getMessage();
             log_message('error', 'Gagal membuat pengeluaran melalui AJAX: ' . $detail);
             return $this->json(array('success'=>FALSE,'message'=>'Pengeluaran gagal disimpan karena terjadi gangguan sistem.'), 500);
+        } finally {
+            $this->db->db_debug = $originalDbDebug;
+        }
+    }
+
+    /** Update a regular expense from the shared create/edit modal. */
+    public function update_ajax($id)
+    {
+        $this->require_permission('expenses.create');
+        $this->require_post();
+        $id = (int)$id;
+        $expense = $this->finance->expense($id);
+        if (!$expense) return $this->json(array('success'=>FALSE,'message'=>'Pengeluaran tidak ditemukan.'), 404);
+        if (!empty($expense['debt_id'])) return $this->json(array('success'=>FALSE,'message'=>'Pembayaran hutang hanya dapat dikelola dari modul Hutang.'), 422);
+        $canEditVerified = $this->Auth_model->can('expenses.verify');
+        if ($expense['status'] === 'verified' && !$canEditVerified) {
+            return $this->json(array('success'=>FALSE,'message'=>'Pengeluaran terverifikasi hanya dapat diubah oleh pengguna yang berhak memverifikasi.'), 403);
+        }
+
+        $newProof = NULL;
+        $oldProof = !empty($expense['proof_path']) ? (string)$expense['proof_path'] : NULL;
+        $originalDbDebug = $this->db->db_debug;
+        $this->db->db_debug = FALSE;
+        try {
+            $eventId = $this->input->post('event_id', TRUE);
+            if (!is_scalar($eventId) || !ctype_digit((string)$eventId) || (int)$eventId < 1) throw new InvalidArgumentException('Event aktif tidak valid.');
+            $categoryId = $this->input->post('category_id', TRUE);
+            if (!is_scalar($categoryId) || !ctype_digit((string)$categoryId) || (int)$categoryId < 1) throw new InvalidArgumentException('Kategori pengeluaran tidak valid.');
+            $category = $this->db->select('id,name')->where(array('id'=>(int)$categoryId,'is_active'=>1))->get('expense_categories')->row_array();
+            if (!$category) throw new InvalidArgumentException('Kategori pengeluaran tidak valid.');
+
+            $dateRaw = $this->input->post('expense_date', TRUE);
+            if (!is_scalar($dateRaw)) throw new InvalidArgumentException('Tanggal pengeluaran tidak valid.');
+            $date = (string)$dateRaw;
+            $parsedDate = DateTime::createFromFormat('Y-m-d', $date);
+            if (!$parsedDate || $parsedDate->format('Y-m-d') !== $date) throw new InvalidArgumentException('Tanggal pengeluaran tidak valid.');
+
+            $descriptionRaw = $this->input->post('description', TRUE);
+            if ($descriptionRaw !== NULL && !is_scalar($descriptionRaw)) throw new InvalidArgumentException('Deskripsi pengeluaran tidak valid.');
+            $description = trim((string)$descriptionRaw);
+            if (strlen($description) > 3000) throw new InvalidArgumentException('Deskripsi pengeluaran maksimal 3.000 karakter.');
+            if ($description === '') $description = substr('Pengeluaran '.$category['name'], 0, 3000);
+
+            $amount = $this->normalize_expense_decimal($this->input->post('amount', TRUE), FALSE);
+            $adminFee = $this->normalize_expense_decimal($this->input->post('admin_fee', TRUE), TRUE);
+            if ($amount === NULL) throw new InvalidArgumentException('Jumlah pengeluaran harus lebih dari nol, maksimal 16 digit, dan maksimal 2 angka desimal.');
+            if ($adminFee === NULL) throw new InvalidArgumentException('Biaya admin harus nol atau lebih, maksimal 16 digit, dan maksimal 2 angka desimal.');
+
+            $methodRaw = $this->input->post('method', TRUE);
+            if (!is_scalar($methodRaw) || !in_array((string)$methodRaw, array('cash','transfer','qris'), TRUE)) throw new InvalidArgumentException('Metode pembayaran tidak valid.');
+            $method = (string)$methodRaw;
+            if ($method !== 'transfer' && simp_money_cents($adminFee) > 0) throw new InvalidArgumentException('Biaya admin hanya dapat diisi untuk metode Transfer.');
+
+            $accountId = $this->input->post('account_id', TRUE);
+            if (!is_scalar($accountId) || !ctype_digit((string)$accountId) || (int)$accountId < 1) throw new InvalidArgumentException('Akun dana tidak valid.');
+            $noteRaw = $this->input->post('note', TRUE);
+            if ($noteRaw !== NULL && !is_scalar($noteRaw)) throw new InvalidArgumentException('Catatan pengeluaran tidak valid.');
+            $note = trim((string)$noteRaw);
+            if (strlen($note) > 2000) throw new InvalidArgumentException('Catatan maksimal 2.000 karakter.');
+            $expectedUpdatedAt = $this->input->post('expected_updated_at', TRUE);
+            if ($expectedUpdatedAt !== NULL && !is_scalar($expectedUpdatedAt)) throw new InvalidArgumentException('Versi data pengeluaran tidak valid.');
+            $expectedUpdatedAt = trim((string)$expectedUpdatedAt);
+            if (strlen($expectedUpdatedAt) > 32) throw new InvalidArgumentException('Versi data pengeluaran tidak valid.');
+
+            $oldProofUsable = $oldProof && strpos(str_replace('\\','/',$oldProof), 'uploads/expenses/') === 0 && is_file(FCPATH.$oldProof);
+            $hasUpload = !empty($_FILES['proof']['name']);
+            if ($hasUpload) {
+                $uploadPath = FCPATH . 'uploads/expenses';
+                if (!is_dir($uploadPath) && !mkdir($uploadPath, 0755, TRUE) && !is_dir($uploadPath)) {
+                    throw new RuntimeException('Folder bukti pengeluaran tidak dapat dibuat.');
+                }
+                try { $newProof = $this->upload_document('proof', 'expenses', FALSE); }
+                catch (RuntimeException $uploadError) { throw $this->expense_upload_exception($uploadError); }
+            }
+            $proof = $newProof ?: ($oldProofUsable ? $oldProof : NULL);
+            if ($method !== 'cash' && !$proof) throw new InvalidArgumentException('Bukti pembayaran wajib diunggah untuk metode Transfer atau QRIS.');
+
+            $data = array(
+                'event_id'=>(int)$eventId, 'category_id'=>(int)$categoryId,
+                'expense_date'=>$date, 'description'=>$description,
+                'amount'=>$amount, 'method'=>$method, 'account_id'=>(int)$accountId,
+                'admin_fee'=>$adminFee, 'proof_path'=>$proof,
+                'note'=>$note !== '' ? $note : NULL
+            );
+            $this->finance->update_expense($id, $data, $this->currentUser['id'], $canEditVerified, $expectedUpdatedAt !== '' ? $expectedUpdatedAt : NULL);
+            if ($newProof && $oldProofUsable && $oldProof !== $newProof) $this->cleanup_expense_upload($oldProof);
+            try { $this->Audit_model->log('expense_updated','expense',$id,$data); } catch (Throwable $ignored) {}
+            return $this->json(array('success'=>TRUE,'message'=>'Pengeluaran berhasil diperbarui.','expense_id'=>$id));
+        } catch (InvalidArgumentException $e) {
+            if ($newProof) $this->cleanup_expense_upload($newProof);
+            return $this->json(array('success'=>FALSE,'message'=>$e->getMessage()), 422);
+        } catch (Throwable $e) {
+            if ($newProof) $this->cleanup_expense_upload($newProof);
+            log_message('error', 'Gagal memperbarui pengeluaran #'.$id.': '.$e->getMessage());
+            return $this->json(array('success'=>FALSE,'message'=>'Pengeluaran gagal diperbarui karena terjadi gangguan sistem.'), 500);
         } finally {
             $this->db->db_debug = $originalDbDebug;
         }
@@ -336,9 +431,10 @@ class Expenses extends App_Controller
     private function cleanup_expense_upload($relativePath)
     {
         $relativePath = ltrim(str_replace('\\','/',(string)$relativePath), '/');
-        if ($relativePath === '' || strpos($relativePath, '..') !== FALSE) return;
-        $absolute = FCPATH . $relativePath;
-        if (is_file($absolute)) @unlink($absolute);
+        if ($relativePath === '' || strpos($relativePath, '..') !== FALSE || strpos($relativePath, 'uploads/expenses/') !== 0) return;
+        $root = realpath(FCPATH . 'uploads/expenses');
+        $absolute = realpath(FCPATH . $relativePath);
+        if ($root !== FALSE && $absolute !== FALSE && is_file($absolute) && strpos($absolute, $root . DIRECTORY_SEPARATOR) === 0) @unlink($absolute);
     }
 
     /** Keep file validation useful without exposing upload paths/runtime details. */
@@ -427,8 +523,8 @@ class Expenses extends App_Controller
         $activeEventIds = array_map(function ($event) { return (int) $event['id']; }, $activeEvents);
         return array(
             'activeEvents' => $activeEvents,
-            // A rejected expense remains visible in the audit/list screen, but
-            // is never a financial report row or total.
+            // A rejected expense is excluded from operational reports and
+            // totals, just like it is excluded from the active list.
             'rows' => $activeEventIds ? $this->finance->expenses(array('event_ids' => $activeEventIds, 'exclude_status' => 'rejected')) : array(),
             'organizationName' => $this->finance->setting_value('organization_name', 'Penyelenggara Pelatihan')
         );

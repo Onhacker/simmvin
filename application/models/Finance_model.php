@@ -244,15 +244,15 @@ class Finance_model extends CI_Model
     }
 
     /** Only categories that actually have expenses in the selected events. */
-    public function expense_categories_in_use(array $eventIds)
+    public function expense_categories_in_use(array $eventIds, $excludeStatus = NULL)
     {
         $eventIds = array_values(array_unique(array_filter(array_map('intval', $eventIds))));
         if (!$eventIds) return array();
-        return $this->db->select('c.id,c.name,COUNT(x.id) AS expense_count', FALSE)
+        $this->db->select('c.id,c.name,COUNT(x.id) AS expense_count', FALSE)
             ->from('expense_categories c')->join('expenses x', 'x.category_id=c.id')
-            ->where_in('x.event_id', $eventIds)
-            ->group_by(array('c.id', 'c.name'))->order_by('c.name', 'ASC')
-            ->get()->result_array();
+            ->where_in('x.event_id', $eventIds);
+        if ($excludeStatus !== NULL && $excludeStatus !== '') $this->db->where('x.status !=', (string)$excludeStatus);
+        return $this->db->group_by(array('c.id', 'c.name'))->order_by('c.name', 'ASC')->get()->result_array();
     }
 
     public function expense($id)
@@ -340,6 +340,130 @@ class Finance_model extends CI_Model
             throw new RuntimeException('Transaksi pengeluaran gagal diselesaikan.');
         }
         return $id;
+    }
+
+    /**
+     * Update a regular event expense while keeping its verified ledger entry
+     * and the source-account balance in one transaction. Debt repayments are
+     * owned by Debt_model and deliberately cannot be edited through here.
+     */
+    public function update_expense($id, array $data, $userId, $canEditVerified = FALSE, $expectedUpdatedAt = NULL)
+    {
+        $id = (int) $id;
+        if ($id < 1) throw new InvalidArgumentException('Pengeluaran tidak valid.');
+
+        $amountCents = $this->money_cents(isset($data['amount']) ? $data['amount'] : NULL);
+        $feeCents = $this->money_cents(isset($data['admin_fee']) ? $data['admin_fee'] : '0');
+        $method = isset($data['method']) && is_scalar($data['method']) ? (string) $data['method'] : '';
+        if ($amountCents === NULL || $amountCents <= 0) throw new InvalidArgumentException('Nominal pengeluaran harus lebih dari nol dengan maksimal 2 angka desimal.');
+        if ($feeCents === NULL) throw new InvalidArgumentException('Biaya admin tidak valid.');
+        if (!in_array($method, array('cash','transfer','qris'), TRUE)) throw new InvalidArgumentException('Metode pembayaran tidak valid.');
+        if ($method !== 'transfer' && $feeCents > 0) throw new InvalidArgumentException('Biaya admin hanya dapat diisi untuk metode Transfer.');
+        if (!$this->valid_date(isset($data['expense_date']) ? $data['expense_date'] : NULL)) throw new InvalidArgumentException('Tanggal pengeluaran tidak valid.');
+
+        $eventId = isset($data['event_id']) ? (int) $data['event_id'] : 0;
+        $categoryId = isset($data['category_id']) ? (int) $data['category_id'] : 0;
+        $accountId = isset($data['account_id']) ? (int) $data['account_id'] : 0;
+        if ($eventId < 1) throw new InvalidArgumentException('Event aktif tidak valid.');
+        if ($categoryId < 1) throw new InvalidArgumentException('Kategori pengeluaran tidak valid.');
+        if ($accountId < 1) throw new InvalidArgumentException('Akun dana tidak valid.');
+
+        $description = isset($data['description']) && is_scalar($data['description']) ? trim((string)$data['description']) : '';
+        $note = isset($data['note']) && is_scalar($data['note']) ? trim((string)$data['note']) : '';
+        if ($description === '' || strlen($description) > 3000) throw new InvalidArgumentException('Deskripsi pengeluaran wajib diisi dan maksimal 3.000 karakter.');
+        if (strlen($note) > 2000) throw new InvalidArgumentException('Catatan maksimal 2.000 karakter.');
+
+        $proofPath = array_key_exists('proof_path', $data) ? $data['proof_path'] : NULL;
+        if ($proofPath !== NULL && !$this->valid_upload_path($proofPath, 'expenses')) throw new InvalidArgumentException('Bukti pengeluaran tidak valid.');
+        if ($method !== 'cash' && !$this->valid_upload_path($proofPath, 'expenses')) throw new InvalidArgumentException('Bukti pembayaran wajib diunggah untuk metode Transfer atau QRIS.');
+
+        $originalDbDebug = $this->db->db_debug;
+        $this->db->db_debug = FALSE;
+        $this->db->trans_begin();
+        try {
+            $row = $this->db->query('SELECT * FROM expenses WHERE id=? FOR UPDATE', array($id))->row_array();
+            if (!$row) throw new InvalidArgumentException('Pengeluaran tidak ditemukan.');
+            if (!empty($row['debt_id'])) throw new InvalidArgumentException('Pembayaran hutang hanya dapat dikelola dari modul Hutang.');
+            if ($row['status'] === 'rejected') throw new InvalidArgumentException('Pengeluaran yang ditolak bersifat final dan tidak dapat diubah.');
+            if (!in_array($row['status'], array('pending','verified'), TRUE)) throw new RuntimeException('Status pengeluaran tidak konsisten.');
+            if ($row['status'] === 'verified' && !$canEditVerified) {
+                throw new InvalidArgumentException('Pengeluaran terverifikasi hanya dapat diubah oleh pengguna yang berhak memverifikasi.');
+            }
+            if ($expectedUpdatedAt !== NULL && (string)$expectedUpdatedAt !== (string)$row['updated_at']) {
+                throw new InvalidArgumentException('Data pengeluaran sudah berubah. Tutup modal, muat ulang daftar, lalu buka Edit kembali.');
+            }
+            // Lock event rows in deterministic order so two concurrent edits
+            // moving expenses between events cannot deadlock each other.
+            $eventIdsToLock = array_values(array_unique(array((int)$row['event_id'], $eventId)));
+            sort($eventIdsToLock, SORT_NUMERIC);
+            $lockedEvents = array();
+            foreach ($eventIdsToLock as $lockedEventId) {
+                $lockedEvents[$lockedEventId] = $this->db->query('SELECT id,status FROM training_events WHERE id=? FOR UPDATE', array($lockedEventId))->row_array();
+            }
+            $originalEvent = isset($lockedEvents[(int)$row['event_id']]) ? $lockedEvents[(int)$row['event_id']] : NULL;
+            if (!$originalEvent || $originalEvent['status'] !== 'open') throw new InvalidArgumentException('Pengeluaran pada event yang sudah ditutup tidak dapat diubah.');
+            $event = isset($lockedEvents[$eventId]) ? $lockedEvents[$eventId] : NULL;
+            if (!$event || $event['status'] !== 'open') throw new InvalidArgumentException('Event sudah tidak aktif. Pengeluaran tidak dapat diubah.');
+            $category = $this->db->query('SELECT id,is_active FROM expense_categories WHERE id=? FOR UPDATE', array($categoryId))->row_array();
+            if (!$category || !(int)$category['is_active']) throw new InvalidArgumentException('Kategori pengeluaran tidak aktif.');
+
+            if ($proofPath !== NULL) {
+                $duplicateProof = $this->db->where('proof_path', $proofPath)->where('id !=', $id)->count_all_results('expenses');
+                if ($duplicateProof) throw new InvalidArgumentException('Bukti pengeluaran sudah digunakan oleh transaksi lain.');
+            }
+
+            $oldAccountId = (int) $row['account_id'];
+            $accounts = $this->lock_transfer_accounts($oldAccountId, $accountId);
+            if (!isset($accounts[$oldAccountId]) || !isset($accounts[$accountId])) throw new InvalidArgumentException('Akun dana tidak ditemukan.');
+            $newAccount = $accounts[$accountId];
+            if (!(int)$newAccount['is_active'] || !$this->account_matches_method($newAccount['type'], $method)) {
+                throw new InvalidArgumentException('Akun dana tidak aktif atau tidak sesuai dengan metode pembayaran.');
+            }
+
+            $ledgerRows = $this->db->where(array('source_type'=>'expense','source_id'=>$id))->get('ledger_entries')->result_array();
+            if ($row['status'] === 'verified') {
+                $oldAmountCents = $this->money_cents($row['amount']);
+                $oldFeeCents = $this->money_cents($row['admin_fee']);
+                if ($oldAmountCents === NULL || $oldFeeCents === NULL || count($ledgerRows) !== 1 ||
+                    (int)$ledgerRows[0]['account_id'] !== $oldAccountId || $ledgerRows[0]['direction'] !== 'out' ||
+                    $this->money_cents($ledgerRows[0]['amount']) !== $oldAmountCents + $oldFeeCents) {
+                    throw new RuntimeException('Jurnal pengeluaran tidak konsisten sehingga data belum dapat diubah.');
+                }
+                $availableCents = $this->locked_account_balance_cents($newAccount);
+                if ($availableCents === NULL) throw new RuntimeException('Saldo akun dana tidak valid.');
+                if ($oldAccountId === $accountId) $availableCents += $oldAmountCents + $oldFeeCents;
+                if ($availableCents < $amountCents + $feeCents) throw new InvalidArgumentException('Saldo akun tidak mencukupi untuk perubahan pengeluaran beserta biaya admin.');
+            } elseif ($ledgerRows) {
+                throw new RuntimeException('Pengeluaran yang menunggu verifikasi memiliki jurnal yang tidak semestinya.');
+            }
+
+            if (!$this->db->where(array('source_type'=>'expense','source_id'=>$id))->delete('ledger_entries')) throw new RuntimeException('Jurnal lama pengeluaran gagal diperbarui.');
+            $update = array(
+                'event_id'=>$eventId, 'category_id'=>$categoryId,
+                'expense_date'=>$data['expense_date'], 'payee'=>'Pengeluaran Event',
+                'description'=>$description, 'amount'=>$this->cents_to_decimal($amountCents),
+                'method'=>$method, 'account_id'=>$accountId,
+                'admin_fee'=>$this->cents_to_decimal($feeCents), 'proof_path'=>$proofPath,
+                'note'=>$note !== '' ? $note : NULL, 'updated_at'=>date('Y-m-d H:i:s')
+            );
+            if (!$this->db->where('id', $id)->update('expenses', $update)) throw new RuntimeException('Perubahan pengeluaran gagal disimpan.');
+
+            if ($row['status'] === 'verified') {
+                $update['verified_by'] = (int)$userId;
+                $update['verified_at'] = date('Y-m-d H:i:s');
+                if (!$this->db->where('id', $id)->update('expenses', array('verified_by'=>$update['verified_by'], 'verified_at'=>$update['verified_at']))) throw new RuntimeException('Informasi verifikasi pengeluaran gagal diperbarui.');
+                $ledgerData = array_merge($row, $update, array('status'=>'verified'));
+                if (!$this->post_expense_ledger($id, $ledgerData, $userId)) throw new RuntimeException('Jurnal perubahan pengeluaran gagal disimpan.');
+            }
+            if ($this->db->trans_status() === FALSE) throw new RuntimeException('Transaksi perubahan pengeluaran gagal.');
+            if (!$this->db->trans_commit()) throw new RuntimeException('Transaksi perubahan pengeluaran gagal diselesaikan.');
+            return TRUE;
+        } catch (Throwable $e) {
+            $this->db->trans_rollback();
+            throw $e;
+        } finally {
+            $this->db->db_debug = $originalDbDebug;
+        }
     }
 
     /**

@@ -242,7 +242,13 @@
     var expenseAccount = document.getElementById('expense-modal-account');
     var expenseProof = document.getElementById('expense-modal-proof');
     var expenseProofLabel = document.getElementById('expense-modal-proof-label');
+    var expenseProofHelp = document.getElementById('expense-modal-proof-help');
     var expenseFee = document.getElementById('expense-modal-fee');
+    var expenseStatus = document.getElementById('expense-modal-status');
+    var expenseStatusWrap = document.getElementById('expense-modal-status-wrap');
+    var expenseTitle = document.getElementById('expense-add-title');
+    var expenseKicker = document.getElementById('expense-modal-kicker');
+    var expenseExpectedUpdatedAt = document.getElementById('expense-modal-expected-updated-at');
     var expenseSubmit = expenseForm.querySelector('[data-expense-add-submit]');
 
     function expenseEscape(value) {
@@ -262,11 +268,36 @@
       if (expenseAccount.querySelector('option[value="' + selected + '"]')) expenseAccount.value = selected;
     }
 
+    function expenseData(element) {
+      try { return JSON.parse(element.getAttribute('data-expense') || '{}'); }
+      catch (error) { return {}; }
+    }
+
+    function setExpenseValue(name, value) {
+      var field = expenseForm.elements[name];
+      if (!field) return;
+      if (name === 'amount' || name === 'admin_fee') setMoney(field, value);
+      else field.value = value === null || typeof value === 'undefined' ? '' : value;
+    }
+
+    function localExpenseDate() {
+      var now = new Date();
+      now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
+      return now.toISOString().slice(0, 10);
+    }
+
+    function openExpenseModal() {
+      var opener = document.querySelector('[data-menu="expense-add-modal"]');
+      if (opener) opener.click();
+    }
+
     function updateExpenseProofRequirement() {
       if (!expenseMethod || !expenseProof) return;
-      var required = expenseMethod.value !== 'cash';
+      var editingWithProof = expenseForm.dataset.expenseMode === 'edit' && expenseForm.dataset.hasProof === '1';
+      var required = expenseMethod.value !== 'cash' && !editingWithProof;
       expenseProof.required = required;
       if (expenseProofLabel) expenseProofLabel.textContent = required ? '*' : '';
+      if (expenseProofHelp) expenseProofHelp.classList.toggle('d-none', !editingWithProof);
     }
 
     function updateExpenseFeeRule() {
@@ -276,18 +307,69 @@
       if (!isTransfer) setMoney(expenseFee, '0');
     }
 
-    document.addEventListener('click', function (event) {
-      if (!event.target.closest('[data-expense-add-open]')) return;
-      event.preventDefault();
+    function prepareExpenseCreate() {
       expenseForm.reset();
-      var date = document.getElementById('expense-modal-date');
-      if (date && !date.value) date.value = new Date().toISOString().slice(0,10);
+      expenseForm.action = expenseForm.dataset.createAction || expenseForm.action;
+      expenseForm.dataset.expenseMode = 'create';
+      expenseForm.dataset.hasProof = '0';
+      if (expenseExpectedUpdatedAt) expenseExpectedUpdatedAt.value = '';
+      if (expenseTitle) expenseTitle.textContent = 'Tambah Pengeluaran';
+      if (expenseKicker) expenseKicker.textContent = 'Dana keluar';
+      if (expenseStatusWrap) expenseStatusWrap.classList.remove('d-none');
+      if (expenseStatus) expenseStatus.disabled = false;
+      setExpenseValue('expense_date', localExpenseDate());
       filterExpenseAccounts();
       updateExpenseProofRequirement();
       updateExpenseFeeRule();
       refreshMoney(expenseForm);
-      var opener = document.querySelector('[data-menu="expense-add-modal"]');
-      if (opener) opener.click();
+    }
+
+    function prepareExpenseEdit(button) {
+      var expense = expenseData(button);
+      if (!expense.id) return;
+      expenseForm.reset();
+      expenseForm.dataset.expenseMode = 'edit';
+      expenseForm.dataset.hasProof = Number(expense.has_proof) === 1 ? '1' : '0';
+      if (expenseExpectedUpdatedAt) expenseExpectedUpdatedAt.value = expense.updated_at || '';
+      expenseForm.action = (expenseForm.dataset.updatePrefix || '').replace(/\/$/, '') + '/' + encodeURIComponent(expense.id) + '/ubah';
+      if (expenseTitle) expenseTitle.textContent = 'Edit Pengeluaran';
+      if (expenseKicker) expenseKicker.textContent = 'Perbarui transaksi';
+      setExpenseValue('event_id', expense.event_id);
+      setExpenseValue('category_id', expense.category_id);
+      setExpenseValue('expense_date', expense.expense_date);
+      setExpenseValue('description', expense.description);
+      setExpenseValue('amount', expense.amount);
+      setExpenseValue('method', expense.method);
+      setExpenseValue('admin_fee', expense.admin_fee);
+      setExpenseValue('note', expense.note);
+      if (expenseStatus) {
+        expenseStatus.value = expense.status || 'pending';
+        expenseStatus.disabled = true;
+      }
+      if (expenseStatusWrap) expenseStatusWrap.classList.add('d-none');
+      filterExpenseAccounts();
+      setExpenseValue('account_id', expense.account_id);
+      updateExpenseProofRequirement();
+      updateExpenseFeeRule();
+      refreshMoney(expenseForm);
+      if (expenseSubmit) expenseSubmit.innerHTML = '<i class="fa fa-save me-1"></i> Simpan Perubahan';
+      openExpenseModal();
+    }
+
+    document.addEventListener('click', function (event) {
+      var addButton = event.target.closest('[data-expense-add-open]');
+      if (addButton) {
+        event.preventDefault();
+        prepareExpenseCreate();
+        if (expenseSubmit) expenseSubmit.innerHTML = '<i class="fa fa-save me-1"></i> Simpan Pengeluaran';
+        openExpenseModal();
+        return;
+      }
+      var editButton = event.target.closest('[data-expense-edit-open]');
+      if (editButton) {
+        event.preventDefault();
+        prepareExpenseEdit(editButton);
+      }
     });
 
     expenseMethod.addEventListener('change', function () { filterExpenseAccounts(); updateExpenseProofRequirement(); updateExpenseFeeRule(); });
@@ -299,11 +381,13 @@
       event.preventDefault();
       refreshMoney(expenseForm);
       if (!expenseForm.checkValidity()) { expenseForm.reportValidity(); return; }
+      if (window.SIMP && window.SIMP.csrfName && expenseForm.elements[window.SIMP.csrfName]) expenseForm.elements[window.SIMP.csrfName].value = window.SIMP.csrfHash;
+      var editing = expenseForm.dataset.expenseMode === 'edit';
       if (expenseSubmit) { expenseSubmit.disabled = true; expenseSubmit.dataset.originalText = expenseSubmit.innerHTML; expenseSubmit.innerHTML = '<i class="fa fa-spinner fa-spin me-1"></i>Menyimpan...'; }
       var headers = {'X-Requested-With':'XMLHttpRequest','Accept':'application/json'};
       if (window.SIMP && window.SIMP.csrfHash) headers['X-CSRF-TOKEN'] = window.SIMP.csrfHash;
       fetch(expenseForm.action, {method:'POST',headers:headers,body:new FormData(expenseForm)})
-        .then(function (response) { return expenseJson(response, 'Pengeluaran gagal disimpan.'); })
+        .then(function (response) { return expenseJson(response, editing ? 'Pengeluaran gagal diperbarui.' : 'Pengeluaran gagal disimpan.'); })
         .then(function (payload) {
           var closer = document.querySelector('#expense-add-modal .close-menu');
           if (closer) closer.click();
@@ -312,11 +396,13 @@
             function () { notifyExpensePersisted(payload, true, 'Pengeluaran'); }
           );
         })
-        .catch(function (error) { expenseAlert(error.message, 'Pengeluaran Gagal', 'danger'); })
+        .catch(function (error) { expenseAlert(error.message, editing ? 'Edit Pengeluaran Gagal' : 'Pengeluaran Gagal', 'danger'); })
         .then(function () {
-          if (expenseSubmit) { expenseSubmit.disabled = false; expenseSubmit.innerHTML = expenseSubmit.dataset.originalText || '<i class="fa fa-save me-1"></i> Simpan Pengeluaran'; }
+          if (expenseSubmit) { expenseSubmit.disabled = false; expenseSubmit.innerHTML = expenseSubmit.dataset.originalText || (editing ? '<i class="fa fa-save me-1"></i> Simpan Perubahan' : '<i class="fa fa-save me-1"></i> Simpan Pengeluaran'); }
         });
     });
+
+    prepareExpenseCreate();
   }
 
   // Delegated handling remains active after the expense-list fragment is replaced.
@@ -338,7 +424,7 @@
     fetch(statusForm.action, {method:'POST',headers:headers,body:new FormData(statusForm)})
       .then(function (response) { return expenseJson(response, 'Status pengeluaran gagal diperbarui.'); })
       .then(function (payload) {
-        return refreshExpenseCards(window.location.href, {replaceFilters:false, updateHistory:false}).then(
+        return refreshExpenseCards(window.location.href, {replaceFilters:true, updateHistory:false}).then(
           function () { notifyExpensePersisted(payload, false, 'Status'); },
           function () { notifyExpensePersisted(payload, true, 'Status'); }
         );
