@@ -286,9 +286,6 @@ class Finance_model extends CI_Model
         if ($proofPath !== NULL && $this->db->where('proof_path', $proofPath)->count_all_results('expenses')) {
             throw new InvalidArgumentException('Bukti pengeluaran sudah digunakan oleh transaksi lain.');
         }
-        if ((string) $data['method'] !== 'cash' && !$this->valid_upload_path($proofPath, 'expenses')) {
-            throw new InvalidArgumentException('Bukti pembayaran wajib diunggah untuk metode Transfer atau QRIS.');
-        }
         if (empty($data['status']) || !in_array((string) $data['status'], array('pending', 'verified', 'rejected'), TRUE)) {
             throw new InvalidArgumentException('Status pengeluaran tidak valid.');
         }
@@ -375,7 +372,6 @@ class Finance_model extends CI_Model
 
         $proofPath = array_key_exists('proof_path', $data) ? $data['proof_path'] : NULL;
         if ($proofPath !== NULL && !$this->valid_upload_path($proofPath, 'expenses')) throw new InvalidArgumentException('Bukti pengeluaran tidak valid.');
-        if ($method !== 'cash' && !$this->valid_upload_path($proofPath, 'expenses')) throw new InvalidArgumentException('Bukti pembayaran wajib diunggah untuk metode Transfer atau QRIS.');
 
         $originalDbDebug = $this->db->db_debug;
         $this->db->db_debug = FALSE;
@@ -607,7 +603,6 @@ class Finance_model extends CI_Model
             !in_array((string)$row['method'], array('cash','transfer','qris'), TRUE) ||
             ((string)$row['method'] !== 'transfer' && $feeCents !== NULL && $feeCents > 0) ||
             (!empty($row['proof_path']) && !$this->valid_upload_path($row['proof_path'], $proofFolder)) ||
-            ((string)$row['method'] !== 'cash' && !$this->valid_upload_path($row['proof_path'], $proofFolder)) ||
             (!empty($row['debt_id']) && ((string)$row['method'] !== 'cash' || ($feeCents !== NULL && $feeCents > 0))))) {
             $this->db->trans_rollback();
             throw new InvalidArgumentException('Data metode, tanggal, biaya, atau bukti pengeluaran tidak valid.');

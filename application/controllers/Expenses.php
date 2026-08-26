@@ -162,7 +162,7 @@ class Expenses extends App_Controller
                     if ($adminFee === NULL) throw new InvalidArgumentException('Biaya admin harus nol atau lebih, maksimal 16 digit, dan maksimal 2 angka desimal.');
                     $method = $this->input->post('method', TRUE);
                     if ($method !== 'transfer' && simp_money_cents($adminFee) > 0) throw new InvalidArgumentException('Biaya admin hanya dapat diisi untuk metode Transfer.');
-                    try { $proof=$this->upload_document('proof','expenses',$method !== 'cash'); }
+                    try { $proof=$this->upload_document('proof','expenses',FALSE); }
                     catch (RuntimeException $uploadError) { throw $this->expense_upload_exception($uploadError); }
                     $data=array(
                         'event_id'=>(int)$selectedEvent['id'],
@@ -258,7 +258,7 @@ class Expenses extends App_Controller
             $uploadPath = FCPATH . 'uploads/' . $folder;
             if (!is_dir($uploadPath) && !mkdir($uploadPath, 0755, TRUE) && !is_dir($uploadPath)) throw new RuntimeException('Folder bukti pengeluaran tidak dapat dibuat.');
             try {
-                $proof = $this->upload_document('proof', $folder, $method !== 'cash');
+                $proof = $this->upload_document('proof', $folder, FALSE);
             } catch (RuntimeException $e) {
                 throw $this->expense_upload_exception($e);
             }
@@ -364,7 +364,6 @@ class Expenses extends App_Controller
                 catch (RuntimeException $uploadError) { throw $this->expense_upload_exception($uploadError); }
             }
             $proof = $newProof ?: ($oldProofUsable ? $oldProof : NULL);
-            if ($method !== 'cash' && !$proof) throw new InvalidArgumentException('Bukti pembayaran wajib diunggah untuk metode Transfer atau QRIS.');
 
             $data = array(
                 'event_id'=>(int)$eventId, 'category_id'=>(int)$categoryId,

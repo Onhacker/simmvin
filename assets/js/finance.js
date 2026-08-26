@@ -187,21 +187,15 @@
   var method = document.querySelector('.js-payment-method');
   if (method) { method.addEventListener('change', toggleAdminFee); toggleAdminFee(); }
 
-  // The standalone/legacy expense form still follows the same proof policy
-  // as the AJAX modal: cash may omit a receipt, while Transfer and QRIS must
-  // provide one.  The server enforces this too; this only keeps browser
-  // validation and the helper text in sync.
+  // Payment proof is optional for every regular expense method. Keep the
+  // standalone/legacy form aligned with the AJAX modal and server rules.
   var legacyExpenseProof = document.querySelector('.js-expense-proof');
   var legacyExpenseProofHelp = document.getElementById('expense-proof-help');
   function toggleLegacyExpenseProof() {
-    if (!method || !legacyExpenseProof) return;
-    var required = method.value !== 'cash';
-    legacyExpenseProof.required = required;
-    if (legacyExpenseProofHelp) {
-      legacyExpenseProofHelp.textContent = required
-        ? 'Bukti diperlukan untuk metode Transfer/QRIS. JPG, PNG, atau PDF; maksimal 5 MB.'
-        : 'Bukti dapat dilampirkan untuk metode Tunai. JPG, PNG, atau PDF; maksimal 5 MB.';
-    }
+    if (!legacyExpenseProof) return;
+    legacyExpenseProof.required = false;
+    legacyExpenseProof.removeAttribute('aria-required');
+    if (legacyExpenseProofHelp) legacyExpenseProofHelp.textContent = 'JPG, PNG, atau PDF; maksimal 5 MB.';
   }
   if (method) { method.addEventListener('change', toggleLegacyExpenseProof); toggleLegacyExpenseProof(); }
 
@@ -420,7 +414,6 @@
     var expenseMethod = document.getElementById('expense-modal-method');
     var expenseAccount = document.getElementById('expense-modal-account');
     var expenseProof = document.getElementById('expense-modal-proof');
-    var expenseProofLabel = document.getElementById('expense-modal-proof-label');
     var expenseProofHelp = document.getElementById('expense-modal-proof-help');
     var expenseFee = document.getElementById('expense-modal-fee');
     var expenseFeeWrap = document.getElementById('expense-modal-fee-wrap');
@@ -471,13 +464,17 @@
       if (opener) opener.click();
     }
 
-    function updateExpenseProofRequirement() {
-      if (!expenseMethod || !expenseProof) return;
+    function updateExpenseProofState() {
+      if (!expenseProof) return;
       var editingWithProof = expenseForm.dataset.expenseMode === 'edit' && expenseForm.dataset.hasProof === '1';
-      var required = expenseMethod.value !== 'cash' && !editingWithProof;
-      expenseProof.required = required;
-      if (expenseProofLabel) expenseProofLabel.textContent = required ? '*' : '';
-      if (expenseProofHelp) expenseProofHelp.classList.toggle('d-none', !editingWithProof);
+      expenseProof.required = false;
+      expenseProof.removeAttribute('aria-required');
+      if (expenseProofHelp) {
+        expenseProofHelp.classList.remove('d-none');
+        expenseProofHelp.textContent = editingWithProof
+          ? 'Bukti lama tetap digunakan jika tidak memilih file baru.'
+          : 'JPG, PNG, atau PDF; maksimal 5 MB.';
+      }
     }
 
     function updateExpenseFeeRule() {
@@ -511,7 +508,7 @@
       if (expenseStatus) expenseStatus.disabled = false;
       setExpenseValue('expense_date', localExpenseDate());
       filterExpenseAccounts();
-      updateExpenseProofRequirement();
+      updateExpenseProofState();
       updateExpenseFeeRule();
       refreshMoney(expenseForm);
     }
@@ -540,7 +537,7 @@
       if (expenseStatusWrap) expenseStatusWrap.classList.add('d-none');
       filterExpenseAccounts();
       setExpenseValue('account_id', expense.account_id);
-      updateExpenseProofRequirement();
+      updateExpenseProofState();
       updateExpenseFeeRule();
       refreshMoney(expenseForm);
       if (expenseSubmit) expenseSubmit.innerHTML = '<i class="fa fa-save me-1"></i> Simpan Perubahan';
@@ -563,9 +560,9 @@
       }
     });
 
-    expenseMethod.addEventListener('change', function () { filterExpenseAccounts(); updateExpenseProofRequirement(); updateExpenseFeeRule(); });
+    expenseMethod.addEventListener('change', function () { filterExpenseAccounts(); updateExpenseProofState(); updateExpenseFeeRule(); });
     filterExpenseAccounts();
-    updateExpenseProofRequirement();
+    updateExpenseProofState();
     updateExpenseFeeRule();
 
     expenseForm.addEventListener('submit', function (event) {

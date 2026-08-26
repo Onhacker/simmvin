@@ -166,7 +166,7 @@ $selectedEventId = (int) old('event_id', $selectedEventId);
                         <div class="col-md-6">
                             <label for="expense-proof" class="font-12 font-600 color-highlight mb-2">Bukti Bayar</label>
                             <input class="form-control mb-1 js-expense-proof" id="expense-proof" type="file" name="proof" accept=".jpg,.jpeg,.png,.pdf">
-                            <p class="font-11 opacity-60 mb-4" id="expense-proof-help">Bukti diperlukan untuk Transfer/QRIS; untuk Tunai dapat dilampirkan. JPG, PNG, atau PDF; maksimal 5 MB.</p>
+                            <p class="font-11 opacity-60 mb-4" id="expense-proof-help">JPG, PNG, atau PDF; maksimal 5 MB.</p>
                         </div>
                         <div class="col-md-6">
                             <div class="input-style input-style-always-active has-borders no-icon mb-4">
