@@ -12,12 +12,23 @@ class Registrations extends App_Controller
         $activeEventIds = array_map(function ($event) {
             return (int) $event['id'];
         }, $activeEvents);
-        $registrations = $activeEventIds
-            ? $this->registration->get_all(array('event_ids' => $activeEventIds, 'active_only' => TRUE))
-            : array();
+        $perPage = 20;
+        $pageRaw = $this->input->get('page', TRUE);
+        $page = is_scalar($pageRaw) && ctype_digit((string) $pageRaw) ? max(1, (int) $pageRaw) : 1;
+        $registrationFilters = array('event_ids' => $activeEventIds, 'active_only' => TRUE);
+        $summary = $activeEventIds ? $this->registration->get_all_summary($registrationFilters) : array('registration_count' => 0, 'participant_count' => 0);
+        $totalRows = isset($summary['registration_count']) ? (int) $summary['registration_count'] : 0;
+        $totalPages = max(1, (int) ceil($totalRows / $perPage));
+        if ($page > $totalPages) $page = $totalPages;
+        $registrationFilters['limit'] = $perPage;
+        $registrationFilters['offset'] = ($page - 1) * $perPage;
+        $registrations = $activeEventIds ? $this->registration->get_all($registrationFilters) : array();
+        $totalParticipants = isset($summary['participant_count']) ? (int) $summary['participant_count'] : 0;
         $canRecordPayment = $this->Auth_model->can('payments.create');
         $this->render('registrations/index',array('pageTitle'=>'Registrasi',
             'registrations'=>$registrations,'activeEvents'=>$activeEvents,
+            'totalRows'=>$totalRows,'totalPages'=>$totalPages,'perPage'=>$perPage,'currentPage'=>$page,
+            'totalParticipants'=>$totalParticipants,
             'positions'=>$this->positions->active(),
             'accounts'=>$canRecordPayment ? $this->registration->accounts() : array(),
             'canRecordPayment'=>$canRecordPayment,

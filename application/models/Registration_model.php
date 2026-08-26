@@ -96,6 +96,32 @@ class Registration_model extends CI_Model
             (SELECT COALESCE(SUM(py.amount),0) FROM payments py WHERE py.registration_id=r.id AND py.status IN ("pending","verified")) AS committed_amount', FALSE)
             ->from('registrations r')->join('training_events e', 'e.id=r.event_id')
             ->join('users canceller', 'canceller.id=r.cancelled_by', 'left');
+        $this->apply_registration_filters($filters);
+        $this->db->order_by('r.created_at', 'DESC')->order_by('r.id', 'DESC');
+        if (array_key_exists('limit', $filters)) {
+            $limit = max(1, min(200, (int) $filters['limit']));
+            $offset = isset($filters['offset']) ? max(0, (int) $filters['offset']) : 0;
+            $this->db->limit($limit, $offset);
+        }
+        return $this->db->get()->result_array();
+    }
+
+    /** Summary for the registration index, independent of the current page. */
+    public function get_all_summary($filters = array())
+    {
+        $this->db->select(
+            'COUNT(*) AS registration_count,
+             COALESCE(SUM((SELECT COUNT(*) FROM participants p WHERE p.registration_id=r.id AND p.is_active=1 AND p.deleted_at IS NULL)),0) AS participant_count',
+            FALSE
+        )->from('registrations r')->join('training_events e', 'e.id=r.event_id');
+        $this->apply_registration_filters($filters);
+        $row = $this->db->get()->row_array();
+        return $row ?: array('registration_count' => 0, 'participant_count' => 0);
+    }
+
+    /** Shared filters keep paginated rows and their summary in sync. */
+    private function apply_registration_filters($filters = array())
+    {
         if (!empty($filters['active_only'])) {
             $this->db->where('e.status', 'open')->where('r.status', 'active');
         }
@@ -106,8 +132,14 @@ class Registration_model extends CI_Model
         } elseif (!empty($filters['event_id'])) {
             $this->db->where('r.event_id', (int) $filters['event_id']);
         }
-        if (!empty($filters['q'])) $this->db->group_start()->like('r.village_name', $filters['q'])->or_like('r.district_name', $filters['q'])->or_like('r.regency_name', $filters['q'])->or_like('e.name', $filters['q'])->group_end();
-        return $this->db->order_by('r.created_at', 'DESC')->get()->result_array();
+        if (!empty($filters['q'])) {
+            $this->db->group_start()
+                ->like('r.village_name', $filters['q'])
+                ->or_like('r.district_name', $filters['q'])
+                ->or_like('r.regency_name', $filters['q'])
+                ->or_like('e.name', $filters['q'])
+                ->group_end();
+        }
     }
 
     /**

@@ -3,9 +3,14 @@
 $registrations = isset($registrations) && is_array($registrations) ? $registrations : array();
 $activeEvents = isset($activeEvents) && is_array($activeEvents) ? $activeEvents : array();
 $positions = isset($positions) && is_array($positions) ? $positions : array();
-$totalVillages = count($registrations);
-$totalParticipants = 0;
-foreach ($registrations as $registration) $totalParticipants += (int) $registration['participant_count'];
+$totalRows = isset($totalRows) ? (int) $totalRows : count($registrations);
+$perPage = max(1, isset($perPage) ? (int) $perPage : 20);
+$totalPages = max(1, isset($totalPages) ? (int) $totalPages : (int) ceil($totalRows / $perPage));
+$currentPage = max(1, isset($currentPage) ? (int) $currentPage : 1);
+$totalVillages = $totalRows;
+$hasTotalParticipants = isset($totalParticipants);
+$totalParticipants = $hasTotalParticipants ? (int) $totalParticipants : 0;
+if (!$hasTotalParticipants) foreach ($registrations as $registration) $totalParticipants += (int) $registration['participant_count'];
 $canCreate = $this->Auth_model->can('registrations.create');
 $canPrint = $this->Auth_model->can('registrations.view');
 $canRecordPayment = !empty($canRecordPayment);
@@ -20,6 +25,10 @@ foreach ($positions as $position) {
 }
 $accountPayload = array();
 foreach ($accounts as $account) $accountPayload[] = array('id'=>(int)$account['id'],'name'=>$account['name'],'type'=>$account['type']);
+$registrationPageUrl = function ($page) {
+    $page = max(1, (int) $page);
+    return site_url('registrasi') . ($page > 1 ? '?page=' . $page : '');
+};
 ?>
 
 <div id="registration-index-content">
@@ -71,17 +80,38 @@ foreach ($accounts as $account) $accountPayload[] = array('id'=>(int)$account['i
             $remainingAmount = simp_money_from_cents($remainingAmountCents);
             $paymentStatus = payment_status($committedAmount, $row['expected_amount']);
             ?>
-            <div class="card card-style mx-0 mb-3"><div class="content mb-3">
-                <div class="d-flex align-items-start"><div class="min-width-zero me-2"><p class="font-13 color-highlight text-uppercase font-700 mb-1"><?= e($row['district_name']) ?></p><h3 class="font-20 mb-0 text-break"><?= e($row['village_name']) ?></h3></div><div class="ms-auto flex-shrink-0"><?= status_badge($paymentStatus) ?></div></div>
-                <div class="divider mt-3 mb-2"></div>
-                <div class="d-flex py-2 border-bottom"><span class="font-12 opacity-60"><i class="fa fa-users color-highlight icon-20"></i> Peserta</span><strong class="font-13 ms-auto"><?= number_format((int) $row['participant_count']) ?> orang</strong></div>
-                <div class="d-flex py-2 border-bottom"><span class="font-12 opacity-60"><i class="fa fa-file-invoice-dollar color-highlight icon-20"></i> Tagihan</span><strong class="font-13 ms-auto simp-balance-value"><?= rupiah($row['expected_amount']) ?></strong></div>
-                <div class="d-flex py-2 border-bottom"><span class="font-12 opacity-60"><i class="fa fa-check-circle color-green-dark icon-20"></i> Terverifikasi</span><strong class="font-13 color-green-dark ms-auto simp-balance-value"><?= rupiah($verifiedAmount) ?></strong></div>
-                <?php if ($pendingAmount > 0): ?><div class="d-flex py-2 border-bottom"><span class="font-12 opacity-60"><i class="fa fa-clock color-yellow-dark icon-20"></i> Menunggu verifikasi</span><strong class="font-13 color-yellow-dark ms-auto simp-balance-value"><?= rupiah($pendingAmount) ?></strong></div><?php endif; ?>
-                <div class="d-flex py-2"><span class="font-12 opacity-60"><i class="fa fa-hourglass-half color-highlight icon-20"></i> Sisa setelah komitmen</span><strong class="font-13 <?= $remainingAmountCents > 0 ? 'color-yellow-dark' : 'color-green-dark' ?> ms-auto simp-balance-value"><?= rupiah($remainingAmount) ?></strong></div>
+            <div class="card card-style mx-0 mb-3 registration-card"><div class="content mb-3">
+                <div class="registration-card-details" aria-label="Rincian registrasi">
+                    <div class="registration-card-detail-row"><span class="registration-card-label">Kecamatan</span><span class="registration-card-separator" aria-hidden="true">|</span><strong class="registration-card-value color-highlight"><?= e($row['district_name']) ?></strong></div>
+                    <div class="registration-card-detail-row"><span class="registration-card-label">Desa</span><span class="registration-card-separator" aria-hidden="true">|</span><strong class="registration-card-value"><?= e($row['village_name']) ?></strong></div>
+                    <div class="registration-card-detail-row"><span class="registration-card-label">Status</span><span class="registration-card-separator" aria-hidden="true">|</span><span class="registration-card-value"><?= status_badge($paymentStatus) ?></span></div>
+                    <div class="registration-card-detail-row"><span class="registration-card-label">Peserta</span><span class="registration-card-separator" aria-hidden="true">|</span><strong class="registration-card-value"><?= number_format((int) $row['participant_count']) ?> orang</strong></div>
+                    <div class="registration-card-detail-row"><span class="registration-card-label">Tagihan</span><span class="registration-card-separator" aria-hidden="true">|</span><strong class="registration-card-value simp-balance-value"><?= rupiah($row['expected_amount']) ?></strong></div>
+                    <div class="registration-card-detail-row"><span class="registration-card-label">Terverifikasi</span><span class="registration-card-separator" aria-hidden="true">|</span><strong class="registration-card-value color-green-dark simp-balance-value"><?= rupiah($verifiedAmount) ?></strong></div>
+                    <?php if ($pendingAmount > 0): ?><div class="registration-card-detail-row"><span class="registration-card-label">Menunggu verifikasi</span><span class="registration-card-separator" aria-hidden="true">|</span><strong class="registration-card-value color-yellow-dark simp-balance-value"><?= rupiah($pendingAmount) ?></strong></div><?php endif; ?>
+                    <div class="registration-card-detail-row"><span class="registration-card-label">Sisa setelah komitmen</span><span class="registration-card-separator" aria-hidden="true">|</span><strong class="registration-card-value <?= $remainingAmountCents > 0 ? 'color-yellow-dark' : 'color-green-dark' ?> simp-balance-value"><?= rupiah($remainingAmount) ?></strong></div>
+                </div>
                 <a class="btn btn-full btn-m gradient-highlight rounded-s font-600 font-12 mt-3" href="<?= site_url('registrasi/'.$row['id']) ?>">Lihat Detail <i class="fa fa-arrow-right ms-1"></i></a>
             </div></div>
         <?php endforeach; ?>
+        <div id="registration-pagination" class="card card-style mx-0" data-registration-pagination>
+            <div class="content py-2 mb-0">
+                <div class="d-flex align-items-center justify-content-between gap-2">
+                    <?php if ($currentPage > 1): ?>
+                        <a class="btn btn-s bg-theme color-highlight border-highlight rounded-s" href="<?= e($registrationPageUrl($currentPage - 1)) ?>" data-registration-page-link><i class="fa fa-chevron-left me-1"></i>Sebelumnya</a>
+                    <?php else: ?>
+                        <button type="button" class="btn btn-s bg-gray-light color-gray-dark rounded-s" disabled><i class="fa fa-chevron-left me-1"></i>Sebelumnya</button>
+                    <?php endif; ?>
+                    <span class="font-12 font-600 text-center opacity-70">Halaman <?= number_format($currentPage) ?> dari <?= number_format($totalPages) ?></span>
+                    <?php if ($currentPage < $totalPages): ?>
+                        <a class="btn btn-s gradient-highlight rounded-s" href="<?= e($registrationPageUrl($currentPage + 1)) ?>" data-registration-page-link>Berikutnya<i class="fa fa-chevron-right ms-1"></i></a>
+                    <?php else: ?>
+                        <button type="button" class="btn btn-s bg-gray-light color-gray-dark rounded-s" disabled>Berikutnya<i class="fa fa-chevron-right ms-1"></i></button>
+                    <?php endif; ?>
+                </div>
+                <p class="font-11 opacity-60 text-center mb-0 mt-2">Menampilkan <?= $totalRows ? number_format((($currentPage - 1) * $perPage) + 1) : 0 ?>–<?= number_format(min($currentPage * $perPage, $totalRows)) ?> dari <?= number_format($totalRows) ?> data · maksimal <?= number_format($perPage) ?> per halaman</p>
+            </div>
+        </div>
     </div>
 <?php endif; ?>
 </div>

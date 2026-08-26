@@ -5,7 +5,7 @@
  * CSRF, peserta, transaksi, laporan, dan dokumen selalu diminta ke server.
  */
 const MVIN_CACHE_PREFIX = 'mvin-public-static-';
-const MVIN_CACHE_VERSION = '2026-08-26-v33';
+const MVIN_CACHE_VERSION = '2026-08-26-v34';
 const MVIN_STATIC_CACHE = MVIN_CACHE_PREFIX + MVIN_CACHE_VERSION;
 const MVIN_SCOPE_URL = new URL(self.registration.scope);
 const MVIN_APP_PATH = MVIN_SCOPE_URL.pathname.endsWith('/')
@@ -22,7 +22,7 @@ const MVIN_PRECACHE = [
   'assets/pwa/icon-maskable-512.png',
   'assets/v22/styles/bootstrap.css',
   'assets/v22/fonts/css/fontawesome-all.min.css',
-  'assets/css/simp-v22.css?v=42',
+  'assets/css/simp-v22.css?v=43',
   'assets/v22/scripts/bootstrap.min.js',
   'assets/v22/scripts/custom.js?v=3',
   'assets/js/app.js?v=14',

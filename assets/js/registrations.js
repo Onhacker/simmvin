@@ -1468,8 +1468,8 @@
       throw new Error('Koneksi ke server terputus. Periksa jaringan lalu coba kembali.');
     });
   }
-  function refreshRegistrationFragment(id) {
-    return fetch(window.location.href, {
+  function refreshRegistrationFragment(id, targetUrl) {
+    return fetch(targetUrl || window.location.href, {
       credentials: 'same-origin',
       cache: 'no-store',
       headers: {'X-Requested-With': 'XMLHttpRequest', 'Accept': 'text/html'}
@@ -1499,6 +1499,54 @@
       });
     });
   }
+
+  /* The index is deliberately paginated on the server, but moving between
+   * pages only replaces its content fragment so open modals and the AppKit
+   * shell stay intact. */
+  var registrationPageRequest = 0;
+  var registrationPageController = null;
+  function refreshRegistrationPage(targetUrl) {
+    var requestId = ++registrationPageRequest;
+    if (registrationPageController && typeof registrationPageController.abort === 'function') registrationPageController.abort();
+    registrationPageController = typeof AbortController === 'function' ? new AbortController() : null;
+    var options = {
+      credentials: 'same-origin',
+      cache: 'no-store',
+      headers: {'X-Requested-With': 'XMLHttpRequest', 'Accept': 'text/html'}
+    };
+    if (registrationPageController) options.signal = registrationPageController.signal;
+    return fetch(targetUrl, options).then(function (response) {
+      var responseUrl = String(response.url || '');
+      if (response.redirected || response.status === 401 || /\/login(?:[/?#]|$)/i.test(responseUrl)) throw new Error('Sesi Anda telah berakhir. Silakan masuk kembali.');
+      if (!response.ok) throw new Error('Data registrasi gagal diperbarui.');
+      return response.text();
+    }).then(function (html) {
+      if (requestId !== registrationPageRequest) return;
+      var parsed = new DOMParser().parseFromString(html, 'text/html');
+      var current = document.getElementById('registration-index-content');
+      var next = parsed.getElementById('registration-index-content');
+      if (!current || !next) throw new Error('Potongan data registrasi tidak lengkap.');
+      current.replaceWith(document.importNode(next, true));
+      if (window.history && window.history.replaceState) window.history.replaceState({}, '', targetUrl);
+    }).catch(function (error) {
+      if (error && error.name === 'AbortError') return;
+      throw error;
+    });
+  }
+
+  document.addEventListener('click', function (event) {
+    var pageLink = event.target.closest('[data-registration-page-link]');
+    if (!pageLink) return;
+    event.preventDefault();
+    refreshRegistrationPage(pageLink.href).catch(function (error) {
+      if (typeof window.simpAlert === 'function') {
+        window.simpAlert(error.message || 'Data registrasi gagal diperbarui.', {
+          title: 'Paginasi Gagal',
+          tone: 'danger'
+        });
+      }
+    });
+  });
   function finishRegistrationMutation(payload, fragmentId, successTitle) {
     return refreshRegistrationFragment(fragmentId).then(function () {
       if (typeof window.simpAlert === 'function') {
