@@ -18,7 +18,6 @@ $accountSummary = isset($accountSummary) && is_array($accountSummary) ? $account
 $generatedAt = isset($generatedAt) ? $generatedAt : date('Y-m-d H:i:s');
 $isPdf = !empty($isPdf);
 $methodLabels = array('cash' => 'Tunai', 'transfer' => 'Transfer', 'qris' => 'QRIS');
-$expenseStatusLabels = array('verified' => 'Terverifikasi', 'pending' => 'Menunggu', 'rejected' => 'Ditolak');
 $printRupiah = function ($value, $withPrefix = TRUE) {
     return rupiah($value, $withPrefix);
 };
@@ -406,9 +405,9 @@ $accountSummary = array_merge(array(
     <?php elseif ($reportKind === 'expense'): ?>
         <?php if (!$expenseGroups): ?>
             <table class="report-table">
-                <colgroup><col width="5%" style="width:5%"><col width="12%" style="width:12%"><col width="42%" style="width:42%"><col width="19%" style="width:19%"><col width="8%" style="width:8%"><col width="14%" style="width:14%"></colgroup>
-                <thead><tr><th width="5%">No.</th><th width="12%">Tanggal</th><th width="42%">Deskripsi</th><th width="19%">Akun / Metode</th><th width="8%">Status</th><th width="14%" class="money">Total</th></tr></thead>
-                <tbody><tr class="empty-row"><td colspan="6">Belum ada transaksi pengeluaran pada event aktif.</td></tr></tbody>
+                <colgroup><col width="4%" style="width:4%"><col width="14%" style="width:14%"><col width="50%" style="width:50%"><col width="18%" style="width:18%"><col width="14%" style="width:14%"></colgroup>
+                <thead><tr><th class="number-col" width="4%">No.</th><th width="14%">Tanggal</th><th width="50%">Deskripsi</th><th width="18%">Akun / Metode</th><th width="14%" class="money">Total</th></tr></thead>
+                <tbody><tr class="empty-row"><td colspan="5">Belum ada transaksi pengeluaran pada event aktif.</td></tr></tbody>
             </table>
         <?php else: ?>
             <?php $expenseNo = 0; $grandExpenseCents = 0; ?>
@@ -419,10 +418,10 @@ $accountSummary = array_merge(array(
                 $categoryTotal = simp_money_from_cents($categoryTotalCents);
                 ?>
                 <div class="expense-category-group">
-                <div class="expense-category-heading"><strong><?= e($printCategoryTitle($expenseGroup['name'])) ?></strong></div>
+                <div class="expense-category-heading"><strong><?= e($printCategory($expenseGroup['name'])) ?></strong></div>
                 <table class="report-table expense-category-table">
-                    <colgroup><col width="5%" style="width:5%"><col width="12%" style="width:12%"><col width="42%" style="width:42%"><col width="19%" style="width:19%"><col width="8%" style="width:8%"><col width="14%" style="width:14%"></colgroup>
-                    <thead><tr><th width="5%">No.</th><th width="12%">Tanggal</th><th width="42%">Deskripsi</th><th width="19%">Akun / Metode</th><th width="8%">Status</th><th width="14%" class="money">Total</th></tr></thead>
+                    <colgroup><col width="4%" style="width:4%"><col width="14%" style="width:14%"><col width="50%" style="width:50%"><col width="18%" style="width:18%"><col width="14%" style="width:14%"></colgroup>
+                    <thead><tr><th class="number-col" width="4%">No.</th><th width="14%">Tanggal</th><th width="50%">Deskripsi</th><th width="18%">Akun / Metode</th><th width="14%" class="money">Total</th></tr></thead>
                     <tbody>
                     <?php foreach ($expenseGroup['rows'] as $row): ?>
                         <?php
@@ -431,20 +430,17 @@ $accountSummary = array_merge(array(
                         $adminFeeCents = $moneyCents($row['admin_fee']);
                         $adminFee = simp_money_from_cents($adminFeeCents);
                         $total = simp_money_from_cents($amountCents + $adminFeeCents);
-                        $status = isset($row['status']) ? $row['status'] : 'pending';
-                        $statusClass = $status === 'verified' ? 'green' : ($status === 'rejected' ? 'red' : 'yellow');
                         ?>
                         <tr>
-                            <td class="number"><?= number_format($expenseNo) ?></td>
+                            <td class="number number-col"><?= number_format($expenseNo) ?></td>
                             <td><span class="primary"><?= e($printDate($row['expense_date'])) ?></span></td>
                             <td><span class="primary"><?= e($row['description']) ?></span><?php if (!empty($row['debt_id'])): ?><span class="secondary">Pembayaran hutang <?= e($row['debt_no']) ?> · <?= e($row['debt_creditor']) ?></span><?php endif; ?></td>
                             <td><span class="primary"><?= e($row['account_name']) ?></span><span class="secondary"><?= e(isset($methodLabels[$row['method']]) ? $methodLabels[$row['method']] : ucfirst((string) $row['method'])) ?></span></td>
-                            <td><?php if ($status === 'verified'): ?><span class="status status-icon <?= $statusClass ?>" role="img" aria-label="Terverifikasi" title="Terverifikasi">&#10003;</span><?php else: ?><span class="status <?= $statusClass ?>"><?= e(isset($expenseStatusLabels[$status]) ? $expenseStatusLabels[$status] : ucwords(str_replace('_', ' ', $status))) ?></span><?php endif; ?></td>
                             <td class="money"><span class="primary"><?= e($printRupiah($total)) ?></span><?php if ($adminFeeCents > 0): ?><span class="secondary">Admin <?= e($printRupiah($adminFee, FALSE)) ?></span><?php endif; ?></td>
                         </tr>
                     <?php endforeach; ?>
                     </tbody>
-                    <tfoot><tr class="category-total-row"><td colspan="5" class="money-label">Total <?= e($printCategoryTitle($expenseGroup['name'])) ?></td><td class="money"><?= e($printRupiah($categoryTotal)) ?></td></tr></tfoot>
+                    <tfoot><tr class="category-total-row"><td colspan="4" class="money-label">Total <?= e($printCategory($expenseGroup['name'])) ?></td><td class="money"><?= e($printRupiah($categoryTotal)) ?></td></tr></tfoot>
                 </table>
                 </div>
             <?php endforeach; ?>
@@ -459,8 +455,8 @@ $accountSummary = array_merge(array(
                 </table>
             <?php endif; ?>
             <table class="report-table expense-grand-total">
-                <colgroup><col width="5%" style="width:5%"><col width="12%" style="width:12%"><col width="42%" style="width:42%"><col width="19%" style="width:19%"><col width="8%" style="width:8%"><col width="14%" style="width:14%"></colgroup>
-                <tfoot><tr><td width="86%" colspan="5" class="money-label">TOTAL SELURUH PENGELUARAN</td><td width="14%" class="money"><?= e($printRupiah($grandExpense)) ?></td></tr></tfoot>
+                <colgroup><col width="4%" style="width:4%"><col width="14%" style="width:14%"><col width="50%" style="width:50%"><col width="18%" style="width:18%"><col width="14%" style="width:14%"></colgroup>
+                <tfoot><tr><td width="86%" colspan="4" class="money-label">TOTAL SELURUH PENGELUARAN</td><td width="14%" class="money"><?= e($printRupiah($grandExpense)) ?></td></tr></tfoot>
             </table>
         <?php endif; ?>
     <?php elseif ($reportKind === 'debt'): ?>
