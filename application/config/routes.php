@@ -29,6 +29,7 @@ $route['registrasi/peserta/cetak'] = 'registrations/participant_print_preview';
 $route['registrasi/peserta/pdf'] = 'registrations/participant_pdf';
 $route['registrasi/desa/cetak'] = 'registrations/village_print_preview';
 $route['registrasi/desa/pdf'] = 'registrations/village_pdf';
+$route['registrasi/desa/excel'] = 'registrations/village_excel';
 $route['registrasi/cetak'] = 'registrations/print_preview';
 $route['registrasi/pdf'] = 'registrations/pdf';
 $route['registrasi/excel'] = 'registrations/excel';

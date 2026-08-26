@@ -247,6 +247,72 @@ class Excel_renderer
         }
     }
 
+    /**
+     * Export the active village directory using the same three columns shown
+     * by the Data Desa print view.  Unlike the participant mailing export,
+     * this workbook deliberately keeps a header row: it is the source sheet
+     * used when preparing village-level MOU mail merges.
+     */
+    public function render_registration_village_mailing(array $rows)
+    {
+        $this->assert_available();
+
+        $spreadsheet = new Spreadsheet();
+        try {
+            $spreadsheet->getProperties()
+                ->setCreator('MVIN')
+                ->setTitle('Data Desa')
+                ->setSubject('Data desa event aktif untuk mailing MOU')
+                ->setDescription('Ekspor kolom Data Desa dari MVIN.');
+
+            $sheet = $spreadsheet->getActiveSheet();
+            $sheet->setTitle('Data Desa');
+            $sheet->setShowGridlines(FALSE);
+
+            $columns = array('A', 'B', 'C');
+            $headers = array('Kecamatan', 'Desa', 'Jumlah Peserta');
+            $widths = array(30, 36, 20);
+            foreach ($columns as $index => $column) {
+                $sheet->getColumnDimension($column)->setWidth($widths[$index]);
+                $this->set_text($sheet, $column . '1', $headers[$index]);
+            }
+            $sheet->getStyle('A1:C1')->applyFromArray($this->header_style());
+            $sheet->getRowDimension(1)->setRowHeight(28);
+            $sheet->freezePane('A2');
+
+            foreach ($rows as $index => $row) {
+                $excelRow = $index + 2;
+                $this->set_text($sheet, 'A' . $excelRow, isset($row['district_name']) ? $row['district_name'] : '');
+                $this->set_text($sheet, 'B' . $excelRow, isset($row['village_name']) ? $row['village_name'] : '');
+                $this->set_number($sheet, 'C' . $excelRow, isset($row['participant_count']) ? $row['participant_count'] : 0);
+                $this->style_detail_row($sheet, $excelRow, 'C', $index);
+                $sheet->getStyle('A' . $excelRow . ':C' . $excelRow)
+                    ->getAlignment()->setVertical(Alignment::VERTICAL_CENTER)->setWrapText(FALSE);
+                $sheet->getStyle('C' . $excelRow)
+                    ->getAlignment()->setHorizontal(Alignment::HORIZONTAL_RIGHT);
+            }
+
+            $lastRow = max(1, count($rows) + 1);
+            $sheet->getStyle('A1:C' . $lastRow)->getFont()->setSize(11);
+            $sheet->getStyle('A1:C' . $lastRow)->getBorders()->getBottom()
+                ->setBorderStyle(Border::BORDER_HAIR)->getColor()->setRGB(self::BORDER);
+            $sheet->setAutoFilter('A1:C' . $lastRow);
+            $sheet->getPageSetup()
+                ->setPaperSize(PageSetup::PAPERSIZE_FOLIO)
+                ->setOrientation(PageSetup::ORIENTATION_PORTRAIT)
+                ->setFitToWidth(1)
+                ->setFitToHeight(0);
+            $sheet->getPageMargins()->setTop(0.35)->setRight(0.35)->setBottom(0.45)->setLeft(0.35);
+            $sheet->getPageSetup()->setPrintArea('A1:C' . $lastRow);
+            $sheet->getHeaderFooter()->setOddFooter('&LDiekspor dari MVIN&C&F&RHalaman &P / &N');
+
+            $spreadsheet->setActiveSheetIndex(0);
+            return $this->save_to_string($spreadsheet);
+        } finally {
+            $spreadsheet->disconnectWorksheets();
+        }
+    }
+
     private function write_income_summary(Worksheet $sheet, array $data, $sourceSheet, array $sourceMeta, $detailSheet, array $detailMeta)
     {
         $view = isset($data['report']['view']) && $data['report']['view'] === 'participant' ? 'Per Peserta' : 'Per Desa';

@@ -11,6 +11,9 @@ $attendanceDate = isset($attendanceDate) && is_scalar($attendanceDate) ? trim((s
 $isAttendance = $reportMode === 'attendance';
 $isParticipantDirectory = $reportMode === 'participants';
 $isVillageDirectory = $reportMode === 'villages';
+$sheetWidth = $isAttendance ? '330mm' : '210mm';
+$sheetHeight = $isAttendance ? '210mm' : '330mm';
+$bodyClass = $isAttendance ? 'report-attendance' : 'report-directory report-' . $reportMode;
 
 $logoDataUri = '';
 $logoPath = defined('FCPATH') ? FCPATH . 'assets/images/mvin-logo.jpg' : '';
@@ -73,6 +76,36 @@ foreach ($rows as $row) {
 $pages = array();
 foreach ($eventGroups as $group) {
     $event = $group['event'];
+
+    /* The directory reports are reference lists for administration/mailing,
+     * not attendance sheets. Keep their rows in one continuous document and
+     * let the browser/PDF engine flow naturally when the list is long. In
+     * particular, do not insert a page break for every district. */
+    if (!$isAttendance) {
+        $directoryRows = $group['rows'];
+        usort($directoryRows, function ($left, $right) {
+            foreach (array('district_name', 'village_name', 'full_name') as $field) {
+                $comparison = strnatcasecmp(
+                    trim((string) (isset($left[$field]) ? $left[$field] : '')),
+                    trim((string) (isset($right[$field]) ? $right[$field] : ''))
+                );
+                if ($comparison !== 0) return $comparison;
+            }
+            return ((int) (isset($left['participant_id']) ? $left['participant_id'] : (isset($left['id']) ? $left['id'] : 0)))
+                <=> ((int) (isset($right['participant_id']) ? $right['participant_id'] : (isset($right['id']) ? $right['id'] : 0)));
+        });
+        $pages[] = array(
+            'event'=>$event,
+            'district'=>'',
+            'rows'=>$directoryRows,
+            'offset'=>0,
+            'district_page'=>1,
+            'district_pages'=>1,
+            'district_total'=>count($directoryRows)
+        );
+        continue;
+    }
+
     $districtGroups = array();
     foreach ($group['rows'] as $row) {
         $districtName = trim((string) (isset($row['district_name']) ? $row['district_name'] : ''));
@@ -96,9 +129,8 @@ foreach ($eventGroups as $group) {
             return ((int) (isset($left['participant_id']) ? $left['participant_id'] : 0)) <=> ((int) (isset($right['participant_id']) ? $right['participant_id'] : 0));
         });
 
-        /* Keep every F4 preview page within the same physical height.  The
-         * attendance sheet explicitly uses ten rows, and the two directory
-         * reports use the same limit so HTML preview and PDF never clip rows. */
+        /* Only attendance/registration sheets are paginated by district and
+         * capped at ten rows: these pages are printed and signed each day. */
         $rowsPerPage = 10;
         $chunks = array_chunk($districtRows, $rowsPerPage);
         $districtPageCount = count($chunks);
@@ -127,14 +159,15 @@ if (!$pages) {
     <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=10, user-scalable=yes">
     <title><?= $isAttendance ? 'Cetak Absen' : ($isParticipantDirectory ? 'Data Peserta' : 'Data Desa') ?> | MVIN</title>
     <style>
-        @page { size: 330mm 210mm; margin: 0; }
+        @page { size: <?= $sheetWidth . ' ' . $sheetHeight ?>; margin: 0; }
         * { box-sizing: border-box; }
         html, body { margin: 0; padding: 0; color: #000; font-family: "DejaVu Sans", Arial, sans-serif; font-size: 9px; line-height: 1.3; touch-action: pan-x pan-y; }
         body { background: #e9eef5; }
-        .sheet-stage { width: 330mm; min-height: 210mm; margin: 14px auto 24px; }
-        .sheet { width: 330mm; margin: 0; transform-origin: top left; }
-        .print-page { width: 330mm; margin: 0 0 8mm; padding: 5mm 7mm 6mm; background: #fff; box-shadow: 0 10px 34px rgba(15, 23, 42, .14); page-break-after: always; break-after: page; }
+        .sheet-stage { width: <?= $sheetWidth ?>; min-height: <?= $sheetHeight ?>; margin: 14px auto 24px; }
+        .sheet { width: <?= $sheetWidth ?>; margin: 0; transform-origin: top left; }
+        .print-page { width: <?= $sheetWidth ?>; margin: 0 0 8mm; padding: 5mm 7mm 6mm; background: #fff; box-shadow: 0 10px 34px rgba(15, 23, 42, .14); page-break-after: always; break-after: page; }
         .print-page:last-child { margin-bottom: 0; page-break-after: auto; break-after: auto; }
+        .report-directory .print-page { min-height: <?= $sheetHeight ?>; height: auto; margin-bottom: 0; page-break-after: auto; break-after: auto; overflow: visible; }
         .attendance-head { width: 100%; height: 33mm; border-collapse: collapse; table-layout: fixed; border-bottom: 1.2px solid #111; }
         .attendance-head td { padding: 0 0 3mm; vertical-align: middle; }
         .attendance-head .logo-cell, .attendance-head .balance-cell { width: 9%; }
@@ -144,6 +177,16 @@ if (!$pages) {
         .attendance-head h1 { margin: 0; color: #000; font-size: 14px; font-weight: 800; line-height: 1.15; white-space: nowrap; }
         .attendance-head p { margin: 2mm 0 0; color: #000; font-size: 12.5px; font-weight: 800; line-height: 1.2; }
         .attendance-head .organizer-name { margin-top: 1.4mm; color: #000; font-size: 14px; font-weight: 800; letter-spacing: .65px; line-height: 1.15; }
+        /* Directory sheets are portrait reference lists, so keep the header
+         * and rows compact enough for one continuous page. Attendance sheets
+         * retain the larger signing layout below. */
+        .report-directory .attendance-head { height: 30mm; }
+        .report-directory .attendance-head .logo-cell, .report-directory .attendance-head .balance-cell { width: 12%; }
+        .report-directory .attendance-head .title-cell { width: 76%; }
+        .report-directory .attendance-head .logo-cell img { width: 21mm; }
+        .report-directory .attendance-head h1 { font-size: 12px; white-space: normal; }
+        .report-directory .attendance-head p { margin-top: 1.2mm; font-size: 9.3px; }
+        .report-directory .attendance-head .organizer-name { margin-top: 1mm; font-size: 10px; }
         .district-bar { display: table; width: 100%; height: 9mm; margin: 2.5mm 0 2mm; padding: 1.8mm 2.5mm; border: 1px solid #6b7280; background: #f1f1f1; }
         .district-bar strong, .district-bar span { display: table-cell; vertical-align: middle; }
         .district-bar strong { color: #000; font-size: 10px; letter-spacing: .25px; }
@@ -163,11 +206,19 @@ if (!$pages) {
         .report-table.directory-participants .col-name { width: 32%; }
         .report-table.directory-participants .col-position { width: 15%; }
         .report-table.directory-participants .col-contact { width: 13%; }
+        .report-table.directory-participants .col-number { width: 5%; }
         .report-table.directory-villages .col-district { width: 35%; }
         .report-table.directory-villages .col-village { width: 45%; }
         .report-table.directory-villages .col-count { width: 20%; }
+        .report-table.directory-villages .col-number { width: 5%; }
         .report-table th { height: 5.6mm; padding: 1.1mm .8mm; border: 1px solid #111; background: #e8e8e8; color: #000; font-size: 9.1px; line-height: 1.12; text-align: center; text-transform: uppercase; }
         .report-table td { height: 10.5mm; padding: 1mm 1.2mm; border: 1px solid #111; vertical-align: middle; color: #000; font-size: 10.3px; line-height: 1.17; overflow-wrap: anywhere; word-wrap: break-word; }
+        .report-directory .report-table th { height: 4.8mm; padding: .7mm .65mm; font-size: 8.2px; line-height: 1.05; }
+        .report-directory .report-table td { height: 7.2mm; padding: .45mm .75mm; font-size: 8.5px; line-height: 1.05; }
+        .report-directory .district-bar { height: 7mm; margin: 1.5mm 0 1.2mm; padding: 1.2mm 2mm; }
+        .report-directory .district-bar strong { font-size: 9px; }
+        .report-directory .district-bar span { font-size: 7.6px; }
+        .report-directory .document-foot { margin-top: 1.2mm; font-size: 6.6px; }
         .report-table tr { page-break-inside: avoid; }
         .report-table .number { text-align: center; }
         .report-table .contact { white-space: nowrap; }
@@ -182,16 +233,18 @@ if (!$pages) {
             .sheet-stage { width: auto !important; height: auto !important; min-height: 0 !important; margin: 0 !important; }
             .sheet { width: auto; margin: 0; transform: none !important; }
             .print-page { width: auto; margin: 0; box-shadow: none; }
+            .report-directory .print-page { min-height: 0; height: auto; margin: 0; }
         }
         @media screen {
-            .print-page { height: 210mm; overflow: hidden; }
+            .report-attendance .print-page { height: 210mm; overflow: hidden; }
+            .report-directory .print-page { height: auto; min-height: 330mm; overflow: visible; }
         }
         @media screen and (max-width: 1100px) {
-            .sheet-stage, .sheet { width: 330mm; }
+            .sheet-stage, .sheet { width: <?= $sheetWidth ?>; }
         }
     </style>
 </head>
-<body>
+<body class="<?= e($bodyClass) ?>">
 <div class="sheet-stage" data-sheet-stage>
     <article class="sheet" data-print-sheet>
         <?php foreach ($pages as $pageIndex => $page):
@@ -213,9 +266,9 @@ if (!$pages) {
                 $heading = 'DATA DESA ' . $upper($eventName);
             }
         ?>
-            <section class="print-page">
+                <section class="print-page<?= $isAttendance ? '' : ' directory-page' ?>">
                 <table class="attendance-head" role="presentation">
-                    <colgroup><col width="9%" style="width:9%"><col width="82%" style="width:82%"><col width="9%" style="width:9%"></colgroup>
+                    <colgroup><col width="<?= $isAttendance ? 9 : 12 ?>%" style="width:<?= $isAttendance ? 9 : 12 ?>%"><col width="<?= $isAttendance ? 82 : 76 ?>%" style="width:<?= $isAttendance ? 82 : 76 ?>%"><col width="<?= $isAttendance ? 9 : 12 ?>%" style="width:<?= $isAttendance ? 9 : 12 ?>%"></colgroup>
                     <tr>
                         <td class="logo-cell"><?php if ($logoDataUri !== ''): ?><img src="<?= e($logoDataUri) ?>" alt="Logo MVIN"><?php endif; ?></td>
                         <td class="title-cell">
@@ -228,8 +281,8 @@ if (!$pages) {
                 </table>
 
                 <div class="district-bar">
-                    <strong><?= $page['district'] !== '' ? 'KECAMATAN: ' . e($upper($page['district'])) : 'DAFTAR PESERTA' ?></strong>
-                    <span><?= number_format((int)$page['district_total'], 0, ',', '.') ?> <?= $isVillageDirectory ? 'desa' : 'peserta' ?> · Halaman <?= (int)$page['district_page'] ?> dari <?= (int)$page['district_pages'] ?></span>
+                    <strong><?= $page['district'] !== '' ? 'KECAMATAN: ' . e($upper($page['district'])) : ($isVillageDirectory ? 'DAFTAR DESA' : 'DAFTAR PESERTA') ?></strong>
+                    <span><?= number_format((int)$page['district_total'], 0, ',', '.') ?> <?= $isVillageDirectory ? 'desa' : 'peserta' ?><?= $isAttendance ? ' · Halaman ' . (int)$page['district_page'] . ' dari ' . (int)$page['district_pages'] : '' ?></span>
                 </div>
 
                 <table class="report-table<?= $isParticipantDirectory ? ' directory-participants' : ($isVillageDirectory ? ' directory-villages' : '') ?>">
@@ -287,12 +340,14 @@ if (!$pages) {
     var stage = document.querySelector('[data-sheet-stage]');
     var sheet = document.querySelector('[data-print-sheet]');
     if (!stage || !sheet) return;
+    var sheetWidthMm = <?= $isAttendance ? 330 : 210 ?>;
+    var sheetHeightMm = <?= $isAttendance ? 210 : 330 ?>;
     var userZoom = 100;
     function fitSheet() {
         sheet.style.transform = 'none';
-        stage.style.width = '330mm';
+        stage.style.width = sheetWidthMm + 'mm';
         stage.style.height = 'auto';
-        stage.style.minHeight = '210mm';
+        stage.style.minHeight = sheetHeightMm + 'mm';
         var naturalWidth = sheet.offsetWidth;
         var naturalHeight = sheet.offsetHeight;
         var availableWidth = Math.max(1, document.documentElement.clientWidth - 24);

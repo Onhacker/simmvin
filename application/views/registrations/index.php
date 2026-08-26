@@ -178,6 +178,8 @@ if ($activeEvents) {
         'printModalTitle' => 'Cetak Data Desa',
         'printPreviewUrl' => site_url('registrasi/desa/cetak'),
         'printPdfUrl' => site_url('registrasi/desa/pdf'),
+        'printExcelUrl' => site_url('registrasi/desa/excel'),
+        'printExcelLabel' => 'Excel MOU',
         'printFormatLabel' => '',
         'printPaperNote' => '',
         'printIconOnly' => TRUE

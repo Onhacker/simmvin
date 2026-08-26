@@ -104,7 +104,7 @@ class Registrations extends App_Controller
         return $this->private_document_output('text/html', $html);
     }
 
-    /** Download the participant directory as Landscape F4 PDF. */
+    /** Download the participant directory as portrait F4 PDF. */
     public function participant_pdf()
     {
         $this->require_permission('registrations.view');
@@ -114,7 +114,7 @@ class Registrations extends App_Controller
         $html = $this->load->view('reports/registration_attendance', $data, TRUE);
         try {
             $this->load->library('Pdf_renderer');
-            $pdf = $this->pdf_renderer->render_f4_landscape($html);
+            $pdf = $this->pdf_renderer->render_f4($html);
             return $this->private_document_output('application/pdf', $pdf, 'attachment; filename="data-peserta-' . date('Ymd-His') . '.pdf"');
         } catch (Throwable $e) {
             log_message('error', 'Gagal membuat PDF data peserta: ' . $e->getMessage());
@@ -133,7 +133,7 @@ class Registrations extends App_Controller
         return $this->private_document_output('text/html', $html);
     }
 
-    /** Download the village registration summary as Landscape F4 PDF. */
+    /** Download the village registration summary as portrait F4 PDF. */
     public function village_pdf()
     {
         $this->require_permission('registrations.view');
@@ -143,11 +143,31 @@ class Registrations extends App_Controller
         $html = $this->load->view('reports/registration_attendance', $data, TRUE);
         try {
             $this->load->library('Pdf_renderer');
-            $pdf = $this->pdf_renderer->render_f4_landscape($html);
+            $pdf = $this->pdf_renderer->render_f4($html);
             return $this->private_document_output('application/pdf', $pdf, 'attachment; filename="data-desa-' . date('Ymd-His') . '.pdf"');
         } catch (Throwable $e) {
             log_message('error', 'Gagal membuat PDF data desa: ' . $e->getMessage());
             show_error('PDF data desa belum dapat dibuat. Silakan coba kembali.', 500, 'PDF Gagal Dibuat');
+        }
+    }
+
+    /** Download the active village directory as a Data Desa/MOU workbook. */
+    public function village_excel()
+    {
+        $this->require_permission('registrations.view');
+        $data = $this->registration_village_print_data();
+
+        try {
+            $this->load->library('Excel_renderer');
+            $excel = $this->excel_renderer->render_registration_village_mailing($data['rows']);
+            return $this->private_document_output(
+                'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                $excel,
+                'attachment; filename="data-desa-mou-' . date('Ymd-His') . '.xlsx"'
+            );
+        } catch (Throwable $e) {
+            log_message('error', 'Gagal membuat Excel data desa untuk mailing MOU: ' . $e->getMessage());
+            show_error('Excel data desa belum dapat dibuat. Silakan coba kembali.', 500, 'Excel Gagal Dibuat');
         }
     }
 
@@ -768,9 +788,31 @@ class Registrations extends App_Controller
     {
         $activeEvents = $this->registration->events_for_registration();
         $eventIds = array_map(function ($event) { return (int) $event['id']; }, $activeEvents);
+        $rows = $eventIds ? $this->registration->get_all(array('event_ids' => $eventIds, 'active_only' => TRUE)) : array();
+        $eventOrder = array();
+        foreach ($activeEvents as $eventIndex => $event) {
+            $eventOrder[(int) (isset($event['id']) ? $event['id'] : 0)] = $eventIndex;
+        }
+        /* Keep the Excel export in the exact order used by the Data Desa
+         * portrait preview: active-event order, district, then village. */
+        usort($rows, function ($left, $right) use ($eventOrder) {
+            $leftEventId = (int) (isset($left['event_id']) ? $left['event_id'] : 0);
+            $rightEventId = (int) (isset($right['event_id']) ? $right['event_id'] : 0);
+            $leftEventOrder = isset($eventOrder[$leftEventId]) ? $eventOrder[$leftEventId] : PHP_INT_MAX;
+            $rightEventOrder = isset($eventOrder[$rightEventId]) ? $eventOrder[$rightEventId] : PHP_INT_MAX;
+            if ($leftEventOrder !== $rightEventOrder) return $leftEventOrder <=> $rightEventOrder;
+            foreach (array('district_name', 'village_name') as $field) {
+                $comparison = strnatcasecmp(
+                    trim((string) (isset($left[$field]) ? $left[$field] : '')),
+                    trim((string) (isset($right[$field]) ? $right[$field] : ''))
+                );
+                if ($comparison !== 0) return $comparison;
+            }
+            return $leftEventId <=> $rightEventId;
+        });
         return array(
             'activeEvents' => $activeEvents,
-            'rows' => $eventIds ? $this->registration->get_all(array('event_ids' => $eventIds, 'active_only' => TRUE)) : array(),
+            'rows' => $rows,
             'generatedAt' => date('Y-m-d H:i:s')
         );
     }
