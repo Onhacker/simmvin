@@ -1513,6 +1513,24 @@ body {
   }
 }
 
+/* Audit Trail is server-paginated as well; keep its controls on one neat
+ * row when there is room and wrap them safely on narrow phones. */
+#audit-pagination .content > .d-flex {
+  flex-wrap: wrap;
+}
+
+#audit-pagination .btn {
+  min-width: 108px;
+}
+
+@media (max-width: 359.98px) {
+  #audit-pagination .btn {
+    min-width: 96px;
+    padding-right: 8px;
+    padding-left: 8px;
+  }
+}
+
 @media print {
   #preloader, .header, #footer-bar, .page-title, #menu-main, .menu-hider,
   .simp-no-print, .back-to-top, .simp-pwa-install { display: none !important; }

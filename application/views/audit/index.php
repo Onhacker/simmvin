@@ -1,5 +1,24 @@
 <?php defined('BASEPATH') OR exit('No direct script access allowed'); ?>
+<?php
+$filters = isset($filters) && is_array($filters) ? $filters : array('action' => '', 'date_from' => '', 'date_to' => '');
+$logs = isset($logs) && is_array($logs) ? $logs : array();
+$totalRows = isset($totalRows) ? (int) $totalRows : count($logs);
+$perPage = max(1, isset($perPage) ? (int) $perPage : 10);
+$totalPages = max(1, isset($totalPages) ? (int) $totalPages : (int) ceil($totalRows / $perPage));
+$currentPage = max(1, isset($currentPage) ? (int) $currentPage : 1);
+$ajaxPartial = !empty($ajaxPartial);
+$auditPageUrl = function ($page) use ($filters) {
+    $page = max(1, (int) $page);
+    $query = array();
+    if (!empty($filters['action'])) $query['action'] = $filters['action'];
+    if (!empty($filters['date_from'])) $query['date_from'] = $filters['date_from'];
+    if (!empty($filters['date_to'])) $query['date_to'] = $filters['date_to'];
+    if ($page > 1) $query['page'] = $page;
+    return site_url('audit') . ($query ? '?' . http_build_query($query) : '');
+};
+?>
 
+<?php if (!$ajaxPartial): ?>
 <div class="card card-style">
     <div class="content mb-0">
         <p class="font-600 color-highlight mb-n1">Keamanan &amp; akuntabilitas</p>
@@ -49,7 +68,9 @@
         </form>
     </div>
 </div>
+<?php endif; ?>
 
+<div id="audit-list-content" data-audit-list-content>
 <div class="card card-style">
     <div class="content mb-2">
         <div class="d-flex align-items-center mb-3">
@@ -60,7 +81,7 @@
                 <p class="font-600 color-highlight mb-n1">Jejak aktivitas sistem</p>
                 <h2 class="mb-0">Aktivitas Sistem</h2>
             </div>
-            <span class="badge bg-blue-dark color-white font-11 ms-auto"><?= number_format(count($logs)) ?> data</span>
+            <span class="badge bg-blue-dark color-white font-11 ms-auto"><?= number_format($totalRows) ?> data</span>
         </div>
 
         <?php if(!$logs): ?><div class="text-center py-5 opacity-60"><i class="fas fa-history d-block font-24 mb-2"></i>Belum ada aktivitas pada filter ini.</div><?php endif; ?>
@@ -77,4 +98,24 @@
             </div>
         <?php endforeach; ?>
     </div>
+</div>
+
+<div id="audit-pagination" class="card card-style mx-0" data-audit-pagination>
+    <div class="content py-2 mb-0">
+        <div class="d-flex align-items-center justify-content-between gap-2">
+            <?php if ($currentPage > 1): ?>
+                <a class="btn btn-s bg-theme color-highlight border-highlight rounded-s" href="<?= e($auditPageUrl($currentPage - 1)) ?>" data-audit-page-link><i class="fa fa-chevron-left me-1"></i>Sebelumnya</a>
+            <?php else: ?>
+                <button type="button" class="btn btn-s bg-gray-light color-gray-dark rounded-s" disabled><i class="fa fa-chevron-left me-1"></i>Sebelumnya</button>
+            <?php endif; ?>
+            <span class="font-12 font-600 text-center opacity-70">Halaman <?= number_format($currentPage) ?> dari <?= number_format($totalPages) ?></span>
+            <?php if ($currentPage < $totalPages): ?>
+                <a class="btn btn-s gradient-highlight rounded-s" href="<?= e($auditPageUrl($currentPage + 1)) ?>" data-audit-page-link>Berikutnya<i class="fa fa-chevron-right ms-1"></i></a>
+            <?php else: ?>
+                <button type="button" class="btn btn-s bg-gray-light color-gray-dark rounded-s" disabled>Berikutnya<i class="fa fa-chevron-right ms-1"></i></button>
+            <?php endif; ?>
+        </div>
+        <p class="font-11 opacity-60 text-center mb-0 mt-2">Menampilkan <?= $totalRows ? number_format((($currentPage - 1) * $perPage) + 1) : 0 ?>–<?= number_format(min($currentPage * $perPage, $totalRows)) ?> dari <?= number_format($totalRows) ?> data · maksimal <?= number_format($perPage) ?> per halaman</p>
+    </div>
+</div>
 </div>
