@@ -136,14 +136,15 @@ $ledgerPageUrl = function ($page) use ($selectedId) {
 
             <div class="d-flex align-items-center justify-content-between mt-3">
                 <?php if ($ledgerPage > 1): ?>
-                    <a class="btn btn-s bg-theme color-highlight border-highlight rounded-s font-12" href="<?= e($ledgerPageUrl($ledgerPage - 1)) ?>" data-account-ledger-page><i class="fa fa-chevron-left me-1"></i>Sebelumnya</a>
+                    <a class="btn btn-s bg-theme color-highlight border-highlight rounded-s font-12 simp-pagination-icon" href="<?= e($ledgerPageUrl($ledgerPage - 1)) ?>" data-account-ledger-page aria-label="Sebelumnya" title="Sebelumnya"><i class="fa fa-chevron-left" aria-hidden="true"></i></a>
                 <?php else: ?>
-                    <button type="button" class="btn btn-s bg-gray-light color-gray-dark rounded-s font-12" disabled><i class="fa fa-chevron-left me-1"></i>Sebelumnya</button>
+                    <button type="button" class="btn btn-s bg-gray-light color-gray-dark rounded-s font-12 simp-pagination-icon" disabled aria-label="Sebelumnya" title="Sebelumnya"><i class="fa fa-chevron-left" aria-hidden="true"></i></button>
                 <?php endif; ?>
+                <span class="font-12 font-600 text-center opacity-70">Hal <?= number_format($ledgerPage) ?> dr <?= number_format($ledgerTotalPages) ?></span>
                 <?php if ($ledgerPage < $ledgerTotalPages): ?>
-                    <a class="btn btn-s gradient-highlight rounded-s font-12" href="<?= e($ledgerPageUrl($ledgerPage + 1)) ?>" data-account-ledger-page>Berikutnya<i class="fa fa-chevron-right ms-1"></i></a>
+                    <a class="btn btn-s gradient-highlight rounded-s font-12 simp-pagination-icon" href="<?= e($ledgerPageUrl($ledgerPage + 1)) ?>" data-account-ledger-page aria-label="Berikutnya" title="Berikutnya"><i class="fa fa-chevron-right" aria-hidden="true"></i></a>
                 <?php else: ?>
-                    <button type="button" class="btn btn-s bg-gray-light color-gray-dark rounded-s font-12" disabled>Berikutnya<i class="fa fa-chevron-right ms-1"></i></button>
+                    <button type="button" class="btn btn-s bg-gray-light color-gray-dark rounded-s font-12 simp-pagination-icon" disabled aria-label="Berikutnya" title="Berikutnya"><i class="fa fa-chevron-right" aria-hidden="true"></i></button>
                 <?php endif; ?>
             </div>
             <p class="font-11 opacity-60 text-center mb-1 mt-2">Menampilkan <?= $ledgerTotal ? number_format((($ledgerPage - 1) * $ledgerPerPage) + 1) : 0 ?>–<?= number_format(min($ledgerPage * $ledgerPerPage, $ledgerTotal)) ?> dari <?= number_format($ledgerTotal) ?> mutasi</p>

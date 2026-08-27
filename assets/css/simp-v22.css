@@ -466,6 +466,31 @@ select[multiple].form-select { height: auto !important; min-height: 150px; paddi
   min-width: 108px;
 }
 
+/* Pagination controls use the template's chevrons as compact icon-only
+ * buttons.  Keep the accessible label/title on the control while removing
+ * the former text labels so the pager stays balanced on phones. */
+#page #registration-pagination .simp-pagination-icon,
+#page #expense-pagination .simp-pagination-icon,
+#page #audit-pagination .simp-pagination-icon,
+#page #account-ledger-panel .simp-pagination-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  min-width: 38px !important;
+  height: 38px;
+  padding: 0 !important;
+  line-height: 1 !important;
+}
+
+#page #registration-pagination .simp-pagination-icon > i,
+#page #expense-pagination .simp-pagination-icon > i,
+#page #audit-pagination .simp-pagination-icon > i,
+#page #account-ledger-panel .simp-pagination-icon > i {
+  margin: 0 !important;
+  font-size: 14px;
+}
+
 @media (max-width: 359.98px) {
   #registration-pagination .btn {
     min-width: 96px;

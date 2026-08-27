@@ -112,15 +112,15 @@ if ($activeEvents) {
             <div class="content py-2 mb-0">
                 <div class="d-flex align-items-center justify-content-between gap-2">
                     <?php if ($currentPage > 1): ?>
-                        <a class="btn btn-s bg-theme color-highlight border-highlight rounded-s" href="<?= e($registrationPageUrl($currentPage - 1)) ?>" data-registration-page-link><i class="fa fa-chevron-left me-1"></i>Sebelumnya</a>
+                        <a class="btn btn-s bg-theme color-highlight border-highlight rounded-s simp-pagination-icon" href="<?= e($registrationPageUrl($currentPage - 1)) ?>" data-registration-page-link aria-label="Sebelumnya" title="Sebelumnya"><i class="fa fa-chevron-left" aria-hidden="true"></i></a>
                     <?php else: ?>
-                        <button type="button" class="btn btn-s bg-gray-light color-gray-dark rounded-s" disabled><i class="fa fa-chevron-left me-1"></i>Sebelumnya</button>
+                        <button type="button" class="btn btn-s bg-gray-light color-gray-dark rounded-s simp-pagination-icon" disabled aria-label="Sebelumnya" title="Sebelumnya"><i class="fa fa-chevron-left" aria-hidden="true"></i></button>
                     <?php endif; ?>
-                    <span class="font-12 font-600 text-center opacity-70">Halaman <?= number_format($currentPage) ?> dari <?= number_format($totalPages) ?></span>
+                    <span class="font-12 font-600 text-center opacity-70">Hal <?= number_format($currentPage) ?> dr <?= number_format($totalPages) ?></span>
                     <?php if ($currentPage < $totalPages): ?>
-                        <a class="btn btn-s gradient-highlight rounded-s" href="<?= e($registrationPageUrl($currentPage + 1)) ?>" data-registration-page-link>Berikutnya<i class="fa fa-chevron-right ms-1"></i></a>
+                        <a class="btn btn-s gradient-highlight rounded-s simp-pagination-icon" href="<?= e($registrationPageUrl($currentPage + 1)) ?>" data-registration-page-link aria-label="Berikutnya" title="Berikutnya"><i class="fa fa-chevron-right" aria-hidden="true"></i></a>
                     <?php else: ?>
-                        <button type="button" class="btn btn-s bg-gray-light color-gray-dark rounded-s" disabled>Berikutnya<i class="fa fa-chevron-right ms-1"></i></button>
+                        <button type="button" class="btn btn-s bg-gray-light color-gray-dark rounded-s simp-pagination-icon" disabled aria-label="Berikutnya" title="Berikutnya"><i class="fa fa-chevron-right" aria-hidden="true"></i></button>
                     <?php endif; ?>
                 </div>
                 <p class="font-11 opacity-60 text-center mb-0 mt-2">Menampilkan <?= $totalRows ? number_format((($currentPage - 1) * $perPage) + 1) : 0 ?>–<?= number_format(min($currentPage * $perPage, $totalRows)) ?> dari <?= number_format($totalRows) ?> data · maksimal <?= number_format($perPage) ?> per halaman</p>

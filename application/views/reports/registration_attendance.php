@@ -282,7 +282,7 @@ if (!$pages) {
 
                 <div class="district-bar">
                     <strong><?= $page['district'] !== '' ? 'KECAMATAN: ' . e($upper($page['district'])) : ($isVillageDirectory ? 'DAFTAR DESA' : 'DAFTAR PESERTA') ?></strong>
-                    <span><?= number_format((int)$page['district_total'], 0, ',', '.') ?> <?= $isVillageDirectory ? 'desa' : 'peserta' ?><?= $isAttendance ? ' · Halaman ' . (int)$page['district_page'] . ' dari ' . (int)$page['district_pages'] : '' ?></span>
+                    <span><?= number_format((int)$page['district_total'], 0, ',', '.') ?> <?= $isVillageDirectory ? 'desa' : 'peserta' ?><?= $isAttendance ? ' · Hal ' . (int)$page['district_page'] . ' dr ' . (int)$page['district_pages'] : '' ?></span>
                 </div>
 
                 <table class="report-table<?= $isParticipantDirectory ? ' directory-participants' : ($isVillageDirectory ? ' directory-villages' : '') ?>">
