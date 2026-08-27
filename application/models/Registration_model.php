@@ -109,6 +109,149 @@ class Registration_model extends CI_Model
     }
 
     /**
+     * Pick one default signatory for every registration.
+     *
+     * The MOU export is grouped at village level, while participants are
+     * stored as separate rows.  A lower authority rank means a higher
+     * position (Kepala, Sekretaris, Kaur, Kasi, Ketua BPD, and so on).  The
+     * rank is derived from the participant's position snapshot first, so
+     * editing or retiring a master jabatan cannot silently change a historic
+     * signatory.  Registration time and participant id are deterministic tie
+     * breakers, so adding or reordering other villages cannot change an
+     * existing village's default signatory.
+     *
+     * The returned value contains both the person's name and the selected
+     * position.  The Excel renderer currently exports the name in its single
+     * Penandatangan column; keeping the position here makes the selection
+     * auditable and leaves room for other document formats to use it.
+     */
+    public function signatories_for_registrations(array $registrationIds)
+    {
+        $ids = array_values(array_unique(array_filter(array_map('intval', $registrationIds), function ($id) {
+            return $id > 0;
+        })));
+        if (!$ids) return array();
+
+        $rows = $this->db
+            ->select("p.registration_id,p.id,p.full_name,
+                COALESCE(NULLIF(TRIM(p.position),''),NULLIF(TRIM(vp.name),''),'') AS position,
+                COALESCE(vp.code,'') AS position_code,
+                COALESCE(vp.category,'') AS position_category,
+                COALESCE(vp.sort_order,2147483647) AS position_sort_order,
+                p.created_at", FALSE)
+            ->from('participants p')
+            ->join('village_positions vp', 'vp.id=p.position_id', 'left')
+            ->where_in('p.registration_id', $ids)
+            ->where('p.is_active', 1)
+            ->where('p.deleted_at IS NULL', NULL, FALSE)
+            ->get()->result_array();
+
+        usort($rows, function ($left, $right) {
+            $leftRank = $this->signatory_position_rank($left);
+            $rightRank = $this->signatory_position_rank($right);
+            if ($leftRank !== $rightRank) return $leftRank < $rightRank ? -1 : 1;
+
+            $leftCreated = trim((string) (isset($left['created_at']) ? $left['created_at'] : ''));
+            $rightCreated = trim((string) (isset($right['created_at']) ? $right['created_at'] : ''));
+            // A legacy/imported row may not have a timestamp.  Keep it after
+            // timestamped rows instead of treating an empty value as oldest.
+            if ($leftCreated === '') $leftCreated = '9999-12-31 23:59:59';
+            if ($rightCreated === '') $rightCreated = '9999-12-31 23:59:59';
+            if ($leftCreated !== $rightCreated) return strcmp($leftCreated, $rightCreated);
+
+            $leftId = (int) (isset($left['id']) ? $left['id'] : 0);
+            $rightId = (int) (isset($right['id']) ? $right['id'] : 0);
+            if ($leftId !== $rightId) return $leftId < $rightId ? -1 : 1;
+            return strcasecmp((string) (isset($left['full_name']) ? $left['full_name'] : ''), (string) (isset($right['full_name']) ? $right['full_name'] : ''));
+        });
+
+        $signatories = array();
+        foreach ($rows as $row) {
+            $registrationId = (int) (isset($row['registration_id']) ? $row['registration_id'] : 0);
+            if ($registrationId < 1 || isset($signatories[$registrationId])) continue;
+            $name = trim((string) (isset($row['full_name']) ? $row['full_name'] : ''));
+            if ($name === '') continue;
+            $signatories[$registrationId] = array(
+                'name' => $name,
+                'position' => trim((string) (isset($row['position']) ? $row['position'] : ''))
+            );
+        }
+
+        return $signatories;
+    }
+
+    /**
+     * Resolve a participant's authority level for the default MOU signer.
+     *
+     * Master Jabatan's sort_order is intentionally a category-local display
+     * order (each category starts at 10), not a cross-category hierarchy.
+     * Therefore an Operator in Pemerintah Desa must not outrank a Ketua BPD
+     * merely because that category appears first in the menu.  Prefer stable
+     * code/name patterns for the standard roles and retain category/sort as a
+     * deterministic fallback for custom roles.
+     */
+    private function signatory_position_rank(array $row)
+    {
+        $code = strtolower(trim((string) (isset($row['position_code']) ? $row['position_code'] : '')));
+        $name = strtolower(trim((string) (isset($row['position']) ? $row['position'] : '')));
+        $name = preg_replace('/\\s+/u', ' ', $name);
+        $category = strtolower(trim((string) (isset($row['position_category']) ? $row['position_category'] : '')));
+
+        // Resolve from the immutable participant snapshot first.  This keeps
+        // an existing signer stable even if an administrator later edits the
+        // linked master label/category.
+        if ($name === 'kepala' || $name === 'kepala desa' || $name === 'lurah' ||
+            preg_match('/^(penjabat|pelaksana tugas|pj|plt)\\s+kepala(?:\\s+desa)?$/u', $name)) return 10;
+        if ($name === 'sekretaris' || $name === 'sekretaris desa') return 20;
+        if (preg_match('/\\b(kepala urusan|kaur)\\b/u', $name)) return 30;
+        if (preg_match('/\\b(kepala seksi|kasi)\\b/u', $name)) return 40;
+        if ($name === 'ketua bpd') return 50;
+        if ($name === 'anggota bpd') return 60;
+        if (preg_match('/\\b(kepala dusun|kepala kewilayahan)\\b/u', $name)) return 70;
+        if (strpos($name, 'staf') !== FALSE) return 80;
+        if (strpos($name, 'operator') !== FALSE) return 90;
+
+        // Known non-government organisations still get a sensible hierarchy
+        // based on the stored label before consulting the live master.
+        if (strpos($name, 'ketua') === 0) return 100;
+        if (strpos($name, 'wakil ketua') === 0) return 110;
+        if (strpos($name, 'sekretaris') === 0) return 120;
+        if (strpos($name, 'bendahara') === 0) return 130;
+        if (strpos($name, 'anggota') === 0) return 140;
+
+        // The normalised master keeps stable codes even after the word
+        // "Desa" is removed from the visible label.  Use them only when a
+        // legacy/custom snapshot did not match a standard role above.
+        if ($code === 'kepala-desa' || $code === 'penjabat-kepala-desa' || $code === 'pelaksana-tugas-kepala-desa') return 10;
+        if ($code === 'sekretaris-desa') return 20;
+        if (strpos($code, 'kaur-') === 0) return 30;
+        if (strpos($code, 'kasi-') === 0) return 40;
+        if ($code === 'ketua-bpd' || ($category === 'bpd' && strpos($name, 'ketua') !== FALSE && strpos($name, 'wakil') === FALSE)) return 50;
+        if ($code === 'anggota-bpd' || ($category === 'bpd' && strpos($name, 'anggota') !== FALSE)) return 60;
+        if ($code === 'kepala-dusun') return 70;
+        if (strpos($code, 'staf-') === 0) return 80;
+        if (strpos($code, 'operator-') === 0) return 90;
+
+        // Finally resolve standard organisational codes whose historic label
+        // is custom, then retain category/sort for any remaining role.
+        if (strpos($code, 'ketua-') === 0) return 100;
+        if (strpos($code, 'wakil-ketua-') === 0) return 110;
+        if (strpos($code, 'sekretaris-') === 0) return 120;
+        if (strpos($code, 'bendahara-') === 0) return 130;
+        if (strpos($code, 'anggota-') === 0) return 140;
+
+        $categoryOrder = array(
+            'pemerintah_desa', 'bpd', 'rt_rw', 'lpmd', 'pkk',
+            'karang_taruna', 'bumdes', 'kemasyarakatan', 'kesehatan',
+            'keamanan', 'pendamping', 'lainnya'
+        );
+        $categoryRank = array_search($category, $categoryOrder, TRUE);
+        if ($categoryRank === FALSE) $categoryRank = count($categoryOrder);
+        $sortOrder = (int) (isset($row['position_sort_order']) ? $row['position_sort_order'] : 2147483647);
+        return 500 + ((int) $categoryRank * 1000) + min(max($sortOrder, 0), 999);
+    }
+
+    /**
      * Add the official regency code used by the village MOU export.
      *
      * Registration rows keep region names/IDs as immutable snapshots. We only

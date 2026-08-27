@@ -155,7 +155,7 @@ class Registrations extends App_Controller
     public function village_excel()
     {
         $this->require_permission('registrations.view');
-        $data = $this->registration_village_print_data();
+        $data = $this->registration_village_print_data(TRUE);
 
         try {
             $this->load->library('Excel_renderer');
@@ -784,11 +784,25 @@ class Registrations extends App_Controller
         );
     }
 
-    private function registration_village_print_data()
+    private function registration_village_print_data($includeSignatories = FALSE)
     {
         $activeEvents = $this->registration->events_for_registration();
         $eventIds = array_map(function ($event) { return (int) $event['id']; }, $activeEvents);
         $rows = $eventIds ? $this->registration->get_all(array('event_ids' => $eventIds, 'active_only' => TRUE)) : array();
+        if ($includeSignatories) {
+            $registrationIds = array();
+            foreach ($rows as $row) {
+                $registrationId = (int) (isset($row['id']) ? $row['id'] : 0);
+                if ($registrationId > 0) $registrationIds[] = $registrationId;
+            }
+            $signatoryMap = $this->registration->signatories_for_registrations($registrationIds);
+            foreach ($rows as &$row) {
+                $registrationId = (int) (isset($row['id']) ? $row['id'] : 0);
+                $signatory = isset($signatoryMap[$registrationId]) ? $signatoryMap[$registrationId] : array();
+                $row['penandatangan'] = isset($signatory['name']) ? $signatory['name'] : '';
+            }
+            unset($row);
+        }
         $rows = $this->registration->with_regency_codes($rows);
         // Complete any legacy rows that were created before persistent MOU
         // numbering was deployed.  The resolver above supplies the official

@@ -274,7 +274,7 @@ class Excel_renderer
 
             // Keep the original Data Desa fields in A:C so an existing mailing
             // source remains compatible, then append the requested MOU fields.
-            $columns = array('A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J');
+            $columns = array('A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K');
             $headers = array(
                 'Kecamatan',
                 'Desa',
@@ -285,14 +285,15 @@ class Excel_renderer
                 'Jumlah Pembayaran Tambahan',
                 'Terbilang Jumlah Pembayaran Tambahan',
                 'Total',
-                'Terbilang'
+                'Terbilang',
+                'Penandatangan'
             );
-            $widths = array(28, 32, 16, 32, 24, 46, 24, 46, 22, 54);
+            $widths = array(28, 32, 16, 32, 24, 46, 24, 46, 22, 54, 34);
             foreach ($columns as $index => $column) {
                 $sheet->getColumnDimension($column)->setWidth($widths[$index]);
                 $this->set_text($sheet, $column . '1', $headers[$index]);
             }
-            $sheet->getStyle('A1:J1')->applyFromArray($this->header_style());
+            $sheet->getStyle('A1:K1')->applyFromArray($this->header_style());
             $sheet->getRowDimension(1)->setRowHeight(48);
             $sheet->freezePane('A2');
 
@@ -320,15 +321,18 @@ class Excel_renderer
                 $this->set_text($sheet, 'H' . $excelRow, $this->rupiah_in_words($amounts['additional']));
                 $this->set_number($sheet, 'I' . $excelRow, $amounts['total']);
                 $this->set_text($sheet, 'J' . $excelRow, $this->rupiah_in_words($amounts['total']));
-                $this->style_detail_row($sheet, $excelRow, 'J', $index);
+                $this->set_text($sheet, 'K' . $excelRow, isset($row['penandatangan']) ? $row['penandatangan'] : '');
+                $this->style_detail_row($sheet, $excelRow, 'K', $index);
                 $sheet->getRowDimension($excelRow)->setRowHeight(48);
-                $sheet->getStyle('A' . $excelRow . ':J' . $excelRow)
+                $sheet->getStyle('A' . $excelRow . ':K' . $excelRow)
                     ->getAlignment()->setVertical(Alignment::VERTICAL_CENTER)->setWrapText(FALSE);
                 $sheet->getStyle('F' . $excelRow . ':F' . $excelRow)
                     ->getAlignment()->setVertical(Alignment::VERTICAL_CENTER)->setWrapText(TRUE);
                 $sheet->getStyle('H' . $excelRow . ':H' . $excelRow)
                     ->getAlignment()->setVertical(Alignment::VERTICAL_CENTER)->setWrapText(TRUE);
                 $sheet->getStyle('J' . $excelRow)
+                    ->getAlignment()->setVertical(Alignment::VERTICAL_CENTER)->setWrapText(TRUE);
+                $sheet->getStyle('K' . $excelRow)
                     ->getAlignment()->setVertical(Alignment::VERTICAL_CENTER)->setWrapText(TRUE);
                 foreach (array('C', 'E', 'G', 'I') as $numericColumn) {
                     $sheet->getStyle($numericColumn . $excelRow)
@@ -337,8 +341,8 @@ class Excel_renderer
             }
 
             $lastRow = max(1, count($rows) + 1);
-            $sheet->getStyle('A1:J' . $lastRow)->getFont()->setSize(11);
-            $sheet->getStyle('A1:J' . $lastRow)->getBorders()->getBottom()
+            $sheet->getStyle('A1:K' . $lastRow)->getFont()->setSize(11);
+            $sheet->getStyle('A1:K' . $lastRow)->getBorders()->getBottom()
                 ->setBorderStyle(Border::BORDER_HAIR)->getColor()->setRGB(self::BORDER);
             if (count($rows) > 0) {
                 $sheet->getStyle('C2:C' . $lastRow)->getNumberFormat()->setFormatCode('#,##0');
@@ -347,14 +351,14 @@ class Excel_renderer
                         ->getNumberFormat()->setFormatCode(self::MOU_CURRENCY_FORMAT);
                 }
             }
-            $sheet->setAutoFilter('A1:J' . $lastRow);
+            $sheet->setAutoFilter('A1:K' . $lastRow);
             $sheet->getPageSetup()
                 ->setPaperSize(PageSetup::PAPERSIZE_FOLIO)
                 ->setOrientation(PageSetup::ORIENTATION_LANDSCAPE)
                 ->setFitToWidth(1)
                 ->setFitToHeight(0);
             $sheet->getPageMargins()->setTop(0.35)->setRight(0.35)->setBottom(0.45)->setLeft(0.35);
-            $sheet->getPageSetup()->setPrintArea('A1:J' . $lastRow);
+            $sheet->getPageSetup()->setPrintArea('A1:K' . $lastRow);
             $sheet->getHeaderFooter()->setOddFooter('&LDiekspor dari MVIN&C&F&RHalaman &P / &N');
 
             $spreadsheet->setActiveSheetIndex(0);
