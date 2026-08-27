@@ -44,7 +44,10 @@ if (ENVIRONMENT === 'production' &&
 $config['encryption_key'] = $appKey !== '' ? $appKey : hash('sha256', FCPATH . '|simp');
 $config['sess_driver'] = 'files';
 $config['sess_cookie_name'] = 'simp_session';
-$config['sess_expiration'] = 28800;
+// Keep authenticated users signed in for seven days. CodeIgniter also uses
+// this value for the session cookie lifetime and PHP's session garbage
+// collection lifetime, so both the browser and server expire consistently.
+$config['sess_expiration'] = 604800;
 $config['sess_save_path'] = APPPATH . 'sessions';
 $config['sess_match_ip'] = FALSE;
 $config['sess_time_to_update'] = 300;
