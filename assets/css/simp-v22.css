@@ -630,6 +630,15 @@ button.btn-full { width: 100%; }
   margin-bottom: 8px;
 }
 
+/* The edit-participant modal can inject an inline payment card immediately
+ * before its action row. Keep a clear breathing space between the payment
+ * controls (including the "Catat pembayaran sekarang" checkbox) and the
+ * Simpan/Batal buttons. The wrapper is empty for replacement mode, so only
+ * apply the spacing when a payment card is actually rendered. */
+.registration-inline-payment-form > [data-mutation-payment-wrap]:not(:empty) {
+  margin-bottom: 16px;
+}
+
 /* Searchable jabatan combobox. Native datalist is intentionally avoided:
  * mobile browsers render it as a horizontal keyboard suggestion strip. */
 .position-picker {
