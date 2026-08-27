@@ -139,17 +139,20 @@
                     </div>
                 </div>
                 <div class="divider mt-2 mb-3"></div>
-                <div class="d-flex align-items-center rounded-s bg-blue-light px-3 py-3">
-                    <span class="icon icon-s rounded-xl bg-blue-dark color-white me-3 flex-shrink-0"><i class="fas fa-balance-scale"></i></span>
-                    <div>
-                        <p class="font-11 color-blue-dark font-600 mb-n1">Sisa Dana</p>
-                        <p class="font-10 opacity-60 mb-0">Net transaksi (tidak termasuk saldo awal) &middot; <?= e(isset($financeStats['scope_label']) ? $financeStats['scope_label'] : 'Akun terpilih') ?></p>
+                <?php
+                $includedBalance = isset($financeStats['included_balance']) ? $financeStats['included_balance'] : 0;
+                $includedBalanceCents = isset($financeStats['included_balance_cents']) ? (int)$financeStats['included_balance_cents'] : 0;
+                ?>
+                <div class="dashboard-balance-card rounded-s bg-blue-light px-3 py-3">
+                    <div class="d-flex align-items-center">
+                        <span class="icon icon-s rounded-xl bg-blue-dark color-white me-3 flex-shrink-0"><i class="fas fa-balance-scale"></i></span>
+                        <div class="min-width-zero">
+                            <p class="font-11 color-blue-dark font-600 mb-n1">Sisa Dana</p>
+                            <p class="font-10 opacity-70 mb-0">Saldo tersedia saat ini</p>
+                        </div>
                     </div>
-                    <h4 class="<?= $financeStats['remaining_cents'] >= 0 ? 'color-green-dark' : 'color-red-dark' ?> ms-auto mb-0 text-end simp-balance-value"><?= rupiah($financeStats['remaining']) ?></h4>
-                </div>
-                <div class="d-flex justify-content-between align-items-center mt-2 px-1">
-                    <span class="font-10 opacity-60">Saldo akun masuk total saat ini</span>
-                    <strong class="font-11 color-blue-dark simp-balance-value"><?= rupiah(isset($financeStats['included_balance']) ? $financeStats['included_balance'] : 0) ?></strong>
+                    <div class="dashboard-balance-amount <?= $includedBalanceCents >= 0 ? 'color-green-dark' : 'color-red-dark' ?> text-end mt-2 simp-balance-value"><?= rupiah($includedBalance) ?></div>
+                    <p class="font-10 opacity-70 mb-0 mt-2">Jumlah saldo akun yang ditandai <strong>Masuk Total</strong>. Sudah termasuk saldo awal dan seluruh mutasi.</p>
                 </div>
             </div>
         </div>

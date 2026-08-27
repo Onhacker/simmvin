@@ -474,6 +474,17 @@ select[multiple].form-select { height: auto !important; min-height: 150px; paddi
 .simp-balance-value { font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
 .min-width-zero { min-width: 0; }
 
+/* Keep the dashboard's main balance readable even when the surrounding card
+ * contains a long explanatory label. The amount gets its own full-width row
+ * instead of competing with the icon/text row, and is never split mid-number. */
+#page .dashboard-balance-card .dashboard-balance-amount {
+  white-space: nowrap;
+  overflow-wrap: normal;
+  font-size: clamp(24px, 6vw, 32px);
+  font-weight: 700;
+  line-height: 1.2;
+}
+
 .footer-bar-6 .circle-nav.active-nav i { color: #fff !important; }
 
 /* AppKit uses flex-basis:auto for footer items, so longer labels such as

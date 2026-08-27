@@ -33,7 +33,6 @@ class Dashboard extends App_Controller
         // transfer yang melintasi batas included/excluded; transfer internal
         // hanya mengurangi biaya admin.
         $financeStats = $this->finance->included_fund_flow();
-        $financeStats['scope_label'] = 'Akun yang masuk total';
         $registrationSummary = $this->db->select('COUNT(r.id) villages,COALESCE(SUM(r.expected_amount),0) total_due', FALSE)
             ->from('registrations r')->join('training_events e','e.id=r.event_id')
             ->where(array('r.status'=>'active','e.status'=>'open'))->get()->row_array();
