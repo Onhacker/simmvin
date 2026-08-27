@@ -273,7 +273,6 @@ $canVerify = !empty($canVerify);
                     <div class="divider mt-2 mb-2"></div>
                     <form method="post" action="<?= site_url('pengeluaran/' . $row['id'] . '/status') ?>" data-expense-status-form>
                         <?= csrf_field() ?>
-                        <p class="font-11 color-highlight font-600 mb-1">Verifikasi Pengeluaran</p>
                         <div class="expense-status-editor d-flex flex-column flex-md-row align-items-stretch">
                             <div class="expense-status-control input-style input-style-always-active has-borders no-icon mb-2 mb-md-0 flex-grow-1">
                                 <label for="expense-status-<?= (int) $row['id'] ?>" class="color-highlight font-12 font-500">Status</label>
