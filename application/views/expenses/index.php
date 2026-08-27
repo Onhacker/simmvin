@@ -199,11 +199,6 @@ $canVerify = !empty($canVerify);
                         <span class="expense-card-label">Uraian</span><span class="expense-card-separator" aria-hidden="true">|</span>
                         <span class="expense-card-value"><?= nl2br(e($row['description'])) ?></span>
                     </div>
-                    <div class="expense-card-detail-row">
-                        <span class="expense-card-label">Event</span><span class="expense-card-separator" aria-hidden="true">|</span>
-                        <strong class="expense-card-value"><?= e($row['event_name'] ?: 'Pengeluaran umum') ?></strong>
-                    </div>
-
                     <?php if (!empty($row['debt_id'])): ?>
                         <div class="expense-card-detail-row">
                             <span class="expense-card-label">Sumber transaksi</span><span class="expense-card-separator" aria-hidden="true">|</span>

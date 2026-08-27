@@ -11,6 +11,7 @@ if (in_array($reportKind, array('income', 'expense'), TRUE) && strcasecmp(trim($
 }
 $incomeLandscape = $reportKind === 'income';
 $activeEvents = isset($activeEvents) && is_array($activeEvents) ? $activeEvents : array();
+$activeRegencies = isset($activeRegencies) && is_array($activeRegencies) ? $activeRegencies : array();
 $rows = isset($rows) && is_array($rows) ? $rows : array();
 $debtSummary = isset($summary) && is_array($summary) ? $summary : array();
 $accounts = isset($accounts) && is_array($accounts) ? $accounts : array();
@@ -150,7 +151,7 @@ $accountSummary = array_merge(array(
         .title-block p { margin: 4px 0 0; color: #4b5563; font-size: 12px; }
         .meta-table { margin: 8px 0 9px; }
         .meta-table td { padding: 2px 0; vertical-align: top; }
-        .meta-label { width: 82px; color: #6b7280; }
+        .meta-label { width: 100px; color: #6b7280; white-space: nowrap; }
         .meta-separator { width: 10px; color: #6b7280; }
         .meta-value { font-weight: 700; }
         .event-list { margin: 0 0 9px; padding: 6px 8px; border-left: 3px solid #1f5fab; background: #f3f7fc; }
@@ -253,6 +254,9 @@ $accountSummary = array_merge(array(
             <tr><td class="meta-label">Rincian</td><td class="meta-separator">:</td><td class="meta-value">Hutang dan riwayat pembayaran</td></tr>
         <?php endif; ?>
         <tr><td class="meta-label">Dibuat</td><td class="meta-separator">:</td><td class="meta-value"><?= e(tanggal_id($generatedAt, TRUE)) ?></td></tr>
+        <?php if ($reportKind === 'expense' && $activeRegencies): ?>
+            <tr><td class="meta-label">Kabupaten aktif</td><td class="meta-separator">:</td><td class="meta-value"><?= e(implode(' · ', $activeRegencies)) ?></td></tr>
+        <?php endif; ?>
     </table>
 
     <?php if (in_array($reportKind, array('income', 'expense'), TRUE) && count($activeEvents) > 1): ?>

@@ -563,6 +563,7 @@ class Expenses extends App_Controller
         $activeEventIds = array_map(function ($event) { return (int) $event['id']; }, $activeEvents);
         return array(
             'activeEvents' => $activeEvents,
+            'activeRegencies' => $this->finance->active_event_regencies($activeEventIds),
             // A rejected expense is excluded from operational reports and
             // totals, just like it is excluded from the active list.
             'rows' => $activeEventIds ? $this->finance->expenses(array('event_ids' => $activeEventIds, 'exclude_status' => 'rejected')) : array(),

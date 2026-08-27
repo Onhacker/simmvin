@@ -145,6 +145,38 @@ class Finance_model extends CI_Model
             ->order_by('updated_at', 'DESC')->order_by('id', 'DESC')->get()->result_array();
     }
 
+    /**
+     * Return the distinct kabupaten/kota snapshots covered by open events.
+     * Event regions are stored with the transaction database so printed
+     * reports remain available even when the separate wilayah connection is
+     * unavailable or its master names change later.
+     */
+    public function active_event_regencies(array $eventIds = array())
+    {
+        $eventIds = array_values(array_unique(array_filter(array_map('intval', $eventIds), function ($id) {
+            return $id > 0;
+        })));
+        if (!$eventIds) return array();
+
+        $rows = $this->db
+            ->distinct()
+            ->select('er.regency_name')
+            ->from('event_regencies er')
+            ->join('training_events e', 'e.id=er.event_id')
+            ->where_in('er.event_id', $eventIds)
+            ->where('e.status', 'open')
+            ->where('er.regency_name !=', '')
+            ->order_by('er.regency_name', 'ASC')
+            ->get()->result_array();
+
+        $names = array();
+        foreach ($rows as $row) {
+            $name = trim((string) (isset($row['regency_name']) ? $row['regency_name'] : ''));
+            if ($name !== '') $names[$name] = TRUE;
+        }
+        return array_keys($names);
+    }
+
     public function setting_value($key, $fallback = '')
     {
         $row = $this->db->select('setting_value')->where('setting_key', (string) $key)->get('settings')->row_array();
