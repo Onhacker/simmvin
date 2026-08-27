@@ -199,6 +199,72 @@
     });
   }
 
+  var accountLedgerRequest = 0;
+  var accountLedgerController = null;
+
+  function refreshAccountLedger(targetUrl) {
+    var panel = byId('account-ledger-panel');
+    if (!panel) return Promise.reject(new Error('Daftar mutasi tidak ditemukan.'));
+    var requestId = ++accountLedgerRequest;
+    if (accountLedgerController && typeof accountLedgerController.abort === 'function') accountLedgerController.abort();
+    accountLedgerController = typeof AbortController === 'function' ? new AbortController() : null;
+    panel.setAttribute('aria-busy', 'true');
+    panel.classList.add('opacity-50');
+
+    var options = {
+      credentials: 'same-origin',
+      cache: 'no-store',
+      headers: {'X-Requested-With': 'XMLHttpRequest', 'Accept': 'text/html'}
+    };
+    if (accountLedgerController) options.signal = accountLedgerController.signal;
+
+    return fetch(targetUrl, options).then(function (response) {
+      var responseUrl = String(response.url || '');
+      if (response.redirected || response.status === 401 || /\/login(?:[/?#]|$)/i.test(responseUrl)) {
+        throw new Error('Sesi Anda telah berakhir. Silakan masuk kembali.');
+      }
+      if (!response.ok) throw new Error('Daftar mutasi gagal diperbarui.');
+      return response.text();
+    }).then(function (html) {
+      if (requestId !== accountLedgerRequest) return;
+      var parsed = new DOMParser().parseFromString(html, 'text/html');
+      var current = byId('account-ledger-panel');
+      var next = parsed.getElementById('account-ledger-panel');
+      if (!current || !next) throw new Error('Potongan daftar mutasi tidak lengkap.');
+      current.replaceWith(document.importNode(next, true));
+      if (window.history && window.history.replaceState) {
+        var historyTarget = targetUrl;
+        try {
+          var parsedTarget = new URL(targetUrl, window.location.href);
+          historyTarget = parsedTarget.pathname + parsedTarget.search + parsedTarget.hash;
+        } catch (ignore) {}
+        window.history.replaceState({}, '', historyTarget);
+      }
+    }).catch(function (error) {
+      if (requestId === accountLedgerRequest) {
+        var current = byId('account-ledger-panel');
+        if (current) {
+          current.removeAttribute('aria-busy');
+          current.classList.remove('opacity-50');
+        }
+      }
+      if (error && error.name === 'AbortError') return;
+      throw error;
+    });
+  }
+
+  document.addEventListener('click', function (event) {
+    var pageLink = event.target.closest('[data-account-ledger-page]');
+    if (!pageLink) return;
+    event.preventDefault();
+    refreshAccountLedger(pageLink.href).catch(function (error) {
+      return notify(error.message || 'Daftar mutasi gagal diperbarui.', {
+        title: 'Paginasi Gagal',
+        tone: 'danger'
+      });
+    });
+  });
+
   var positionForm = byId('position-modal-form');
   if (positionForm) {
     var positionTitle = byId('position-modal-title');

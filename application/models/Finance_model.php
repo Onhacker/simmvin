@@ -1666,10 +1666,17 @@ class Finance_model extends CI_Model
         return $cents === NULL ? 0 : (int)$cents;
     }
 
-    public function ledger($accountId, $limit = 100)
+    public function ledger($accountId, $limit = 100, $offset = 0)
     {
+        $limit = max(1, min(100, (int)$limit));
+        $offset = max(0, (int)$offset);
         return $this->db->where('account_id',(int)$accountId)->order_by('entry_date','DESC')->order_by('id','DESC')
-            ->limit((int)$limit)->get('ledger_entries')->result_array();
+            ->limit($limit, $offset)->get('ledger_entries')->result_array();
+    }
+
+    public function ledger_count($accountId)
+    {
+        return (int)$this->db->where('account_id',(int)$accountId)->count_all_results('ledger_entries');
     }
 
     private function apply_transaction_filters($alias, array $filters)

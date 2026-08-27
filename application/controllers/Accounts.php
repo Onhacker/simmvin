@@ -14,10 +14,31 @@ class Accounts extends App_Controller
         $this->require_permission('accounts.view');
         $reportData = $this->account_report_data();
         $accounts = $reportData['accounts'];
-        $selectedId = (int) $this->input->get('account_id', TRUE);
+        $selectedRaw = $this->input->get('account_id', TRUE);
+        $selectedId = is_scalar($selectedRaw) && ctype_digit((string) $selectedRaw)
+            ? (int) $selectedRaw
+            : 0;
+        $availableIds = array_map(function ($account) {
+            return (int) $account['id'];
+        }, $accounts);
+        if ($selectedId < 1 || !in_array($selectedId, $availableIds, TRUE)) $selectedId = 0;
+
+        $perPage = 10;
+        $pageRaw = $this->input->get('page', TRUE);
+        $page = is_scalar($pageRaw) && ctype_digit((string) $pageRaw)
+            ? max(1, (int) $pageRaw)
+            : 1;
+        $ledgerTotal = $selectedId ? $this->finance->ledger_count($selectedId) : 0;
+        $ledgerTotalPages = max(1, (int) ceil($ledgerTotal / $perPage));
+        if ($page > $ledgerTotalPages) $page = $ledgerTotalPages;
+        $ledger = $selectedId
+            ? $this->finance->ledger($selectedId, $perPage, ($page - 1) * $perPage)
+            : array();
+
         $this->render('accounts/index', array('pageTitle'=>'Kas & Rekening','accounts'=>$accounts,
             'total'=>$reportData['accountSummary']['included_balance'],'selectedId'=>$selectedId,
-            'ledger'=>$selectedId ? $this->finance->ledger($selectedId) : array(),
+            'ledger'=>$ledger,'ledgerTotal'=>$ledgerTotal,'ledgerPage'=>$page,
+            'ledgerPerPage'=>$perPage,'ledgerTotalPages'=>$ledgerTotalPages,
             'canManage'=>$this->Auth_model->can('accounts.manage'),
             'pageScripts'=>array('masters.js','finance.js')));
     }

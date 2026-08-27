@@ -850,6 +850,16 @@ body {
   min-height: 36px;
 }
 
+/* Account cards use two side-by-side actions. Keep these controls compact so
+ * Mutasi and Ubah remain balanced on small screens without shrinking the
+ * larger primary actions elsewhere in the app. */
+#page .btn-s.account-action-btn {
+  min-height: 34px;
+  padding: 6px 8px !important;
+  line-height: 1.25 !important;
+  font-size: 12px !important;
+}
+
 /* Keep tiny utility controls genuinely tiny; their existing AppKit sizing is
  * already appropriate for close, filter, and compact header actions. */
 #page .btn-xxs:not(.btn-icon),

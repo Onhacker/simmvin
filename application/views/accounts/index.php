@@ -5,6 +5,16 @@ $activeAccounts = count(array_filter($accounts, function ($account) {
     return (int) $account['is_active'] === 1;
 }));
 $canManage = isset($canManage) ? (bool)$canManage : $this->Auth_model->can('accounts.manage');
+$ledger = isset($ledger) && is_array($ledger) ? $ledger : array();
+$ledgerTotal = isset($ledgerTotal) ? max(0, (int)$ledgerTotal) : count($ledger);
+$ledgerPerPage = isset($ledgerPerPage) ? max(1, (int)$ledgerPerPage) : 10;
+$ledgerTotalPages = isset($ledgerTotalPages) ? max(1, (int)$ledgerTotalPages) : max(1, (int)ceil($ledgerTotal / $ledgerPerPage));
+$ledgerPage = isset($ledgerPage) ? max(1, min((int)$ledgerPage, $ledgerTotalPages)) : 1;
+$ledgerPageUrl = function ($page) use ($selectedId) {
+    $query = array('account_id'=>(int)$selectedId);
+    if ((int)$page > 1) $query['page'] = (int)$page;
+    return site_url('akun-dana') . '?' . http_build_query($query);
+};
 ?>
 
 <div id="account-content">
@@ -90,10 +100,10 @@ $canManage = isset($canManage) ? (bool)$canManage : $this->Auth_model->can('acco
                 <div class="d-flex py-2 border-bottom"><span class="opacity-60">Saldo Awal</span><strong class="ms-auto"><?= rupiah($account['opening_balance']) ?></strong></div>
                 <div class="d-flex py-2"><span class="opacity-60">Masuk Total</span><span class="ms-auto"><?= (int)$account['include_in_total']?'<span class="badge bg-green-dark color-white">Ya</span>':'<span class="badge bg-gray-dark color-white">Tidak</span>' ?></span></div>
                 <div class="row mb-0 mt-3">
-                    <div class="<?= $canManage ? 'col-6 pe-1' : 'col-12' ?>"><a class="btn btn-full btn-m border-blue-dark color-blue-dark rounded-s font-600" href="<?= site_url('akun-dana?account_id='.$account['id']) ?>"><i class="fas fa-list me-1"></i> Mutasi</a></div>
+                    <div class="<?= $canManage ? 'col-6 pe-1' : 'col-12' ?>"><a class="btn btn-full btn-s account-action-btn border-blue-dark color-blue-dark rounded-s font-12 font-600" href="<?= site_url('akun-dana?account_id='.$account['id']) ?>"><i class="fas fa-list me-1"></i> Mutasi</a></div>
                     <?php if($canManage): ?>
                         <div class="col-6 ps-1">
-                            <button type="button" class="btn btn-full btn-m border-yellow-dark color-yellow-dark rounded-s font-600"
+                            <button type="button" class="btn btn-full btn-s account-action-btn border-yellow-dark color-yellow-dark rounded-s font-12 font-600"
                                     data-account-modal-open data-mode="edit"
                                     data-action="<?= site_url('akun-dana/'.(int)$account['id'].'/ubah') ?>"
                                     data-account="<?= e(json_encode($accountModalPayload, JSON_HEX_TAG|JSON_HEX_APOS|JSON_HEX_AMP|JSON_HEX_QUOT)) ?>">
@@ -109,11 +119,11 @@ $canManage = isset($canManage) ? (bool)$canManage : $this->Auth_model->can('acco
 
 <?php endif; ?>
 <?php if ($selectedId): ?>
-    <div class="card card-style">
+    <div id="account-ledger-panel" class="card card-style" aria-live="polite">
         <div class="content mb-2">
             <div class="d-flex align-items-center mb-3">
                 <div>
-                    <p class="font-600 color-highlight mb-n1">100 transaksi terakhir</p>
+                    <p class="font-600 color-highlight mb-n1">10 transaksi per halaman</p>
                     <h2 class="mb-0">Mutasi Akun</h2>
                 </div>
                 <a class="btn btn-s font-13 font-600 bg-theme color-theme border rounded-s ms-auto" href="<?= site_url('akun-dana') ?>">
@@ -123,6 +133,20 @@ $canManage = isset($canManage) ? (bool)$canManage : $this->Auth_model->can('acco
 
             <?php if(!$ledger): ?><div class="text-center py-5 opacity-60">Belum ada mutasi.</div><?php endif; ?>
             <?php foreach($ledger as $entry): ?><div class="d-flex align-items-start py-3 border-bottom"><span class="icon icon-s rounded-xl <?= $entry['direction']==='in'?'bg-green-light color-green-dark':'bg-red-light color-red-dark' ?> me-3"><i class="fa fa-arrow-<?= $entry['direction']==='in'?'down':'up' ?>"></i></span><div class="min-width-zero"><h5 class="font-14 mb-n1"><?= e($entry['description']) ?></h5><p class="font-11 opacity-60 mb-0"><?= tanggal_id($entry['entry_date']) ?> · <?= e(ucfirst($entry['source_type'])) ?></p></div><strong class="<?= $entry['direction']==='in'?'color-green-dark':'color-red-dark' ?> ms-auto text-end simp-balance-value"><?= $entry['direction']==='in'?'+':'-' ?><?= rupiah($entry['amount']) ?></strong></div><?php endforeach; ?>
+
+            <div class="d-flex align-items-center justify-content-between mt-3">
+                <?php if ($ledgerPage > 1): ?>
+                    <a class="btn btn-s bg-theme color-highlight border-highlight rounded-s font-12" href="<?= e($ledgerPageUrl($ledgerPage - 1)) ?>" data-account-ledger-page><i class="fa fa-chevron-left me-1"></i>Sebelumnya</a>
+                <?php else: ?>
+                    <button type="button" class="btn btn-s bg-gray-light color-gray-dark rounded-s font-12" disabled><i class="fa fa-chevron-left me-1"></i>Sebelumnya</button>
+                <?php endif; ?>
+                <?php if ($ledgerPage < $ledgerTotalPages): ?>
+                    <a class="btn btn-s gradient-highlight rounded-s font-12" href="<?= e($ledgerPageUrl($ledgerPage + 1)) ?>" data-account-ledger-page>Berikutnya<i class="fa fa-chevron-right ms-1"></i></a>
+                <?php else: ?>
+                    <button type="button" class="btn btn-s bg-gray-light color-gray-dark rounded-s font-12" disabled>Berikutnya<i class="fa fa-chevron-right ms-1"></i></button>
+                <?php endif; ?>
+            </div>
+            <p class="font-11 opacity-60 text-center mb-1 mt-2">Menampilkan <?= $ledgerTotal ? number_format((($ledgerPage - 1) * $ledgerPerPage) + 1) : 0 ?>–<?= number_format(min($ledgerPage * $ledgerPerPage, $ledgerTotal)) ?> dari <?= number_format($ledgerTotal) ?> mutasi</p>
         </div>
     </div>
 <?php endif; ?>
