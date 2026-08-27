@@ -1351,18 +1351,19 @@ body {
 #expense-list .expense-card-separator,
 #expense-list .expense-card-value {
   min-width: 0;
-  line-height: 1.35;
+  /* Match the 15px reading scale used by the account detail cards. */
+  line-height: 1.45;
 }
 
 #expense-list .expense-card-label {
   color: #4b5563;
-  font-size: 12px;
+  font-size: 15px;
   font-weight: 600;
 }
 
 #expense-list .expense-card-separator {
   color: #8a929b;
-  font-size: 12px;
+  font-size: 15px;
   font-weight: 700;
   text-align: center;
 }
@@ -1370,7 +1371,7 @@ body {
 #expense-list .expense-card-value {
   display: block;
   color: #202124;
-  font-size: 13px;
+  font-size: 15px;
   font-weight: 500;
   overflow-wrap: anywhere;
 }
@@ -1384,7 +1385,7 @@ body {
 #expense-list .expense-card-subvalue {
   display: inline;
   margin-left: 4px;
-  font-size: 11px;
+  font-size: 14px;
   font-weight: 600;
 }
 
@@ -1466,16 +1467,16 @@ body {
 
   #expense-list .expense-card-label,
   #expense-list .expense-card-separator {
-    /* Keep the detail columns compact while matching the readable body scale. */
-    font-size: 12px;
+    /* Keep the detail columns compact while matching the account body scale. */
+    font-size: 15px;
   }
 
   #expense-list .expense-card-value {
-    font-size: 13px;
+    font-size: 15px;
   }
 
   #expense-list .expense-card-subvalue {
-    font-size: 12px;
+    font-size: 14px;
   }
 
   #expense-list .expense-status-editor {

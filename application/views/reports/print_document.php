@@ -202,6 +202,16 @@ $accountSummary = array_merge(array(
         .expense-grand-total .money { white-space: nowrap; overflow: visible; }
         .expense-category-table tbody td,
         .expense-category-table tbody td .primary { font-weight: 400; }
+        /* Expense detail rows are the most information-dense part of the
+         * report.  Keep the rest of the report at the standard 12px scale,
+         * but give the Rincian Transaksi table one readable step up.  The
+         * fixed F4 columns (and the dedicated 28px number column) keep the
+         * larger text from changing the table geometry or clipping ordinals. */
+        .expense-category-table th,
+        .expense-category-table td { font-size: 13px; line-height: 1.25; }
+        .expense-category-table .secondary { font-size: 12px; line-height: 1.2; }
+        .expense-category-table th.number-col,
+        .expense-category-table td.number-col { font-size: 12px; line-height: 1.2; }
         .expense-grand-total { margin-top: 4px; page-break-before: avoid; break-before: avoid; }
         .expense-grand-total td { background: #dcecff !important; border-top: 2px solid #174b8b; color: #111827; font-size: 12px; font-weight: 800; }
         .status { display: block; width: 100%; max-width: 100%; padding: 2px 4px; border-radius: 3px; color: #fff; font-size: 12px; font-weight: 700; line-height: 1.15; text-align: center; white-space: normal; overflow-wrap: normal; word-break: normal; }
