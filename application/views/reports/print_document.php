@@ -430,12 +430,16 @@ $accountSummary = array_merge(array(
                         $adminFeeCents = $moneyCents($row['admin_fee']);
                         $adminFee = simp_money_from_cents($adminFeeCents);
                         $total = simp_money_from_cents($amountCents + $adminFeeCents);
+                        $expenseMethodKey = strtolower(trim((string) (isset($row['method']) ? $row['method'] : '')));
+                        $expenseMethodLabel = isset($methodLabels[$expenseMethodKey])
+                            ? $methodLabels[$expenseMethodKey]
+                            : ucfirst((string) (isset($row['method']) ? $row['method'] : ''));
                         ?>
                         <tr>
                             <td class="number number-col"><?= number_format($expenseNo) ?></td>
                             <td><span class="primary"><?= e($printDate($row['expense_date'])) ?></span></td>
                             <td><span class="primary"><?= e($row['description']) ?></span><?php if (!empty($row['debt_id'])): ?><span class="secondary">Pembayaran hutang <?= e($row['debt_no']) ?> · <?= e($row['debt_creditor']) ?></span><?php endif; ?></td>
-                            <td><span class="primary"><?= e($row['account_name']) ?></span><span class="secondary"><?= e(isset($methodLabels[$row['method']]) ? $methodLabels[$row['method']] : ucfirst((string) $row['method'])) ?></span></td>
+                            <td><?php if ($expenseMethodKey === 'cash'): ?><span class="primary"><?= e($expenseMethodLabel) ?></span><?php else: ?><span class="primary"><?= e($row['account_name']) ?></span><span class="secondary"><?= e($expenseMethodLabel) ?></span><?php endif; ?></td>
                             <td class="money"><span class="primary"><?= e($printRupiah($total)) ?></span><?php if ($adminFeeCents > 0): ?><span class="secondary">Admin <?= e($printRupiah($adminFee, FALSE)) ?></span><?php endif; ?></td>
                         </tr>
                     <?php endforeach; ?>
