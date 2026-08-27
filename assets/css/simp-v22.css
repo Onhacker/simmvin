@@ -397,13 +397,16 @@ select[multiple].form-select { height: auto !important; min-height: 150px; paddi
 
 #registration-index-content .registration-card-label {
   color: #4b5563;
-  font-size: 12px;
+  /* Match the readable body scale used by the account (Kas & Rekening)
+   * cards.  The previous 12px value made the registration summary appear
+   * noticeably smaller than the neighbouring modules. */
+  font-size: 15px;
   font-weight: 600;
 }
 
 #registration-index-content .registration-card-separator {
   color: #8a929b;
-  font-size: 12px;
+  font-size: 15px;
   font-weight: 700;
   text-align: center;
 }
@@ -411,7 +414,7 @@ select[multiple].form-select { height: auto !important; min-height: 150px; paddi
 #registration-index-content .registration-card-value {
   display: block;
   color: #202124;
-  font-size: 13px;
+  font-size: 15px;
   font-weight: 500;
   overflow-wrap: anywhere;
   text-align: right;
@@ -441,11 +444,11 @@ select[multiple].form-select { height: auto !important; min-height: 150px; paddi
 
   #registration-index-content .registration-card-label,
   #registration-index-content .registration-card-separator {
-    font-size: 11px;
+    font-size: 15px;
   }
 
   #registration-index-content .registration-card-value {
-    font-size: 12px;
+    font-size: 15px;
   }
 }
 
@@ -1396,7 +1399,12 @@ body {
 
 #expense-list .expense-card-total-row {
   margin-top: 2px;
-  padding: 8px 8px;
+  /* Keep the total on the same label/separator/value grid as every other
+   * detail row.  Horizontal padding here used to shift the label and value
+   * inward, making the text look glued together on narrow cards. */
+  grid-template-columns: 140px 12px minmax(0, 1fr);
+  column-gap: 6px;
+  padding: 8px 0;
   border: 0;
   border-radius: 6px;
   background: rgba(194, 31, 51, .06);
@@ -1461,7 +1469,9 @@ body {
 
   #expense-list .expense-card-detail-row,
   #expense-list .expense-card-proof-row {
-    grid-template-columns: 112px 10px minmax(0, 1fr);
+    /* Reserve enough room for the longest label ("Total Dana Keluar") so
+     * every value column starts on the same vertical line. */
+    grid-template-columns: 126px 10px minmax(0, 1fr);
     column-gap: 4px;
   }
 
@@ -1479,6 +1489,13 @@ body {
     font-size: 14px;
   }
 
+  #expense-list .expense-card-total-row {
+    /* Match the shared mobile columns above; this keeps the amount aligned
+     * with Nilai pengeluaran and Biaya admin. */
+    grid-template-columns: 126px 10px minmax(0, 1fr);
+    column-gap: 4px;
+  }
+
   #expense-list .expense-status-editor {
     gap: 6px;
   }
@@ -1492,7 +1509,7 @@ body {
 @media (max-width: 359.98px) {
   #expense-list .expense-card-detail-row,
   #expense-list .expense-card-proof-row {
-    grid-template-columns: 98px 8px minmax(0, 1fr);
+    grid-template-columns: 126px 8px minmax(0, 1fr);
   }
 }
 

@@ -212,6 +212,59 @@ $accountSummary = array_merge(array(
         .expense-category-table .secondary { font-size: 12px; line-height: 1.2; }
         .expense-category-table th.number-col,
         .expense-category-table td.number-col { font-size: 12px; line-height: 1.2; }
+
+        /* Each expense category gets its own restrained accent.  Keeping the
+         * palette on the category wrapper makes the HTML preview and printed
+         * PDF visually consistent while preserving high-contrast white text
+         * in the table headers. */
+        .expense-category-group.expense-tone-blue .expense-category-heading { border-left-color: #1f5fab; background: #eaf2fc; color: #174b8b; }
+        .expense-category-group.expense-tone-blue .expense-category-heading strong { color: #174b8b; }
+        .expense-category-group.expense-tone-blue .expense-category-table th { background: #1f5fab; border-color: #174b8b; }
+        .expense-category-group.expense-tone-blue .expense-category-table td { border-color: #c7d8ed; }
+        .expense-category-group.expense-tone-blue .expense-category-table tbody tr:nth-child(even) td,
+        .expense-category-group.expense-tone-blue .expense-category-table .category-total-row td { background: #eef5ff !important; }
+        .expense-category-group.expense-tone-blue .expense-category-table .category-total-row td { border-top-color: #1f5fab; color: #174b8b; }
+
+        .expense-category-group.expense-tone-teal .expense-category-heading { border-left-color: #0f766e; background: #e6fffb; color: #0f5f59; }
+        .expense-category-group.expense-tone-teal .expense-category-heading strong { color: #0f5f59; }
+        .expense-category-group.expense-tone-teal .expense-category-table th { background: #0f766e; border-color: #0b5f59; }
+        .expense-category-group.expense-tone-teal .expense-category-table td { border-color: #b9e3de; }
+        .expense-category-group.expense-tone-teal .expense-category-table tbody tr:nth-child(even) td,
+        .expense-category-group.expense-tone-teal .expense-category-table .category-total-row td { background: #effcfb !important; }
+        .expense-category-group.expense-tone-teal .expense-category-table .category-total-row td { border-top-color: #0f766e; color: #0f5f59; }
+
+        .expense-category-group.expense-tone-amber .expense-category-heading { border-left-color: #a16207; background: #fff7db; color: #854d0e; }
+        .expense-category-group.expense-tone-amber .expense-category-heading strong { color: #854d0e; }
+        .expense-category-group.expense-tone-amber .expense-category-table th { background: #a16207; border-color: #854d0e; }
+        .expense-category-group.expense-tone-amber .expense-category-table td { border-color: #ead9a4; }
+        .expense-category-group.expense-tone-amber .expense-category-table tbody tr:nth-child(even) td,
+        .expense-category-group.expense-tone-amber .expense-category-table .category-total-row td { background: #fff9e8 !important; }
+        .expense-category-group.expense-tone-amber .expense-category-table .category-total-row td { border-top-color: #a16207; color: #854d0e; }
+
+        .expense-category-group.expense-tone-purple .expense-category-heading { border-left-color: #6d28d9; background: #f3e8ff; color: #5b21b6; }
+        .expense-category-group.expense-tone-purple .expense-category-heading strong { color: #5b21b6; }
+        .expense-category-group.expense-tone-purple .expense-category-table th { background: #6d28d9; border-color: #5b21b6; }
+        .expense-category-group.expense-tone-purple .expense-category-table td { border-color: #d9c3f5; }
+        .expense-category-group.expense-tone-purple .expense-category-table tbody tr:nth-child(even) td,
+        .expense-category-group.expense-tone-purple .expense-category-table .category-total-row td { background: #faf5ff !important; }
+        .expense-category-group.expense-tone-purple .expense-category-table .category-total-row td { border-top-color: #6d28d9; color: #5b21b6; }
+
+        .expense-category-group.expense-tone-rose .expense-category-heading { border-left-color: #be123c; background: #fff1f2; color: #9f1239; }
+        .expense-category-group.expense-tone-rose .expense-category-heading strong { color: #9f1239; }
+        .expense-category-group.expense-tone-rose .expense-category-table th { background: #be123c; border-color: #9f1239; }
+        .expense-category-group.expense-tone-rose .expense-category-table td { border-color: #f2c4cf; }
+        .expense-category-group.expense-tone-rose .expense-category-table tbody tr:nth-child(even) td,
+        .expense-category-group.expense-tone-rose .expense-category-table .category-total-row td { background: #fff7f8 !important; }
+        .expense-category-group.expense-tone-rose .expense-category-table .category-total-row td { border-top-color: #be123c; color: #9f1239; }
+
+        .expense-category-group.expense-tone-slate .expense-category-heading { border-left-color: #475569; background: #f1f5f9; color: #334155; }
+        .expense-category-group.expense-tone-slate .expense-category-heading strong { color: #334155; }
+        .expense-category-group.expense-tone-slate .expense-category-table th { background: #475569; border-color: #334155; }
+        .expense-category-group.expense-tone-slate .expense-category-table td { border-color: #cbd5e1; }
+        .expense-category-group.expense-tone-slate .expense-category-table tbody tr:nth-child(even) td,
+        .expense-category-group.expense-tone-slate .expense-category-table .category-total-row td { background: #f8fafc !important; }
+        .expense-category-group.expense-tone-slate .expense-category-table .category-total-row td { border-top-color: #475569; color: #334155; }
+
         .expense-grand-total { margin-top: 4px; page-break-before: avoid; break-before: avoid; }
         .expense-grand-total td { background: #dcecff !important; border-top: 2px solid #174b8b; color: #111827; font-size: 12px; font-weight: 800; }
         .status { display: block; width: 100%; max-width: 100%; padding: 2px 4px; border-radius: 3px; color: #fff; font-size: 12px; font-weight: 700; line-height: 1.15; text-align: center; white-space: normal; overflow-wrap: normal; word-break: normal; }
@@ -424,14 +477,21 @@ $accountSummary = array_merge(array(
                 <tbody><tr class="empty-row"><td colspan="5">Belum ada transaksi pengeluaran pada event aktif.</td></tr></tbody>
             </table>
         <?php else: ?>
-            <?php $expenseNo = 0; $grandExpenseCents = 0; ?>
+            <?php
+            $expenseNo = 0;
+            $grandExpenseCents = 0;
+            $expenseCategoryIndex = 0;
+            $expenseToneNames = array('blue', 'teal', 'amber', 'purple', 'rose', 'slate');
+            ?>
             <?php foreach ($expenseGroups as $expenseGroup): ?>
                 <?php
                 $categoryTotalCents = (int) $expenseGroup['total_cents'];
                 $grandExpenseCents += $categoryTotalCents;
                 $categoryTotal = simp_money_from_cents($categoryTotalCents);
+                $expenseTone = $expenseToneNames[$expenseCategoryIndex % count($expenseToneNames)];
+                $expenseCategoryIndex++;
                 ?>
-                <div class="expense-category-group">
+                <div class="expense-category-group expense-tone-<?= e($expenseTone) ?>">
                 <div class="expense-category-heading"><strong><?= e($printCategory($expenseGroup['name'])) ?></strong></div>
                 <table class="report-table expense-category-table">
                     <colgroup><col width="4%" style="width:4%"><col width="14%" style="width:14%"><col width="50%" style="width:50%"><col width="18%" style="width:18%"><col width="14%" style="width:14%"></colgroup>

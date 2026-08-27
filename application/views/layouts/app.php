@@ -14,7 +14,7 @@
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@100;200;300;400;500;600;700;800;900&amp;display=swap">
     <link rel="stylesheet" type="text/css" href="<?= base_url('assets/v22/styles/bootstrap.css') ?>">
     <link rel="stylesheet" type="text/css" href="<?= base_url('assets/v22/fonts/css/fontawesome-all.min.css') ?>">
-    <link rel="stylesheet" type="text/css" href="<?= base_url('assets/css/simp-v22.css') ?>?v=54">
+    <link rel="stylesheet" type="text/css" href="<?= base_url('assets/css/simp-v22.css') ?>?v=56">
     <link rel="manifest" href="<?= base_url('manifest.webmanifest') ?>">
     <link rel="icon" type="image/png" sizes="192x192" href="<?= base_url('assets/pwa/icon-192.png') ?>">
     <link rel="apple-touch-icon" sizes="180x180" href="<?= base_url('assets/pwa/icon-180.png') ?>">

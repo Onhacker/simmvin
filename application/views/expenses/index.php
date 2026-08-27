@@ -269,29 +269,6 @@ $canVerify = !empty($canVerify);
                     </div>
                 <?php endif; ?>
 
-                <?php if ($row['status'] !== 'rejected' && $this->Auth_model->can('expenses.verify') && (empty($row['debt_id']) || $this->Auth_model->can('debts.verify'))): ?>
-                    <div class="divider mt-2 mb-2"></div>
-                    <form method="post" action="<?= site_url('pengeluaran/' . $row['id'] . '/status') ?>" data-expense-status-form>
-                        <?= csrf_field() ?>
-                        <div class="expense-status-editor d-flex flex-column flex-md-row align-items-stretch">
-                            <div class="expense-status-control input-style input-style-always-active has-borders no-icon mb-2 mb-md-0 flex-grow-1">
-                                <label for="expense-status-<?= (int) $row['id'] ?>" class="color-highlight font-12 font-500">Status</label>
-                                <select id="expense-status-<?= (int) $row['id'] ?>" name="status" aria-label="Status pengeluaran <?= e($row['expense_no']) ?>">
-                                    <?php if ($row['status'] === 'pending'): ?><option value="pending" selected>Menunggu</option><?php endif; ?>
-                                    <option value="verified" <?= $row['status'] === 'verified' ? 'selected' : '' ?>>Terverifikasi</option>
-                                    <option value="rejected" <?= $row['status'] === 'rejected' ? 'selected' : '' ?>>Ditolak</option>
-                                </select>
-                                <span><i class="fa fa-chevron-down"></i></span>
-                                <i class="fa fa-check disabled valid color-green-dark"></i>
-                                <i class="fa fa-times disabled invalid color-red-dark"></i>
-                                <em></em>
-                            </div>
-                            <button class="btn btn-s font-12 font-600 gradient-highlight rounded-s ms-md-2 px-3" type="submit" data-expense-status-submit>
-                                <i class="fas fa-check me-1"></i> Simpan Status
-                            </button>
-                        </div>
-                    </form>
-                <?php endif; ?>
             </div>
         </div>
     <?php endforeach; ?>
