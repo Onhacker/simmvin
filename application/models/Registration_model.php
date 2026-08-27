@@ -120,10 +120,9 @@ class Registration_model extends CI_Model
      * breakers, so adding or reordering other villages cannot change an
      * existing village's default signatory.
      *
-     * The returned value contains both the person's name and the selected
-     * position.  The Excel renderer currently exports the name in its single
-     * Penandatangan column; keeping the position here makes the selection
-     * auditable and leaves room for other document formats to use it.
+     * The returned value contains both the person's name and selected
+     * position.  The MOU renderer exports them as Penandatangan and Jabatan
+     * Penandatangan columns so a Word mail merge can use either field.
      */
     public function signatories_for_registrations(array $registrationIds)
     {

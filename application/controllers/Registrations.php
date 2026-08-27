@@ -800,6 +800,7 @@ class Registrations extends App_Controller
                 $registrationId = (int) (isset($row['id']) ? $row['id'] : 0);
                 $signatory = isset($signatoryMap[$registrationId]) ? $signatoryMap[$registrationId] : array();
                 $row['penandatangan'] = isset($signatory['name']) ? $signatory['name'] : '';
+                $row['penandatangan_jabatan'] = isset($signatory['position']) ? $signatory['position'] : '';
             }
             unset($row);
         }
