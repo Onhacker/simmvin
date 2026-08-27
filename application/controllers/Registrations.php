@@ -257,7 +257,7 @@ class Registrations extends App_Controller
         return $this->private_document_output('text/html', $html);
     }
 
-    /** Download one village registration as an operational F4 report. */
+    /** Download one village registration as an operational landscape F4 report. */
     public function detail_pdf($registrationId)
     {
         $this->require_permission('registrations.view');
@@ -267,7 +267,7 @@ class Registrations extends App_Controller
 
         try {
             $this->load->library('Pdf_renderer');
-            $pdf = $this->pdf_renderer->render_f4($html);
+            $pdf = $this->pdf_renderer->render_f4_landscape($html);
             return $this->private_document_output(
                 'application/pdf',
                 $pdf,

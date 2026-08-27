@@ -22,6 +22,15 @@ $moneyCents = function ($value) {
 $money = function ($cents) {
     return rupiah(simp_money_from_cents(max(0, (int) $cents)));
 };
+$phoneDigits = function ($value) {
+    $digits = preg_replace('/\D+/', '', trim((string) $value));
+    if ($digits !== '' && strpos($digits, '0') === 0) {
+        $digits = '62' . substr($digits, 1);
+    } elseif ($digits !== '' && strpos($digits, '8') === 0) {
+        $digits = '62' . $digits;
+    }
+    return $digits;
+};
 $methodLabels = array('cash'=>'Tunai', 'transfer'=>'Transfer', 'qris'=>'QRIS');
 $paymentRecordLabels = array('verified'=>'Terverifikasi', 'pending'=>'Menunggu Verifikasi', 'rejected'=>'Ditolak');
 $billingLabels = array(
@@ -67,13 +76,13 @@ if ($eventLocation === '') $eventLocation = '-';
     <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=10, user-scalable=yes">
     <title>Laporan Detail Registrasi | MVIN</title>
     <style>
-        @page { size: 210mm 330mm; margin: 12mm 10mm 14mm; }
+        @page { size: 330mm 210mm; margin: 10mm 10mm 12mm; }
         * { box-sizing: border-box; }
         html { padding: 0; color: #111827; font-family: "DejaVu Sans", Arial, sans-serif; font-size: 12px; line-height: 1.3; touch-action: pan-x pan-y; }
         body { margin: 0; padding: 0; color: #111827; font-family: inherit; font-size: inherit; line-height: inherit; touch-action: inherit; }
         body { background: #e9eef5; }
-        .sheet-stage { width: 210mm; min-height: 330mm; margin: 14px auto 24px; }
-        .sheet { width: 210mm; min-height: 330mm; margin: 0; padding: 12mm 10mm 14mm; background: #fff; box-shadow: 0 10px 34px rgba(15, 23, 42, .14); transform-origin: top left; }
+        .sheet-stage { width: 330mm; min-height: 210mm; margin: 14px auto 24px; }
+        .sheet { width: 330mm; min-height: 210mm; margin: 0; padding: 10mm 10mm 12mm; background: #fff; box-shadow: 0 10px 34px rgba(15, 23, 42, .14); transform-origin: top left; }
         .document-head, .meta-table, .summary-grid, .report-table, .document-foot { width: 100%; border-collapse: collapse; }
         .document-head td { padding: 0 0 7px; border-bottom: 2px solid #1f5fab; vertical-align: middle; }
         .logo-cell { width: 35mm; }
@@ -104,6 +113,7 @@ if ($eventLocation === '') $eventLocation = '-';
         .report-table tbody tr:nth-child(even) td { background: #f7f9fc; }
         .report-table .number { text-align: center; }
         .report-table .money { text-align: right; white-space: normal; overflow-wrap: anywhere; word-break: break-word; }
+        .report-table .phone-link { color: #174b8b; text-decoration: underline; overflow-wrap: anywhere; word-break: break-word; }
         .primary { display: block; font-weight: 700; }
         .secondary { display: block; margin-top: 1px; color: #5f6b7a; font-size: 12px; line-height: 1.2; }
         .status { display: block; width: 100%; max-width: 100%; padding: 2px 4px; border-radius: 3px; color: #fff; font-size: 12px; font-weight: 700; line-height: 1.15; text-align: center; white-space: normal; overflow-wrap: normal; word-break: normal; }
@@ -169,10 +179,10 @@ if ($eventLocation === '') $eventLocation = '-';
     <div class="section-title">Rincian Peserta</div>
     <?php if ($billingMode !== 'per_participant'): ?><p class="report-note">Pembayaran event ini dicatat pada tingkat desa. Status pada setiap peserta mengikuti status pembayaran registrasi desa dan bukan transaksi individual.</p><?php endif; ?>
     <table class="report-table">
-        <colgroup><col width="4%" style="width:4%"><col width="20%" style="width:20%"><col width="12%" style="width:12%"><col width="14%" style="width:14%"><col width="14%" style="width:14%"><col width="12%" style="width:12%"><col width="12%" style="width:12%"><col width="12%" style="width:12%"></colgroup>
-        <thead><tr><th width="4%">No.</th><th width="20%">Nama / Jabatan</th><th width="12%">Kontak</th><th width="14%">Komponen Tagihan</th><th width="14%" class="money">Terverifikasi</th><th width="12%" class="money">Menunggu</th><th width="12%" class="money">Sisa</th><th width="12%">Status</th></tr></thead>
+        <colgroup><col width="4%" style="width:4%"><col width="24%" style="width:24%"><col width="15%" style="width:15%"><col width="17%" style="width:17%"><col width="20%" style="width:20%"><col width="20%" style="width:20%"></colgroup>
+        <thead><tr><th width="4%">No.</th><th width="24%">Nama / Jabatan</th><th width="15%">Kontak</th><th width="17%">Komponen Tagihan</th><th width="20%" class="money">Sisa</th><th width="20%">Status</th></tr></thead>
         <tbody>
-        <?php if (!$participants): ?><tr class="empty-row"><td colspan="8">Tidak ada peserta aktif pada registrasi ini.</td></tr><?php endif; ?>
+        <?php if (!$participants): ?><tr class="empty-row"><td colspan="6">Tidak ada peserta aktif pada registrasi ini.</td></tr><?php endif; ?>
         <?php foreach ($participants as $index => $participant): ?>
             <?php
             $participantExpected = $moneyCents(isset($participant['expected_amount']) ? $participant['expected_amount'] : 0);
@@ -184,24 +194,22 @@ if ($eventLocation === '') $eventLocation = '-';
                 : $overallState;
             if ($billingMode === 'per_participant') {
                 $componentLabel = $money($participantExpected);
-                $verifiedLabel = $money($participantVerified);
-                $pendingLabel = $money($participantPending);
                 $remainingLabel = $money($participantRemaining);
             } elseif ($billingMode === 'per_village_extra') {
                 $componentLabel = $participantExpected > 0 ? 'Tambahan ' . $money($participantExpected) : 'Termasuk paket';
-                $verifiedLabel = $pendingLabel = $remainingLabel = 'Tingkat desa';
+                $remainingLabel = $money($remainingCents);
             } else {
                 $componentLabel = 'Paket desa';
-                $verifiedLabel = $pendingLabel = $remainingLabel = 'Tingkat desa';
+                $remainingLabel = $money($remainingCents);
             }
+            $participantPhone = trim((string) (isset($participant['phone']) ? $participant['phone'] : ''));
+            $participantPhoneDigits = $phoneDigits($participantPhone);
             ?>
             <tr>
                 <td class="number"><?= number_format($index + 1, 0, ',', '.') ?></td>
                 <td><span class="primary"><?= e(isset($participant['full_name']) ? $participant['full_name'] : '-') ?></span><span class="secondary"><?= e(!empty($participant['position']) ? $participant['position'] : '-') ?></span></td>
-                <td><?= e(!empty($participant['phone']) ? $participant['phone'] : '-') ?></td>
+                <td><?php if ($participantPhone !== '' && $participantPhoneDigits !== ''): ?><a class="phone-link" href="https://wa.me/<?= e($participantPhoneDigits) ?>" target="_blank" rel="noopener"><?= e($participantPhone) ?></a><?php else: ?>-<?php endif; ?></td>
                 <td><?= e($componentLabel) ?></td>
-                <td class="money"><?= e($verifiedLabel) ?></td>
-                <td class="money"><?= e($pendingLabel) ?></td>
                 <td class="money"><?= e($remainingLabel) ?></td>
                 <td><span class="status <?= e($participantState['class']) ?>"><?= e($participantState['label']) ?><?= $billingMode !== 'per_participant' ? ' (Desa)' : '' ?></span></td>
             </tr>
@@ -245,9 +253,9 @@ if ($eventLocation === '') $eventLocation = '-';
     var userZoom = 100;
     function fitSheet() {
         sheet.style.transform = 'none';
-        stage.style.width = '210mm';
+        stage.style.width = '330mm';
         stage.style.height = 'auto';
-        stage.style.minHeight = '330mm';
+        stage.style.minHeight = '210mm';
         var naturalWidth = sheet.offsetWidth;
         var naturalHeight = sheet.offsetHeight;
         var availableWidth = Math.max(1, document.documentElement.clientWidth - 24);

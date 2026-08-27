@@ -252,6 +252,36 @@ select[multiple].form-select { height: auto !important; min-height: 150px; paddi
   margin: 0;
 }
 
+/* Participant cards can contain three independent actions.  Keep the
+ * controls on one compact, wrapping toolbar so they do not take the same
+ * visual weight as the payment CTA or stretch to the full card width. */
+.registration-participant-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 5px;
+  margin-top: 12px;
+  padding-top: 10px;
+  border-top: 1px solid #e2e6ea;
+}
+
+.registration-participant-actions .participant-action {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  width: auto;
+  min-height: 32px;
+  padding: 5px 9px !important;
+  font-size: 12px !important;
+  line-height: 1.25 !important;
+  white-space: nowrap;
+}
+
+.theme-dark .registration-participant-actions {
+  border-color: rgba(255, 255, 255, .12);
+}
+
 @media (max-width: 359.98px) {
   .registration-region-detail-row {
     grid-template-columns: 1fr;
@@ -274,6 +304,17 @@ select[multiple].form-select { height: auto !important; min-height: 150px; paddi
 
   .registration-participant-section-actions .btn {
     flex: 1 1 0;
+  }
+
+  .registration-participant-actions {
+    gap: 4px;
+  }
+
+  .registration-participant-actions .participant-action {
+    flex: 1 1 auto;
+    min-width: 0;
+    padding-right: 7px !important;
+    padding-left: 7px !important;
   }
 }
 

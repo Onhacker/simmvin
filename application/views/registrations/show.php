@@ -82,8 +82,11 @@ foreach ($accounts as $account) $accountPayload[] = array('id'=>(int)$account['i
 <div class="card card-style">
     <div class="content mb-2">
         <p class="font-600 color-highlight mb-n1">Wilayah peserta</p>
-        <h2 class="font-22 mb-3"><?= e($registration['village_name']) ?></h2>
         <div class="registration-region-details">
+            <div class="registration-region-detail-row">
+                <span class="registration-region-detail-label">Desa</span>
+                <strong class="registration-region-detail-value"><?= e(!empty($registration['village_name']) ? $registration['village_name'] : '-') ?></strong>
+            </div>
             <div class="registration-region-detail-row">
                 <span class="registration-region-detail-label">Kecamatan</span>
                 <strong class="registration-region-detail-value"><?= e(!empty($registration['district_name']) ? $registration['district_name'] : '-') ?></strong>
@@ -149,10 +152,10 @@ foreach ($accounts as $account) $accountPayload[] = array('id'=>(int)$account['i
                 <?php elseif ($isVillageExtra): ?><div class="d-flex py-2 border-bottom"><span class="opacity-60">Komponen biaya</span><strong class="ms-auto text-end"><?= $isExtraParticipant ? rupiah($participant['expected_amount']) : 'Termasuk paket' ?></strong></div><div class="d-flex py-2"><span class="opacity-60">Pembayaran</span><strong class="ms-auto text-end">Digabung pada tagihan desa</strong></div>
                 <?php else: ?><div class="d-flex py-2"><span class="opacity-60">Tagihan</span><strong class="ms-auto">Dicatat per desa</strong></div><?php endif; ?>
                 <?php if ($canManageParticipants): ?>
-                    <div class="row mb-0 mt-3" data-participant-actions>
-                        <div class="col-12 col-sm-4 mb-2 mb-sm-0"><button type="button" class="btn btn-full btn-m border-blue-dark color-blue-dark rounded-s font-600" data-participant-edit-open data-participant-id="<?= (int) $participant['id'] ?>" data-participant-name="<?= e($participant['full_name']) ?>" data-participant-position-id="<?= $participantPositionId ?>" data-participant-phone="<?= e(isset($participant['phone']) ? $participant['phone'] : '') ?>" data-participant-remaining="<?= e($participantRemaining) ?>" data-participant-expected="<?= e($participant['expected_amount']) ?>"><i class="fa fa-edit me-1"></i>Ubah</button></div>
-                        <div class="col-12 col-sm-4 mb-2 mb-sm-0"><button type="button" class="btn btn-full btn-m border-orange-dark color-orange-dark rounded-s font-600" data-participant-replace-open data-participant-id="<?= (int) $participant['id'] ?>" data-participant-name="<?= e($participant['full_name']) ?>" data-participant-position-id="<?= $participantPositionId ?>" data-participant-phone="<?= e(isset($participant['phone']) ? $participant['phone'] : '') ?>"><i class="fa fa-exchange-alt me-1"></i>Ganti</button></div>
-                        <div class="col-12 col-sm-4"><button type="button" class="btn btn-full btn-m border-red-dark color-red-dark rounded-s font-600" data-participant-deactivate-open data-participant-id="<?= (int) $participant['id'] ?>" data-participant-name="<?= e($participant['full_name']) ?>"><i class="fa fa-user-slash me-1"></i>Nonaktifkan</button></div>
+                    <div class="registration-participant-actions" data-participant-actions>
+                        <button type="button" class="btn btn-xxs border-blue-dark color-blue-dark rounded-s font-600 participant-action" data-participant-edit-open data-participant-id="<?= (int) $participant['id'] ?>" data-participant-name="<?= e($participant['full_name']) ?>" data-participant-position-id="<?= $participantPositionId ?>" data-participant-phone="<?= e(isset($participant['phone']) ? $participant['phone'] : '') ?>" data-participant-remaining="<?= e($participantRemaining) ?>" data-participant-expected="<?= e($participant['expected_amount']) ?>"><i class="fa fa-edit me-1"></i>Ubah</button>
+                        <button type="button" class="btn btn-xxs border-orange-dark color-orange-dark rounded-s font-600 participant-action" data-participant-replace-open data-participant-id="<?= (int) $participant['id'] ?>" data-participant-name="<?= e($participant['full_name']) ?>" data-participant-position-id="<?= $participantPositionId ?>" data-participant-phone="<?= e(isset($participant['phone']) ? $participant['phone'] : '') ?>"><i class="fa fa-exchange-alt me-1"></i>Ganti</button>
+                        <button type="button" class="btn btn-xxs border-red-dark color-red-dark rounded-s font-600 participant-action" data-participant-deactivate-open data-participant-id="<?= (int) $participant['id'] ?>" data-participant-name="<?= e($participant['full_name']) ?>"><i class="fa fa-user-slash me-1"></i>Nonaktifkan</button>
                     </div>
                 <?php endif; ?>
             </div></div>
