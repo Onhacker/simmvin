@@ -1506,10 +1506,25 @@ body {
   }
 }
 
+@media (min-width: 400px) and (max-width: 575.98px) {
+  #expense-list .expense-card-detail-row,
+  #expense-list .expense-card-proof-row {
+    /* At common phone widths there is enough room to keep the longest
+     * label on one line while retaining a shared value column. */
+    grid-template-columns: 140px 10px minmax(0, 1fr);
+  }
+}
+
 @media (max-width: 359.98px) {
   #expense-list .expense-card-detail-row,
   #expense-list .expense-card-proof-row {
     grid-template-columns: 126px 8px minmax(0, 1fr);
+  }
+
+  #expense-list .expense-card-total-row .expense-card-label {
+    /* Preserve a single-line total label on the narrowest phones without
+     * reducing the readable 15px scale used by the other detail values. */
+    font-size: 14px;
   }
 }
 
