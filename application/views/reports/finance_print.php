@@ -240,7 +240,7 @@ $tariffFormula = function ($event) use ($printRupiah) {
     window.addEventListener('resize', fitSheet);
 }());
 </script>
-<script src="<?= e(base_url('assets/js/print-preview.js')) ?>?v=3"></script>
+<script src="<?= e(base_url('assets/js/print-preview.min.js')) ?>?v=4"></script>
 <?php endif; ?>
 </body>
 </html>

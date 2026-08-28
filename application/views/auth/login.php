@@ -103,7 +103,7 @@
 
     </main>
     <!-- AppKit dialog used by the AJAX login error state. Keep this markup
-         static so custom.js can attach its menu listeners on page load. -->
+         static so the minified template script can attach its menu listeners. -->
     <a id="simp-dialog-opener" href="#" class="d-none" data-menu="menu-simp-dialog" aria-hidden="true" tabindex="-1"></a>
     <div id="menu-simp-dialog" class="menu menu-box-modal rounded-m" data-menu-height="300" data-menu-width="350" role="dialog" aria-modal="true" aria-hidden="true" aria-labelledby="simp-dialog-title" aria-describedby="simp-dialog-message">
         <h1 class="text-center mt-4"><i id="simp-dialog-icon" class="fa fa-3x fa-exclamation-circle scale-box color-red-dark shadow-xl rounded-circle"></i></h1>
@@ -124,9 +124,9 @@
     <div class="menu-hider"></div>
 </div>
 <script src="<?= base_url('assets/v22/scripts/bootstrap.min.js') ?>"></script>
-<script src="<?= base_url('assets/v22/scripts/custom.js') ?>?v=3"></script>
-<script>window.SIMP={baseUrl:<?= json_encode(base_url()) ?>,csrfName:<?= json_encode($this->security->get_csrf_token_name()) ?>,csrfHash:<?= json_encode($this->security->get_csrf_hash()) ?>,serviceWorkerUrl:<?= json_encode(base_url('service-worker.js')) ?>,serviceWorkerScope:<?= json_encode(base_url()) ?>};</script>
-<script src="<?= base_url('assets/js/app.js') ?>?v=15"></script>
-<script src="<?= base_url('assets/js/auth.js') ?>?v=3"></script>
+<script src="<?= base_url('assets/v22/scripts/custom.min.js') ?>?v=4"></script>
+<script>window.SIMP={baseUrl:<?= json_encode(base_url()) ?>,csrfName:<?= json_encode($this->security->get_csrf_token_name()) ?>,csrfHash:<?= json_encode($this->security->get_csrf_hash()) ?>,serviceWorkerUrl:<?= json_encode(base_url('service-worker.min.js')) ?>,serviceWorkerScope:<?= json_encode(base_url()) ?>};</script>
+<script src="<?= base_url('assets/js/app.min.js') ?>?v=16"></script>
+<script src="<?= base_url('assets/js/auth.min.js') ?>?v=4"></script>
 </body>
 </html>

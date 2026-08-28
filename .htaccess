@@ -28,8 +28,8 @@ DirectoryIndex index.php
     Header always set Referrer-Policy "strict-origin-when-cross-origin"
 </IfModule>
 
-<Files "service-worker.js">
+<FilesMatch "^service-worker(?:\.min)?\.js$">
     <IfModule mod_headers.c>
         Header set Cache-Control "no-cache, no-store, must-revalidate"
     </IfModule>
-</Files>
+</FilesMatch>

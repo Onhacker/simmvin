@@ -37,6 +37,16 @@ Antarmuka menggunakan aset dan pola komponen AppKit yang sudah tersedia di folde
    Isi `.env` server dengan `REGIONAL_DB_HOST`, `REGIONAL_DB_PORT`, `REGIONAL_DB_USER`, `REGIONAL_DB_PASS`, dan `REGIONAL_DB_NAME` milik database lokasi baru. Nama database lokasi harus berbeda dari `DB_NAME`; aplikasi sengaja berhenti jika keduanya sama.
 6. Buka `http://localhost/simp/`.
 
+## Optimasi aset lokal
+
+Aplikasi memakai berkas `.min.css` dan `.min.js` pada runtime, sedangkan berkas sumber tetap disimpan agar mudah dikembangkan. Setelah mengubah CSS atau JavaScript sumber, perbarui semua pasangan minified dari folder proyek dengan:
+
+```bash
+sh scripts/minify-assets.sh
+```
+
+Skrip memakai versi minifier yang dikunci melalui npm. Server produksi tidak perlu menjalankan proses ini karena seluruh hasil minifikasi ikut disimpan di Git.
+
 Pada server Linux, pastikan proses PHP dapat menulis ke `application/cache`. Generator PDF otomatis memakai direktori sementara sistem sebagai cadangan apabila cache aplikasi tidak dapat ditulis.
 
 Akun awal (khusus instalasi lokal/demo; jangan gunakan kredensial ini pada server publik):

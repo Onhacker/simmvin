@@ -106,9 +106,9 @@
     <div class="menu-hider"></div>
 </div>
 <script src="<?= base_url('assets/v22/scripts/bootstrap.min.js') ?>"></script>
-<script src="<?= base_url('assets/v22/scripts/custom.js') ?>?v=3"></script>
-<script>window.SIMP={baseUrl:<?= json_encode(base_url()) ?>,csrfName:<?= json_encode($this->security->get_csrf_token_name()) ?>,csrfHash:<?= json_encode($this->security->get_csrf_hash()) ?>,serviceWorkerUrl:<?= json_encode(base_url('service-worker.js')) ?>,serviceWorkerScope:<?= json_encode(base_url()) ?>};</script>
-<script src="<?= base_url('assets/js/app.js') ?>?v=15"></script>
+<script src="<?= base_url('assets/v22/scripts/custom.min.js') ?>?v=4"></script>
+<script>window.SIMP={baseUrl:<?= json_encode(base_url()) ?>,csrfName:<?= json_encode($this->security->get_csrf_token_name()) ?>,csrfHash:<?= json_encode($this->security->get_csrf_hash()) ?>,serviceWorkerUrl:<?= json_encode(base_url('service-worker.min.js')) ?>,serviceWorkerScope:<?= json_encode(base_url()) ?>};</script>
+<script src="<?= base_url('assets/js/app.min.js') ?>?v=16"></script>
 <?php
 $resolvedPageScripts = array();
 if (!empty($pageScript)) $resolvedPageScripts[] = $pageScript;
@@ -116,7 +116,13 @@ if (!empty($pageScripts) && is_array($pageScripts)) $resolvedPageScripts = array
 $resolvedPageScripts = array_values(array_unique(array_filter($resolvedPageScripts)));
 ?>
 <?php foreach ($resolvedPageScripts as $resolvedPageScript): ?>
-    <script src="<?= base_url('assets/js/' . basename($resolvedPageScript)) ?>?v=46"></script>
+    <?php
+    $resolvedMinifiedScript = basename($resolvedPageScript);
+    if (substr($resolvedMinifiedScript, -7) !== '.min.js') {
+        $resolvedMinifiedScript = preg_replace('/\.js$/', '.min.js', $resolvedMinifiedScript);
+    }
+    ?>
+    <script src="<?= base_url('assets/js/' . $resolvedMinifiedScript) ?>?v=47"></script>
 <?php endforeach; ?>
 </body>
 </html>
