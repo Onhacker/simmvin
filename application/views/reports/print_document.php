@@ -338,6 +338,28 @@ $accountSummary = array_merge(array(
         </div>
     <?php endif; ?>
 
+    <?php
+    /* The participant printout shows BB/Lunas per participant. Calculate
+     * these counters from the same due/paid rules used by the table below so
+     * package-village and hybrid billing remain consistent with each row. */
+    $incomeParticipantStatusCounts = array('bb' => 0, 'lunas' => 0);
+    if ($reportKind === 'income' && isset($report['view']) && $report['view'] === 'participant') {
+        foreach ((array) $report['rows'] as $incomeParticipantRow) {
+            $incomeBillingMode = isset($incomeParticipantRow['billing_mode']) ? (string) $incomeParticipantRow['billing_mode'] : '';
+            $incomeVillageBilling = in_array($incomeBillingMode, array('per_village', 'per_village_extra'), TRUE);
+            $incomeDueCents = $moneyCents(isset($incomeParticipantRow['due_amount']) ? $incomeParticipantRow['due_amount'] : 0);
+            $incomePaidCents = $moneyCents(isset($incomeParticipantRow['paid']) ? $incomeParticipantRow['paid'] : 0);
+            if ($incomeVillageBilling) {
+                $incomeDueCents = $moneyCents(isset($incomeParticipantRow['village_due']) ? $incomeParticipantRow['village_due'] : 0);
+                $incomePaidCents = $moneyCents(isset($incomeParticipantRow['village_paid']) ? $incomeParticipantRow['village_paid'] : 0);
+            }
+            $incomeIsLunas = ($incomeDueCents > 0 && $incomePaidCents >= $incomeDueCents)
+                || ($incomeDueCents <= 0 && $incomePaidCents > 0);
+            $incomeIsLunas ? $incomeParticipantStatusCounts['lunas']++ : $incomeParticipantStatusCounts['bb']++;
+        }
+    }
+    ?>
+
     <div class="section-title">Ringkasan</div>
     <?php if ($reportKind === 'income'): ?>
         <?php $summary = $report['summary']; ?>
@@ -354,6 +376,12 @@ $accountSummary = array_merge(array(
                 <td><span class="summary-label">QRIS</span><span class="summary-value"><?= e($printRupiah($summary['qris_total'])) ?></span></td>
                 <td><span class="summary-label">Sisa Tagihan</span><span class="summary-value <?= $summary['outstanding'] > 0 ? 'negative' : 'positive' ?>"><?= e($printRupiah($summary['outstanding'])) ?></span></td>
             </tr>
+            <?php if ($report['view'] === 'participant'): ?>
+            <tr>
+                <td colspan="2"><span class="summary-label">Jumlah BB</span><span class="summary-value negative"><?= number_format((int) $incomeParticipantStatusCounts['bb']) ?></span></td>
+                <td colspan="2"><span class="summary-label">Jumlah Lunas</span><span class="summary-value positive"><?= number_format((int) $incomeParticipantStatusCounts['lunas']) ?></span></td>
+            </tr>
+            <?php endif; ?>
         </table>
     <?php elseif ($reportKind === 'expense'): ?>
         <?php $expenseSummaryTotalCents = 0; ?>
@@ -411,14 +439,14 @@ $accountSummary = array_merge(array(
     <?php if ($reportKind === 'income'): ?>
         <table class="report-table">
             <?php if ($report['view'] === 'participant'): ?>
-            <colgroup><col width="28%" style="width:28%"><col width="28%" style="width:28%"><col width="18%" style="width:18%"><col width="14%" style="width:14%"><col width="12%" style="width:12%"></colgroup>
-            <thead><tr><th width="28%">Kecamatan/Desa</th><th width="28%">Nama Peserta/Jabatan</th><th width="18%">No. HP</th><th width="14%">Status Bayar (BB/Lunas)</th><th width="12%">Status</th></tr></thead>
+            <colgroup><col width="4%" style="width:4%"><col width="32%" style="width:32%"><col width="26%" style="width:26%"><col width="16%" style="width:16%"><col width="14%" style="width:14%"><col width="8%" style="width:8%"></colgroup>
+            <thead><tr><th width="4%">No.</th><th width="32%">Kecamatan/Desa</th><th width="26%">Nama Peserta/Jabatan</th><th width="16%">No. HP</th><th width="14%">Status Bayar (BB/Lunas)</th><th width="8%">Status</th></tr></thead>
             <?php else: ?>
             <colgroup><col width="4%" style="width:4%"><col width="39%" style="width:39%"><col width="16%" style="width:16%"><col width="21%" style="width:21%"><col width="12%" style="width:12%"><col width="8%" style="width:8%"></colgroup>
             <thead><tr><th width="4%">No.</th><th width="39%">Kecamatan/Desa</th><th width="16%" class="money">Tagihan</th><th width="21%" class="money">Dana Masuk (Terverifikasi)</th><th width="12%" class="money">Sisa Tagihan</th><th width="8%">Status</th></tr></thead>
             <?php endif; ?>
             <tbody>
-            <?php if (!$report['rows']): ?><tr class="empty-row"><td colspan="<?= $report['view'] === 'participant' ? '5' : '6' ?>">Belum ada data registrasi pada event aktif.</td></tr><?php endif; ?>
+            <?php if (!$report['rows']): ?><tr class="empty-row"><td colspan="6">Belum ada data registrasi pada event aktif.</td></tr><?php endif; ?>
             <?php foreach ($report['rows'] as $index => $row): ?>
                 <?php
                 $participantView = $report['view'] === 'participant';
@@ -459,6 +487,7 @@ $accountSummary = array_merge(array(
                     $isParticipantPaid = $statusDueCents > 0 && $statusPaidCents >= $statusDueCents;
                     if ($statusDueCents <= 0 && $statusPaidCents > 0) $isParticipantPaid = TRUE;
                     ?>
+                    <td class="number"><?= number_format($index + 1) ?></td>
                     <td class="income-region-cell"><span class="district-name"><?= e($row['district_name']) ?></span><span class="village-name"><?= e($row['village_name']) ?></span></td>
                     <td><span class="primary"><?= e($row['participant_name']) ?></span><span class="secondary"><?= e($row['position']) ?></span></td>
                     <td><?php if ($phone !== '' && $phoneDigits !== ''): ?><a class="phone-link" href="https://wa.me/<?= e($phoneDigits) ?>" target="_blank" rel="noopener"><?= e($phone) ?></a><?php else: ?>-<?php endif; ?></td>
