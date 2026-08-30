@@ -193,7 +193,6 @@ $accountSummary = array_merge(array(
          * distributing or checking payments.  Keep the district as context,
          * but make the village name visibly stronger in both HTML preview and
          * the generated PDF. */
-        .income-region-cell .district-name { display: block; color: #374151; font-size: 12px; font-weight: 600; line-height: 1.2; }
         .income-region-cell .village-name { display: block; margin-top: 2px; color: #111827; font-size: 13px; font-weight: 800; line-height: 1.2; }
         .income-region-cell .participant-count { display: block; margin-top: 2px; color: #5f6b7a; font-size: 12px; line-height: 1.2; }
         .income-district-heading td { padding: 5px 7px; border: 1px solid #c7d8ed; border-left: 4px solid #1f5fab; background: #eaf2fc !important; color: #174b8b; font-size: 12px; font-weight: 800; line-height: 1.2; text-transform: uppercase; page-break-after: avoid; break-after: avoid; }
@@ -477,10 +476,10 @@ $accountSummary = array_merge(array(
         <table class="report-table">
             <?php if ($report['view'] === 'participant'): ?>
             <colgroup><col width="4%" style="width:4%"><col width="32%" style="width:32%"><col width="26%" style="width:26%"><col width="16%" style="width:16%"><col width="14%" style="width:14%"><col width="8%" style="width:8%"></colgroup>
-            <thead><tr><th width="4%">No.</th><th width="32%">Kecamatan/Desa</th><th width="26%">Nama Peserta/Jabatan</th><th width="16%">No. HP</th><th width="14%">Status Bayar (BB/Lunas)</th><th width="8%">Status</th></tr></thead>
+            <thead><tr><th width="4%">No.</th><th width="32%">Desa</th><th width="26%">Nama Peserta/Jabatan</th><th width="16%">No. HP</th><th width="14%">Status Bayar (BB/Lunas)</th><th width="8%">Status</th></tr></thead>
             <?php else: ?>
             <colgroup><col width="4%" style="width:4%"><col width="39%" style="width:39%"><col width="16%" style="width:16%"><col width="21%" style="width:21%"><col width="12%" style="width:12%"><col width="8%" style="width:8%"></colgroup>
-            <thead><tr><th width="4%">No.</th><th width="39%">Kecamatan/Desa</th><th width="16%" class="money">Tagihan</th><th width="21%" class="money">Dana Masuk (Terverifikasi)</th><th width="12%" class="money">Sisa Tagihan</th><th width="8%">Status</th></tr></thead>
+            <thead><tr><th width="4%">No.</th><th width="39%">Desa</th><th width="16%" class="money">Tagihan</th><th width="21%" class="money">Dana Masuk (Terverifikasi)</th><th width="12%" class="money">Sisa Tagihan</th><th width="8%">Status</th></tr></thead>
             <?php endif; ?>
             <tbody>
             <?php if (!$report['rows']): ?><tr class="empty-row"><td colspan="6">Belum ada data registrasi pada event aktif.</td></tr><?php endif; ?>
@@ -532,14 +531,14 @@ $accountSummary = array_merge(array(
                     if ($statusDueCents <= 0 && $statusPaidCents > 0) $isParticipantPaid = TRUE;
                     ?>
                     <td class="number"><?= number_format($index + 1) ?></td>
-                    <td class="income-region-cell"><span class="district-name"><?= e($row['district_name']) ?></span><span class="village-name"><?= e($row['village_name']) ?></span></td>
+                    <td class="income-region-cell"><span class="village-name"><?= e($row['village_name']) ?></span></td>
                     <td><span class="primary"><?= e($row['participant_name']) ?></span><span class="secondary"><?= e($row['position']) ?></span></td>
                     <td><?php if ($phone !== '' && $phoneDigits !== ''): ?><a class="phone-link" href="https://wa.me/<?= e($phoneDigits) ?>" target="_blank" rel="noopener"><?= e($phone) ?></a><?php else: ?>-<?php endif; ?></td>
                     <td><span class="status <?= $isParticipantPaid ? 'green' : 'red' ?>"><?= $isParticipantPaid ? 'Lunas' : 'BB' ?></span></td>
                     <td><span class="status <?= $registrationStatusClass ?>"><?= e($registrationStatusLabel) ?></span></td>
                     <?php else: ?>
                     <td class="number"><?= number_format($index + 1) ?></td>
-                    <td class="income-region-cell"><span class="district-name"><?= e($row['district_name']) ?></span><span class="village-name"><?= e($row['village_name']) ?></span><span class="participant-count"><?= number_format((int) $row['participant_count']) ?> peserta</span></td>
+                    <td class="income-region-cell"><span class="village-name"><?= e($row['village_name']) ?></span><span class="participant-count"><?= number_format((int) $row['participant_count']) ?> peserta</span></td>
                     <td class="money"><?= e($printRupiah($due)) ?></td>
                     <td class="money"><span class="primary"><?= e($printRupiah($paid)) ?></span><span class="secondary"><?= $villageBillingParticipant ? 'Dicatat di desa' : 'T ' . e($printRupiah($row['cash_total'], FALSE)) . ' · TF ' . e($printRupiah($row['transfer_total'], FALSE)) . ' · Q ' . e($printRupiah($row['qris_total'], FALSE)) ?></span></td>
                     <td class="money"><?= e($printRupiah($remaining)) ?></td>
