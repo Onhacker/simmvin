@@ -189,6 +189,13 @@ $accountSummary = array_merge(array(
         .report-table .money { text-align: right; white-space: normal; overflow-wrap: anywhere; word-break: break-word; }
         .report-table .primary { display: block; font-weight: 700; }
         .report-table .secondary { display: block; margin-top: 1px; color: #5f6b7a; font-size: 12px; line-height: 1.2; }
+        /* On income reports the village is the most useful identity when
+         * distributing or checking payments.  Keep the district as context,
+         * but make the village name visibly stronger in both HTML preview and
+         * the generated PDF. */
+        .income-region-cell .district-name { display: block; color: #374151; font-size: 12px; font-weight: 600; line-height: 1.2; }
+        .income-region-cell .village-name { display: block; margin-top: 2px; color: #111827; font-size: 13px; font-weight: 800; line-height: 1.2; }
+        .income-region-cell .participant-count { display: block; margin-top: 2px; color: #5f6b7a; font-size: 12px; line-height: 1.2; }
         .report-table .phone-link { color: #174b8b; text-decoration: underline; overflow-wrap: anywhere; word-break: break-word; }
         .report-note { margin: -1px 0 6px; padding: 5px 7px; border-left: 3px solid #1f5fab; background: #f3f7fc; color: #4b5563; font-size: 12px; }
         .expense-category-heading { margin: 8px 0 3px; padding: 4px 8px; border-left: 4px solid #1f5fab; background: #eaf2fc; color: #174b8b; page-break-after: avoid; break-after: avoid; }
@@ -452,14 +459,14 @@ $accountSummary = array_merge(array(
                     $isParticipantPaid = $statusDueCents > 0 && $statusPaidCents >= $statusDueCents;
                     if ($statusDueCents <= 0 && $statusPaidCents > 0) $isParticipantPaid = TRUE;
                     ?>
-                    <td><span class="primary"><?= e($row['district_name']) ?></span><span class="secondary"><?= e($row['village_name']) ?></span></td>
+                    <td class="income-region-cell"><span class="district-name"><?= e($row['district_name']) ?></span><span class="village-name"><?= e($row['village_name']) ?></span></td>
                     <td><span class="primary"><?= e($row['participant_name']) ?></span><span class="secondary"><?= e($row['position']) ?></span></td>
                     <td><?php if ($phone !== '' && $phoneDigits !== ''): ?><a class="phone-link" href="https://wa.me/<?= e($phoneDigits) ?>" target="_blank" rel="noopener"><?= e($phone) ?></a><?php else: ?>-<?php endif; ?></td>
                     <td><span class="status <?= $isParticipantPaid ? 'green' : 'red' ?>"><?= $isParticipantPaid ? 'Lunas' : 'BB' ?></span></td>
                     <td><span class="status <?= $registrationStatusClass ?>"><?= e($registrationStatusLabel) ?></span></td>
                     <?php else: ?>
                     <td class="number"><?= number_format($index + 1) ?></td>
-                    <td><span class="primary"><?= e($row['district_name']) ?></span><span class="secondary"><?= e($row['village_name']) ?></span><span class="secondary"><?= number_format((int) $row['participant_count']) ?> peserta</span></td>
+                    <td class="income-region-cell"><span class="district-name"><?= e($row['district_name']) ?></span><span class="village-name"><?= e($row['village_name']) ?></span><span class="participant-count"><?= number_format((int) $row['participant_count']) ?> peserta</span></td>
                     <td class="money"><?= e($printRupiah($due)) ?></td>
                     <td class="money"><span class="primary"><?= e($printRupiah($paid)) ?></span><span class="secondary"><?= $villageBillingParticipant ? 'Dicatat di desa' : 'T ' . e($printRupiah($row['cash_total'], FALSE)) . ' · TF ' . e($printRupiah($row['transfer_total'], FALSE)) . ' · Q ' . e($printRupiah($row['qris_total'], FALSE)) ?></span></td>
                     <td class="money"><?= e($printRupiah($remaining)) ?></td>
