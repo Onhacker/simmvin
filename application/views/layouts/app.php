@@ -45,10 +45,10 @@
         <?php else: ?>
             <a class="circle-nav" href="<?= site_url('dashboard') ?>"><i class="fa fa-graduation-cap"></i><span>MVIN</span></a>
         <?php endif; ?>
-        <?php if ($this->Auth_model->can('accounts.view')): ?>
-            <a class="<?= nav_is('accounts') ? 'active-nav' : '' ?>" href="<?= site_url('akun-dana') ?>"><i class="fa fa-wallet"></i><span>Kas</span></a>
+        <?php if ($this->Auth_model->can('reports.income')): ?>
+            <a class="<?= nav_is('reports') && $this->router->fetch_method() === 'income' ? 'active-nav' : '' ?>" href="<?= site_url('laporan/pemasukan') ?>"><i class="fa fa-chart-line"></i><span>Pemasukan</span></a>
         <?php else: ?>
-            <a href="<?= site_url('dashboard') ?>"><i class="fa fa-wallet"></i><span>Kas</span></a>
+            <a href="<?= site_url('dashboard') ?>"><i class="fa fa-chart-line"></i><span>Pemasukan</span></a>
         <?php endif; ?>
         <a class="<?= $menuNavActive ? 'active-nav' : '' ?>" href="#" data-menu="menu-main"><i class="fa fa-bars"></i><span>Menu</span></a>
     </div>

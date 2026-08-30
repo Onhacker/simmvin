@@ -196,6 +196,8 @@ $accountSummary = array_merge(array(
         .income-region-cell .district-name { display: block; color: #374151; font-size: 12px; font-weight: 600; line-height: 1.2; }
         .income-region-cell .village-name { display: block; margin-top: 2px; color: #111827; font-size: 13px; font-weight: 800; line-height: 1.2; }
         .income-region-cell .participant-count { display: block; margin-top: 2px; color: #5f6b7a; font-size: 12px; line-height: 1.2; }
+        .income-district-heading td { padding: 5px 7px; border: 1px solid #c7d8ed; border-left: 4px solid #1f5fab; background: #eaf2fc !important; color: #174b8b; font-size: 12px; font-weight: 800; line-height: 1.2; text-transform: uppercase; page-break-after: avoid; break-after: avoid; }
+        .income-district-heading .district-heading-label { display: block; }
         .report-table .phone-link { color: #174b8b; text-decoration: underline; overflow-wrap: anywhere; word-break: break-word; }
         .report-note { margin: -1px 0 6px; padding: 5px 7px; border-left: 3px solid #1f5fab; background: #f3f7fc; color: #4b5563; font-size: 12px; }
         .expense-category-heading { margin: 8px 0 3px; padding: 4px 8px; border-left: 4px solid #1f5fab; background: #eaf2fc; color: #174b8b; page-break-after: avoid; break-after: avoid; }
@@ -437,6 +439,41 @@ $accountSummary = array_merge(array(
 
     <div class="section-title"><?= $reportKind === 'accounts' ? 'Rincian Akun Dana' : ($reportKind === 'debt' ? 'Rincian Hutang' : 'Rincian Transaksi') ?></div>
     <?php if ($reportKind === 'income'): ?>
+        <?php
+        /*
+         * Keep income printouts easy to scan by collecting rows under a
+         * Kecamatan sub-header.  The report query can contain more than one
+         * event, so grouping by district here (rather than only detecting a
+         * change between adjacent rows) also keeps the same district together
+         * when it appears in multiple event batches.  The original row order
+         * is preserved within each group.
+         */
+        $incomePrintRows = array();
+        $incomeDistrictGroups = array();
+        foreach ((array) $report['rows'] as $incomePrintRow) {
+            $incomeDistrictName = trim((string) (isset($incomePrintRow['district_name']) ? $incomePrintRow['district_name'] : ''));
+            $incomeRegencyName = trim((string) (isset($incomePrintRow['regency_name']) ? $incomePrintRow['regency_name'] : ''));
+            $incomeDistrictKey = strtolower($incomeRegencyName . '|' . $incomeDistrictName);
+            if (!isset($incomeDistrictGroups[$incomeDistrictKey])) {
+                $incomeDistrictGroups[$incomeDistrictKey] = array(
+                    'district_name' => $incomeDistrictName !== '' ? $incomeDistrictName : 'Tanpa Kecamatan',
+                    'regency_name' => $incomeRegencyName,
+                    'rows' => array()
+                );
+            }
+            $incomeDistrictGroups[$incomeDistrictKey]['rows'][] = $incomePrintRow;
+        }
+        foreach ($incomeDistrictGroups as $incomeDistrictGroup) {
+            $incomePrintRows[] = array(
+                '__district_heading' => TRUE,
+                'district_name' => $incomeDistrictGroup['district_name'],
+                'regency_name' => $incomeDistrictGroup['regency_name']
+            );
+            foreach ($incomeDistrictGroup['rows'] as $incomeDistrictRow) {
+                $incomePrintRows[] = $incomeDistrictRow;
+            }
+        }
+        ?>
         <table class="report-table">
             <?php if ($report['view'] === 'participant'): ?>
             <colgroup><col width="4%" style="width:4%"><col width="32%" style="width:32%"><col width="26%" style="width:26%"><col width="16%" style="width:16%"><col width="14%" style="width:14%"><col width="8%" style="width:8%"></colgroup>
@@ -447,7 +484,14 @@ $accountSummary = array_merge(array(
             <?php endif; ?>
             <tbody>
             <?php if (!$report['rows']): ?><tr class="empty-row"><td colspan="6">Belum ada data registrasi pada event aktif.</td></tr><?php endif; ?>
-            <?php foreach ($report['rows'] as $index => $row): ?>
+            <?php $incomePrintRowNumber = 0; ?>
+            <?php foreach ($incomePrintRows as $incomePrintRow): ?>
+                <?php if (!empty($incomePrintRow['__district_heading'])): ?>
+                <tr class="income-district-heading">
+                    <td colspan="6"><span class="district-heading-label">Kecamatan: <?= e($incomePrintRow['district_name']) ?><?php if (trim((string) $incomePrintRow['regency_name']) !== ''): ?> · <?= e($incomePrintRow['regency_name']) ?><?php endif; ?></span></td>
+                </tr>
+                <?php else: ?>
+                <?php $row = $incomePrintRow; $index = $incomePrintRowNumber++; ?>
                 <?php
                 $participantView = $report['view'] === 'participant';
                 $pureVillageParticipant = $participantView && $row['billing_mode'] === 'per_village';
@@ -502,6 +546,7 @@ $accountSummary = array_merge(array(
                     <td><span class="status <?= $statusClass ?>"><?= e($statusLabel) ?></span></td>
                     <?php endif; ?>
                 </tr>
+                <?php endif; ?>
             <?php endforeach; ?>
             </tbody>
         </table>
