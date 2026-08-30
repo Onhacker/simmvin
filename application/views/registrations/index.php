@@ -13,6 +13,7 @@ $totalParticipants = $hasTotalParticipants ? (int) $totalParticipants : 0;
 if (!$hasTotalParticipants) foreach ($registrations as $registration) $totalParticipants += (int) $registration['participant_count'];
 $canCreate = $this->Auth_model->can('registrations.create');
 $canPrint = $this->Auth_model->can('registrations.view');
+$canDelete = $this->Auth_model->can('registrations.edit');
 $canRecordPayment = !empty($canRecordPayment);
 $accounts = isset($accounts) && is_array($accounts) ? $accounts : array();
 $positionPayload = array();
@@ -94,7 +95,7 @@ if ($activeEvents) {
             $remainingAmount = simp_money_from_cents($remainingAmountCents);
             $paymentStatus = payment_status($committedAmount, $row['expected_amount']);
             ?>
-            <div class="card card-style mx-0 mb-3 registration-card"><div class="content mb-3">
+            <div class="card card-style mx-0 mb-3 registration-card" data-registration-card-id="<?= (int) $row['id'] ?>"><div class="content mb-3">
                 <div class="registration-card-details" aria-label="Rincian registrasi">
                     <div class="registration-card-detail-row"><span class="registration-card-label">Kecamatan</span><span class="registration-card-separator" aria-hidden="true">|</span><strong class="registration-card-value color-highlight"><?= e($row['district_name']) ?></strong></div>
                     <div class="registration-card-detail-row"><span class="registration-card-label">Desa</span><span class="registration-card-separator" aria-hidden="true">|</span><strong class="registration-card-value"><?= e($row['village_name']) ?></strong></div>
@@ -105,7 +106,12 @@ if ($activeEvents) {
                     <?php if ($pendingAmount > 0): ?><div class="registration-card-detail-row"><span class="registration-card-label">Menunggu verifikasi</span><span class="registration-card-separator" aria-hidden="true">|</span><strong class="registration-card-value color-yellow-dark simp-balance-value"><?= rupiah($pendingAmount) ?></strong></div><?php endif; ?>
                     <div class="registration-card-detail-row"><span class="registration-card-label">Sisa</span><span class="registration-card-separator" aria-hidden="true">|</span><strong class="registration-card-value <?= $remainingAmountCents > 0 ? 'color-yellow-dark' : 'color-green-dark' ?> simp-balance-value"><?= rupiah($remainingAmount) ?></strong></div>
                 </div>
-                <div class="d-flex justify-content-end mt-2"><a class="btn btn-s gradient-highlight rounded-s font-600 font-11 px-3" href="<?= site_url('registrasi/'.$row['id']) ?>">Lihat Detail <i class="fa fa-arrow-right ms-1"></i></a></div>
+                <div class="d-flex flex-wrap justify-content-end align-items-center gap-2 mt-2">
+                    <a class="btn btn-s gradient-highlight rounded-s font-600 font-11 px-3" href="<?= site_url('registrasi/'.$row['id']) ?>">Lihat Detail <i class="fa fa-arrow-right ms-1"></i></a>
+                    <?php if ($canDelete): ?>
+                        <button type="button" class="btn btn-s bg-theme color-red-dark border-red-dark rounded-s font-600 font-11 px-3" data-registration-delete-open data-registration-delete-url="<?= site_url('registrasi/'.(int)$row['id'].'/ajax/hapus') ?>" data-registration-delete-label="<?= e($row['village_name'].' · '.$row['district_name']) ?>" data-registration-delete-participants="<?= (int) $row['participant_count'] ?>"><i class="fa fa-trash-alt me-1"></i> Hapus</button>
+                    <?php endif; ?>
+                </div>
             </div></div>
         <?php endforeach; ?>
         <div id="registration-pagination" class="card card-style mx-0" data-registration-pagination>

@@ -579,6 +579,39 @@ class Registrations extends App_Controller
         }
     }
 
+    /** Permanently delete one active registration and every owned detail. */
+    public function delete_ajax($id)
+    {
+        $this->require_permission('registrations.edit');
+        $this->require_post();
+        try {
+            $result = $this->registration->delete_registration(
+                (int) $id,
+                $this->Auth_model->can('payments.verify')
+            );
+            try {
+                $this->Audit_model->log('registration_deleted', 'registration', (int) $id, array(
+                    'event_id' => $result['event_id'],
+                    'mou_no' => $result['mou_no'],
+                    'regency_name' => $result['regency_name'],
+                    'district_name' => $result['district_name'],
+                    'village_name' => $result['village_name'],
+                    'participant_count' => $result['participant_count'],
+                    'payment_count' => $result['payment_count'],
+                    'verified_payment_amount' => $result['verified_payment_amount']
+                ));
+            } catch (Throwable $ignored) {}
+            $this->cleanup_uploaded_files($result['proof_paths']);
+            return $this->json(array(
+                'success' => TRUE,
+                'message' => 'Registrasi '.$result['village_name'].' beserta '.$result['participant_count'].' peserta dan seluruh detailnya berhasil dihapus.',
+                'registration_id' => (int) $id
+            ));
+        } catch (Throwable $e) {
+            return $this->ajax_exception_response($e, 'Registrasi belum dapat dihapus. Silakan coba kembali.', 'delete registration #'.(int)$id);
+        }
+    }
+
     /** AJAX recovery for an accidentally cancelled village registration. */
     public function restore_ajax($id)
     {
@@ -977,9 +1010,10 @@ class Registrations extends App_Controller
     {
         foreach($files as $relativePath){
             $relativePath=ltrim(str_replace('\\','/',(string)$relativePath),'/');
-            if(strpos($relativePath,'uploads/payments/')!==0)continue;
-            $fullPath=FCPATH.$relativePath;
-            if(is_file($fullPath))@unlink($fullPath);
+            if(strpos($relativePath,'uploads/payments/')!==0||strpos($relativePath,"\0")!==FALSE||strpos($relativePath,'..')!==FALSE)continue;
+            $root=realpath(FCPATH.'uploads/payments');
+            $fullPath=realpath(FCPATH.$relativePath);
+            if($root!==FALSE&&$fullPath!==FALSE&&is_file($fullPath)&&strpos($fullPath,$root.DIRECTORY_SEPARATOR)===0)@unlink($fullPath);
         }
     }
 

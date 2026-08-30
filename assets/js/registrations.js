@@ -1528,6 +1528,19 @@
       throw new Error('Koneksi ke server terputus. Periksa jaringan lalu coba kembali.');
     });
   }
+  function postRegistrationAction(url) {
+    var form = document.createElement('form');
+    form.method = 'post';
+    form.action = url;
+    if (window.SIMP && window.SIMP.csrfName) {
+      var csrf = document.createElement('input');
+      csrf.type = 'hidden';
+      csrf.name = window.SIMP.csrfName;
+      csrf.value = window.SIMP.csrfHash || '';
+      form.appendChild(csrf);
+    }
+    return postModalForm(form);
+  }
   function refreshRegistrationFragment(id, targetUrl) {
     return fetch(targetUrl || window.location.href, {
       credentials: 'same-origin',
@@ -1607,6 +1620,64 @@
       }
     });
   });
+
+  function registrationDeleteAlert(message, title, tone) {
+    if (typeof window.simpAlert === 'function') return window.simpAlert(message, {title: title, tone: tone});
+    return Promise.resolve();
+  }
+
+  function deleteRegistration(button) {
+    if (!button || button.dataset.registrationDeleting === '1') return;
+    var url = String(button.getAttribute('data-registration-delete-url') || '').trim();
+    var label = String(button.getAttribute('data-registration-delete-label') || 'registrasi ini').trim();
+    var participantCount = Math.max(0, parseInt(button.getAttribute('data-registration-delete-participants'), 10) || 0);
+    if (!url) {
+      registrationDeleteAlert('Alamat penghapusan registrasi tidak tersedia.', 'Hapus Gagal', 'danger');
+      return;
+    }
+    if (label.length > 140) label = label.slice(0, 137) + '...';
+    if (typeof window.simpConfirm !== 'function') {
+      registrationDeleteAlert('Konfirmasi MVIN belum siap. Muat ulang halaman lalu coba kembali.', 'Hapus Gagal', 'danger');
+      return;
+    }
+
+    window.simpConfirm(
+      'Hapus registrasi ' + label + ' beserta ' + participantCount + ' peserta, seluruh pembayaran, riwayat, dan bukti terkait? Jurnal pembayaran terverifikasi juga akan dibatalkan. Tindakan ini tidak dapat dipulihkan.',
+      {title: 'Hapus Registrasi?', confirmLabel: 'Ya, Hapus', tone: 'danger'}
+    ).then(function (confirmed) {
+      if (!confirmed) return;
+      var originalText = button.innerHTML;
+      button.dataset.registrationDeleting = '1';
+      button.disabled = true;
+      button.innerHTML = '<i class="fa fa-spinner fa-spin me-1"></i> Menghapus...';
+
+      postRegistrationAction(url).then(function (payload) {
+        return refreshRegistrationPage(window.location.href).then(function () {
+          return registrationDeleteAlert(payload.message, 'Berhasil', 'success');
+        }, function () {
+          return registrationDeleteAlert(
+            payload.message + ' Namun daftar belum dapat diperbarui. Muat ulang halaman untuk melihat data terbaru.',
+            'Data Sudah Dihapus',
+            'warning'
+          );
+        });
+      }).catch(function (error) {
+        return registrationDeleteAlert(error.message || 'Registrasi gagal dihapus.', 'Hapus Registrasi Gagal', 'danger');
+      }).then(function () {
+        delete button.dataset.registrationDeleting;
+        button.disabled = false;
+        button.innerHTML = originalText;
+      });
+    });
+  }
+
+  document.addEventListener('click', function (event) {
+    var deleteButton = event.target.closest('[data-registration-delete-open]');
+    if (!deleteButton) return;
+    event.preventDefault();
+    deleteRegistration(deleteButton);
+  });
+
   function finishRegistrationMutation(payload, fragmentId, successTitle) {
     return refreshRegistrationFragment(fragmentId).then(function () {
       if (typeof window.simpAlert === 'function') {
