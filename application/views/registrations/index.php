@@ -56,12 +56,12 @@ if ($activeEvents) {
             <div class="divider mt-3 mb-3"></div>
             <div class="registration-index-actions">
                 <?php if ($canPrint): ?>
-                    <a href="#" class="btn btn-s btn-full bg-theme color-theme border rounded-s font-600 shadow-0" data-registration-attendance-open><i class="fa fa-clipboard-check me-1 color-highlight"></i> Cetak Absen</a>
-                    <a href="<?= site_url('registrasi/peserta/cetak') ?>" class="btn btn-s btn-full bg-theme color-theme border rounded-s font-600 shadow-0" data-report-preview-open="registration-participant-print-modal"><i class="fa fa-users me-1 color-highlight"></i> Cetak Data Peserta</a>
-                    <a href="<?= site_url('registrasi/desa/cetak') ?>" class="btn btn-s btn-full bg-theme color-theme border rounded-s font-600 shadow-0" data-report-preview-open="registration-village-print-modal"><i class="fa fa-building me-1 color-highlight"></i> Cetak Desa</a>
+                    <a href="#" class="btn btn-m btn-full bg-theme color-theme border rounded-s font-600 shadow-0" data-registration-attendance-open><i class="fa fa-clipboard-check me-1 color-highlight"></i> Cetak Absen</a>
+                    <a href="<?= site_url('registrasi/peserta/cetak') ?>" class="btn btn-m btn-full bg-theme color-theme border rounded-s font-600 shadow-0" data-report-preview-open="registration-participant-print-modal"><i class="fa fa-users me-1 color-highlight"></i> Cetak Data Peserta</a>
+                    <a href="<?= site_url('registrasi/desa/cetak') ?>" class="btn btn-m btn-full bg-theme color-theme border rounded-s font-600 shadow-0" data-report-preview-open="registration-village-print-modal"><i class="fa fa-building me-1 color-highlight"></i> Cetak Desa</a>
                 <?php endif; ?>
                 <?php if ($canCreate): ?>
-                    <button type="button" class="btn btn-s btn-full gradient-highlight rounded-s font-600 shadow-s" data-registration-add-open><i class="fa fa-plus me-1"></i> Tambah Peserta</button>
+                    <button type="button" class="btn btn-m btn-full gradient-highlight rounded-s font-600 shadow-s" data-registration-add-open><i class="fa fa-plus me-1"></i> Tambah Peserta</button>
                 <?php endif; ?>
             </div>
         <?php endif; ?>
