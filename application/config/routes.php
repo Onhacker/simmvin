@@ -42,6 +42,7 @@ $route['registrasi/(:num)/ajax/tambah-peserta'] = 'registrations/add_participant
 $route['registrasi/(:num)/ajax/peserta/(:num)/ubah'] = 'registrations/update_participant_ajax/$1/$2';
 $route['registrasi/(:num)/ajax/peserta/(:num)/ganti'] = 'registrations/replace_participant_ajax/$1/$2';
 $route['registrasi/(:num)/ajax/peserta/(:num)/nonaktifkan'] = 'registrations/deactivate_participant_ajax/$1/$2';
+$route['registrasi/(:num)/ajax/peserta/(:num)/hapus'] = 'registrations/delete_participant_ajax/$1/$2';
 $route['registrasi/(:num)/ajax/hapus'] = 'registrations/delete_ajax/$1';
 $route['registrasi/(:num)/ajax/batalkan'] = 'registrations/cancel_ajax/$1';
 $route['registrasi/(:num)/ajax/pulihkan'] = 'registrations/restore_ajax/$1';

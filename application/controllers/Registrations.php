@@ -556,6 +556,42 @@ class Registrations extends App_Controller
         }
     }
 
+    /** Permanently delete one participant and every payment detail owned by it. */
+    public function delete_participant_ajax($registrationId, $participantId)
+    {
+        $this->require_permission('registrations.edit');
+        $this->require_post();
+        try {
+            $result = $this->registration->delete_participant(
+                (int) $registrationId,
+                (int) $participantId,
+                $this->Auth_model->can('payments.verify')
+            );
+            try {
+                $this->Audit_model->log('participant_deleted', 'participant', (int) $participantId, array(
+                    'registration_id' => (int) $registrationId,
+                    'event_id' => $result['event_id'],
+                    'district_name' => $result['district_name'],
+                    'village_name' => $result['village_name'],
+                    'participant_name' => $result['participant_name'],
+                    'position' => $result['position'],
+                    'payment_count' => $result['payment_count'],
+                    'verified_payment_amount' => $result['verified_payment_amount'],
+                    'expected_amount' => $result['expected_amount']
+                ));
+            } catch (Throwable $ignored) {}
+            $this->cleanup_uploaded_files($result['proof_paths']);
+            return $this->json(array(
+                'success' => TRUE,
+                'message' => 'Peserta '.$result['participant_name'].' beserta seluruh detail pembayarannya berhasil dihapus.',
+                'registration_id' => (int) $registrationId,
+                'participant_id' => (int) $participantId
+            ));
+        } catch (Throwable $e) {
+            return $this->ajax_exception_response($e, 'Peserta belum dapat dihapus. Silakan coba kembali.', 'delete participant #'.(int)$participantId);
+        }
+    }
+
     /** AJAX cancellation of one village registration. */
     public function cancel_ajax($id)
     {

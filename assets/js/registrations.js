@@ -1678,6 +1678,50 @@
     deleteRegistration(deleteButton);
   });
 
+  function deleteParticipant(button) {
+    if (!button || button.dataset.participantDeleting === '1') return;
+    var url = String(button.getAttribute('data-participant-delete-url') || '').trim();
+    var name = String(button.getAttribute('data-participant-name') || 'peserta ini').trim();
+    if (!url) {
+      registrationDeleteAlert('Alamat penghapusan peserta tidak tersedia.', 'Hapus Gagal', 'danger');
+      return;
+    }
+    if (name.length > 140) name = name.slice(0, 137) + '...';
+    if (typeof window.simpConfirm !== 'function') {
+      registrationDeleteAlert('Konfirmasi MVIN belum siap. Muat ulang halaman lalu coba kembali.', 'Hapus Gagal', 'danger');
+      return;
+    }
+
+    window.simpConfirm(
+      'Hapus peserta ' + name + ' beserta seluruh pembayaran, riwayat, dan bukti terkait? Jurnal pembayaran terverifikasi juga akan dibatalkan. Tindakan ini tidak dapat dipulihkan.',
+      {title: 'Hapus Peserta?', confirmLabel: 'Ya, Hapus', tone: 'danger'}
+    ).then(function (confirmed) {
+      if (!confirmed) return;
+      var originalText = button.innerHTML;
+      button.dataset.participantDeleting = '1';
+      button.disabled = true;
+      button.innerHTML = '<i class="fa fa-spinner fa-spin me-1"></i>Menghapus...';
+
+      postRegistrationAction(url).then(function (payload) {
+        return finishRegistrationMutation(payload, 'registration-detail-content', 'Peserta Dihapus');
+      }).catch(function (error) {
+        return registrationDeleteAlert(error.message || 'Peserta gagal dihapus.', 'Hapus Peserta Gagal', 'danger');
+      }).then(function () {
+        if (!document.contains(button)) return;
+        delete button.dataset.participantDeleting;
+        button.disabled = false;
+        button.innerHTML = originalText;
+      });
+    });
+  }
+
+  document.addEventListener('click', function (event) {
+    var deleteButton = event.target.closest('[data-participant-delete-open]');
+    if (!deleteButton) return;
+    event.preventDefault();
+    deleteParticipant(deleteButton);
+  });
+
   function finishRegistrationMutation(payload, fragmentId, successTitle) {
     return refreshRegistrationFragment(fragmentId).then(function () {
       if (typeof window.simpAlert === 'function') {
@@ -2102,10 +2146,9 @@
       initializeInlinePayments(mutationPaymentWrap);
     };
   }
-  var participantDeactivateForm = document.getElementById('registration-participant-deactivate-form');
   var registrationCancelForm = document.getElementById('registration-cancel-form');
   var registrationRestoreForm = document.getElementById('registration-restore-form');
-  [participantMutationForm, participantDeactivateForm, registrationCancelForm, registrationRestoreForm].forEach(function (mutationForm) {
+  [participantMutationForm, registrationCancelForm, registrationRestoreForm].forEach(function (mutationForm) {
     if (!mutationForm) return;
     var reasonField = mutationForm.querySelector('textarea[name="reason"]');
     if (reasonField) reasonField.maxLength = 500;
@@ -2233,26 +2276,6 @@
         mode === 'ganti' ? 'Ganti Peserta Gagal' : 'Perubahan Peserta Gagal',
         mode === 'ganti' ? '<i class="fa fa-exchange-alt me-1"></i>Ganti Peserta' : '<i class="fa fa-save me-1"></i>Simpan Perubahan'
       );
-    });
-  }
-
-  if (participantDeactivateForm) {
-    document.addEventListener('click', function (event) {
-      var trigger = event.target.closest('[data-participant-deactivate-open]');
-      if (!trigger) return;
-      event.preventDefault();
-      participantDeactivateForm.reset();
-      restoreCurrentCsrf(participantDeactivateForm);
-      participantDeactivateForm.action = mutationAction(participantDeactivateForm.dataset.actionBase, trigger.dataset.participantId || '', 'nonaktifkan');
-      var id = participantDeactivateForm.querySelector('#registration-participant-deactivate-id');
-      var target = participantDeactivateForm.querySelector('[data-participant-deactivate-target]');
-      if (id) id.value = trigger.dataset.participantId || '';
-      if (target) target.textContent = trigger.dataset.participantName || 'Peserta';
-      modalOpen('registration-participant-deactivate-modal');
-    });
-    participantDeactivateForm.addEventListener('submit', function (event) {
-      event.preventDefault();
-      submitRegistrationMutation(participantDeactivateForm, 'registration-participant-deactivate-modal', 'Peserta Dinonaktifkan', 'Nonaktifkan Peserta Gagal', '<i class="fa fa-user-slash me-1"></i>Nonaktifkan');
     });
   }
 

@@ -1109,6 +1109,197 @@ class Registration_model extends CI_Model
         }
     }
 
+    /**
+     * Permanently remove one active participant and every payment it owns.
+     *
+     * Verified payment journals are reversed inside the same transaction.
+     * The deletion is refused when that money has already been spent, when
+     * the new bill would be lower than remaining payment commitments, or when
+     * this is the registration's final active participant.
+     */
+    public function delete_participant($registrationId, $participantId, $canDeleteVerifiedPayments = FALSE)
+    {
+        $registrationId = (int) $registrationId;
+        $participantId = (int) $participantId;
+        if ($registrationId < 1 || $participantId < 1) throw new InvalidArgumentException('Identitas peserta tidak valid.');
+
+        $originalDbDebug = $this->db->db_debug;
+        $this->db->db_debug = FALSE;
+        $this->db->trans_begin();
+        try {
+            $context = $this->lock_mutation_context($registrationId);
+            $event = $context['event'];
+            $registration = $context['registration'];
+            if ($event['status'] !== 'open' || $registration['status'] !== 'active') {
+                throw new InvalidArgumentException('Peserta hanya dapat dihapus pada event dan registrasi yang aktif.');
+            }
+
+            $participant = $this->db->query(
+                'SELECT * FROM participants WHERE id=? AND registration_id=? AND is_active=1 AND deleted_at IS NULL FOR UPDATE',
+                array($participantId, $registrationId)
+            )->row_array();
+            if (!$participant) throw new InvalidArgumentException('Peserta aktif tidak ditemukan.');
+
+            $activeCount = (int) $this->db->where(array('registration_id' => $registrationId, 'is_active' => 1))
+                ->where('deleted_at IS NULL', NULL, FALSE)->count_all_results('participants');
+            if ($activeCount <= 1) {
+                throw new InvalidArgumentException('Peserta terakhir tidak dapat dihapus sendiri. Gunakan tombol Hapus pada daftar registrasi untuk menghapus seluruh registrasi desa.');
+            }
+
+            $paymentRows = $this->db->query(
+                'SELECT * FROM payments WHERE registration_id=? AND participant_id=? ORDER BY id FOR UPDATE',
+                array($registrationId, $participantId)
+            )->result_array();
+            $paymentIds = array();
+            $verifiedAccountIds = array();
+            $proofPaths = array();
+            $participantCommittedCents = 0;
+            foreach ($paymentRows as $paymentRow) {
+                $paymentId = (int) $paymentRow['id'];
+                $paymentIds[] = $paymentId;
+                if ((int) $paymentRow['event_id'] !== (int) $event['id'] || !in_array($paymentRow['status'], array('pending', 'verified', 'rejected'), TRUE)) {
+                    throw new RuntimeException('Data pembayaran peserta tidak konsisten.');
+                }
+                $amountCents = simp_money_cents($paymentRow['amount']);
+                if ($amountCents === NULL || $amountCents <= 0) throw new RuntimeException('Nominal pembayaran peserta tidak valid.');
+                if (in_array($paymentRow['status'], array('pending', 'verified'), TRUE)) {
+                    if ($participantCommittedCents > PHP_INT_MAX - $amountCents) throw new RuntimeException('Total pembayaran peserta terlalu besar.');
+                    $participantCommittedCents += $amountCents;
+                }
+                if ($paymentRow['status'] === 'verified') {
+                    if (!$canDeleteVerifiedPayments) {
+                        throw new InvalidArgumentException('Peserta memiliki pembayaran terverifikasi. Penghapusan hanya dapat dilakukan oleh pengguna yang berhak memverifikasi pembayaran.');
+                    }
+                    $verifiedAccountIds[(int) $paymentRow['account_id']] = (int) $paymentRow['account_id'];
+                }
+                if (!empty($paymentRow['proof_path'])) $proofPaths[(string) $paymentRow['proof_path']] = (string) $paymentRow['proof_path'];
+            }
+
+            $accounts = array();
+            if ($verifiedAccountIds) {
+                sort($verifiedAccountIds, SORT_NUMERIC);
+                $placeholders = implode(',', array_fill(0, count($verifiedAccountIds), '?'));
+                $lockedAccounts = $this->db->query(
+                    'SELECT * FROM fund_accounts WHERE id IN ('.$placeholders.') ORDER BY id FOR UPDATE',
+                    array_values($verifiedAccountIds)
+                )->result_array();
+                foreach ($lockedAccounts as $account) $accounts[(int) $account['id']] = $account;
+                if (count($accounts) !== count($verifiedAccountIds)) throw new RuntimeException('Akun penerima pembayaran tidak lengkap.');
+            }
+
+            $ledgerRows = array();
+            if ($paymentIds) {
+                $placeholders = implode(',', array_fill(0, count($paymentIds), '?'));
+                $ledgerRows = $this->db->query(
+                    'SELECT * FROM ledger_entries WHERE source_type=? AND source_id IN ('.$placeholders.') ORDER BY account_id,id FOR UPDATE',
+                    array_merge(array('payment'), $paymentIds)
+                )->result_array();
+            }
+            $ledgerByPayment = array();
+            foreach ($ledgerRows as $ledgerRow) $ledgerByPayment[(int) $ledgerRow['source_id']][] = $ledgerRow;
+
+            $verifiedPaymentCents = 0;
+            $reversalByAccount = array();
+            foreach ($paymentRows as $paymentRow) {
+                $paymentId = (int) $paymentRow['id'];
+                $relatedLedger = isset($ledgerByPayment[$paymentId]) ? $ledgerByPayment[$paymentId] : array();
+                if ($paymentRow['status'] !== 'verified') {
+                    if ($relatedLedger) throw new RuntimeException('Pembayaran yang belum terverifikasi memiliki jurnal yang tidak semestinya.');
+                    continue;
+                }
+                $amountCents = simp_money_cents($paymentRow['amount']);
+                if ($amountCents === NULL || $amountCents <= 0 || count($relatedLedger) !== 1) {
+                    throw new RuntimeException('Jurnal pembayaran tidak konsisten sehingga peserta belum dapat dihapus.');
+                }
+                $ledger = $relatedLedger[0];
+                if ((int) $ledger['account_id'] !== (int) $paymentRow['account_id'] ||
+                    $ledger['direction'] !== 'in' || simp_money_cents($ledger['amount']) !== $amountCents) {
+                    throw new RuntimeException('Jurnal pembayaran tidak konsisten sehingga peserta belum dapat dihapus.');
+                }
+                $accountId = (int) $paymentRow['account_id'];
+                if ($verifiedPaymentCents > PHP_INT_MAX - $amountCents) throw new RuntimeException('Total pembayaran peserta terlalu besar.');
+                $verifiedPaymentCents += $amountCents;
+                if (!isset($reversalByAccount[$accountId])) $reversalByAccount[$accountId] = 0;
+                if ($reversalByAccount[$accountId] > PHP_INT_MAX - $amountCents) throw new RuntimeException('Total pembayaran akun terlalu besar.');
+                $reversalByAccount[$accountId] += $amountCents;
+            }
+
+            foreach ($reversalByAccount as $accountId => $reversalCents) {
+                if (!isset($accounts[$accountId])) throw new RuntimeException('Akun penerima pembayaran tidak ditemukan.');
+                $movement = $this->db->select(
+                    "COALESCE(SUM(CASE WHEN direction='in' THEN amount ELSE 0 END),0) incoming, COALESCE(SUM(CASE WHEN direction='out' THEN amount ELSE 0 END),0) outgoing",
+                    FALSE
+                )->where('account_id', (int) $accountId)->get('ledger_entries')->row_array();
+                $openingCents = $this->signed_money_cents($accounts[$accountId]['opening_balance']);
+                $incomingCents = simp_money_cents(isset($movement['incoming']) ? $movement['incoming'] : NULL);
+                $outgoingCents = simp_money_cents(isset($movement['outgoing']) ? $movement['outgoing'] : NULL);
+                if ($openingCents === NULL || $incomingCents === NULL || $outgoingCents === NULL) {
+                    throw new RuntimeException('Saldo akun penerima pembayaran tidak valid.');
+                }
+                if ($openingCents + $incomingCents - $outgoingCents < $reversalCents) {
+                    throw new InvalidArgumentException('Peserta tidak dapat dihapus karena dana pembayarannya sudah terpakai dan saldo akun '.$accounts[$accountId]['name'].' tidak mencukupi.');
+                }
+            }
+
+            $newExpected = $this->expected_amount($event, $activeCount - 1);
+            $newExpectedCents = simp_money_cents($newExpected);
+            $committedBeforeCents = simp_money_cents($this->committed_registration_amount($registrationId));
+            if ($newExpectedCents === NULL || $committedBeforeCents === NULL || $committedBeforeCents < $participantCommittedCents) {
+                throw new RuntimeException('Perhitungan tagihan registrasi tidak konsisten.');
+            }
+            $committedAfterCents = $committedBeforeCents - $participantCommittedCents;
+            if ($committedAfterCents > $newExpectedCents) {
+                throw new InvalidArgumentException('Peserta tidak dapat dihapus karena tagihan baru lebih kecil daripada pembayaran registrasi yang tetap tersimpan.');
+            }
+            if ($event['billing_mode'] === 'per_village_extra' && $committedAfterCents > 0) {
+                throw new InvalidArgumentException('Peserta pada paket desa + tambahan tidak dapat dihapus setelah pembayaran desa tercatat. Gunakan Ganti Peserta agar slot tagihan tetap aman.');
+            }
+
+            $historyRows = array();
+            if ($paymentIds) {
+                $historyRows = $this->db->where_in('payment_id', $paymentIds)->get('payment_status_history')->result_array();
+                if ($ledgerRows && (!$this->db->where('source_type', 'payment')->where_in('source_id', $paymentIds)->delete('ledger_entries') || $this->db->affected_rows() !== count($ledgerRows))) {
+                    throw new RuntimeException('Jurnal pembayaran peserta gagal dibatalkan.');
+                }
+                if ($historyRows && (!$this->db->where_in('payment_id', $paymentIds)->delete('payment_status_history') || $this->db->affected_rows() !== count($historyRows))) {
+                    throw new RuntimeException('Riwayat pembayaran peserta gagal dihapus.');
+                }
+            }
+
+            $revisionRows = $this->db->where('participant_id', $participantId)->get('participant_revisions')->result_array();
+            if ($revisionRows && (!$this->db->where('participant_id', $participantId)->delete('participant_revisions') || $this->db->affected_rows() !== count($revisionRows))) {
+                throw new RuntimeException('Riwayat perubahan peserta gagal dihapus.');
+            }
+            if ($paymentRows && (!$this->db->where(array('registration_id' => $registrationId, 'participant_id' => $participantId))->delete('payments') || $this->db->affected_rows() !== count($paymentRows))) {
+                throw new RuntimeException('Pembayaran peserta gagal dihapus.');
+            }
+            if (!$this->db->where(array('id' => $participantId, 'registration_id' => $registrationId))->delete('participants') || $this->db->affected_rows() !== 1) {
+                throw new RuntimeException('Peserta gagal dihapus.');
+            }
+            $this->rebalance_registration_amount_locked($event, $registrationId, $newExpected, $participantId);
+
+            $this->assert_transaction_ok('Penghapusan peserta gagal disimpan.');
+            $this->commit_transaction_or_throw('Penghapusan peserta gagal diselesaikan.');
+            $this->db->db_debug = $originalDbDebug;
+            return array(
+                'registration_id' => $registrationId,
+                'event_id' => (int) $registration['event_id'],
+                'district_name' => (string) $registration['district_name'],
+                'village_name' => (string) $registration['village_name'],
+                'participant_name' => (string) $participant['full_name'],
+                'position' => (string) $participant['position'],
+                'payment_count' => count($paymentRows),
+                'verified_payment_amount' => simp_money_from_cents($verifiedPaymentCents),
+                'expected_amount' => $newExpected,
+                'proof_paths' => array_values($proofPaths)
+            );
+        } catch (Throwable $e) {
+            $this->db->trans_rollback();
+            $this->db->db_debug = $originalDbDebug;
+            throw $e;
+        }
+    }
+
     /** Cancel a whole registration while preserving its rows for archive use. */
     public function cancel_registration($registrationId, $reason, $actorId)
     {

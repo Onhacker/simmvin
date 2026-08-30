@@ -122,7 +122,7 @@ $resolvedPageScripts = array_values(array_unique(array_filter($resolvedPageScrip
         $resolvedMinifiedScript = preg_replace('/\.js$/', '.min.js', $resolvedMinifiedScript);
     }
     ?>
-    <script src="<?= base_url('assets/js/' . $resolvedMinifiedScript) ?>?v=48"></script>
+    <script src="<?= base_url('assets/js/' . $resolvedMinifiedScript) ?>?v=49"></script>
 <?php endforeach; ?>
 </body>
 </html>
