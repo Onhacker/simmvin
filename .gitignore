@@ -4,6 +4,7 @@ application/cache/*
 application/logs/*
 !application/logs/index.html
 application/sessions/*
+!application/sessions/index.html
 uploads/payments/*
 !uploads/payments/index.html
 !uploads/payments/.htaccess

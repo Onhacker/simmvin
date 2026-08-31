@@ -5,7 +5,12 @@ $configuredUrl = getenv('APP_URL');
 if ($configuredUrl) {
     $config['base_url'] = rtrim($configuredUrl, '/') . '/';
 } else {
-    $scheme = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
+    // is_https() also understands the HTTPS headers sent by common reverse
+    // proxies. Falling back to SERVER/HTTP keeps this config compatible with
+    // older CodeIgniter bootstrap variants.
+    $scheme = (function_exists('is_https') && is_https())
+        ? 'https'
+        : ((!empty($_SERVER['HTTPS']) && strtolower((string) $_SERVER['HTTPS']) !== 'off') ? 'https' : 'http');
     $host = isset($_SERVER['HTTP_HOST']) ? $_SERVER['HTTP_HOST'] : 'localhost';
     $script = isset($_SERVER['SCRIPT_NAME']) ? dirname($_SERVER['SCRIPT_NAME']) : '/simp';
     $config['base_url'] = $scheme . '://' . $host . rtrim(str_replace('\\', '/', $script), '/') . '/';
@@ -44,18 +49,36 @@ if (ENVIRONMENT === 'production' &&
 $config['encryption_key'] = $appKey !== '' ? $appKey : hash('sha256', FCPATH . '|simp');
 $config['sess_driver'] = 'files';
 $config['sess_cookie_name'] = 'simp_session';
-// Keep authenticated users signed in for seven days. CodeIgniter also uses
-// this value for the session cookie lifetime and PHP's session garbage
-// collection lifetime, so both the browser and server expire consistently.
-$config['sess_expiration'] = 604800;
-$config['sess_save_path'] = APPPATH . 'sessions';
+// Keep authenticated users signed in for one year. CodeIgniter uses this
+// value for both the browser cookie and PHP's file-session garbage collection
+// lifetime, so the two expiration policies stay in sync.
+$config['sess_expiration'] = 31536000;
+
+// File sessions must live in a persistent, writable directory. Deployments
+// that use release directories can set SESSION_SAVE_PATH to a shared absolute
+// path outside the release; the application directory remains the safe local
+// default for the normal public_html/git-pull layout.
+$sessionSavePath = trim((string) (getenv('SESSION_SAVE_PATH') ?: ''));
+if ($sessionSavePath === '') {
+    $sessionSavePath = APPPATH . 'sessions';
+}
+$config['sess_save_path'] = $sessionSavePath;
 $config['sess_match_ip'] = FALSE;
-$config['sess_time_to_update'] = 300;
+// Automatic ID rotation during normal requests used to delete the old file
+// while another page/AJAX request could still be reading it. That race made a
+// valid user appear logged out. Keep the ID stable during the session instead;
+// login and logout still explicitly regenerate and destroy the ID, while CI3
+// refreshes the one-year cookie on every request.
+$config['sess_time_to_update'] = 0;
 $config['sess_regenerate_destroy'] = TRUE;
+$config['sess_samesite'] = 'Lax';
 $config['cookie_prefix'] = 'simp_';
 $config['cookie_domain'] = '';
 $config['cookie_path'] = '/';
-$config['cookie_secure'] = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off');
+$config['cookie_secure'] = function_exists('is_https')
+    ? is_https()
+    : (!empty($_SERVER['HTTPS']) && strtolower((string) $_SERVER['HTTPS']) !== 'off');
+$config['cookie_samesite'] = 'Lax';
 $config['cookie_httponly'] = TRUE;
 $config['standardize_newlines'] = FALSE;
 $config['global_xss_filtering'] = FALSE;

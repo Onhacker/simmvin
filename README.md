@@ -49,6 +49,13 @@ Skrip memakai versi minifier yang dikunci melalui npm. Server produksi tidak per
 
 Pada server Linux, pastikan proses PHP dapat menulis ke `application/cache`. Generator PDF otomatis memakai direktori sementara sistem sebagai cadangan apabila cache aplikasi tidak dapat ditulis.
 
+Sesi login MVIN memakai masa berlaku satu tahun (sliding expiry: setiap
+permintaan aktif memperbarui masa berlaku cookie). Direktori `application/sessions`
+harus dapat ditulis dan tidak boleh ikut terhapus saat deployment. Jika hosting
+menggunakan folder `releases` yang berganti-ganti, isi `SESSION_SAVE_PATH` pada
+`.env` dengan direktori absolut di luar release (misalnya folder `private/sessions`)
+dan buat folder tersebut sebelum aplikasi dipakai.
+
 Akun awal (khusus instalasi lokal/demo; jangan gunakan kredensial ini pada server publik):
 
 - Username: `admin`
@@ -105,6 +112,7 @@ Untuk instalasi lama yang sudah memiliki tabel `training_events`, jalankan `data
 - Login dibatasi maksimal 10 kegagalan dalam jendela 10 menit berdasarkan identitas atau alamat IP.
 - Pakai akun DB berbeda untuk MVIN dan akun **read-only** untuk database lokasi pada `REGIONAL_DB_*`. Akun lokasi cukup diberi hak `SELECT` pada empat tabel master lokasi.
 - Set `APP_ENV=production`, `APP_URL` HTTPS yang tepat, dan pastikan folder `uploads` tidak mengeksekusi PHP.
+- Pastikan `SESSION_SAVE_PATH` (bila digunakan) persisten dan writable oleh proses PHP; sesi otomatis tidak dirotasi pada setiap permintaan agar permintaan bersamaan/PWA tidak saling memutus sesi. ID tetap diregenerasi dan sesi lama dihancurkan saat login dan logout.
 - Bukti pembayaran/pengeluaran/hutang/transfer tidak dapat dibuka langsung dari folder upload; file disajikan melalui controller yang memeriksa sesi dan hak akses.
 - Folder `output` (PDF/XLSX hasil generate) dan `vendor` diblokir dari akses HTTP langsung. Dokumen hanya boleh diunduh melalui endpoint controller yang memeriksa sesi dan hak akses.
 - Jangan menaruh `.env` di DocumentRoot pada server produksi bila konfigurasi web memungkinkan lokasi di luar web root. Jika harus berada di dalamnya, pertahankan aturan penolakan `.htaccess` dan uji respons `403` setelah deployment.
