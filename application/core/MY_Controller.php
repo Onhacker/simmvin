@@ -67,46 +67,53 @@ class MY_Controller extends CI_Controller
         redirect($url);
     }
 
-    protected function upload_document($field, $folder, $required = FALSE)
-    {
-        if (empty($_FILES[$field]['name'])) {
-            if ($required) {
-                throw new RuntimeException('Bukti transaksi wajib diunggah.');
-            }
-            return NULL;
+   protected function upload_document($field, $folder, $required = FALSE)
+{
+    if (empty($_FILES[$field]['name'])) {
+        if ($required) {
+            throw new RuntimeException('Bukti transaksi wajib diunggah.');
         }
 
-        $uploadPath = FCPATH . 'uploads/' . $folder . '/';
-
-        if (!is_dir($uploadPath)) {
-            if (!mkdir($uploadPath, 0755, TRUE) && !is_dir($uploadPath)) {
-                throw new RuntimeException('Folder upload tidak dapat dibuat.');
-            }
-        }
-
-        $config = array(
-            'upload_path'      => $uploadPath,
-            'allowed_types'    => 'jpg|jpeg|png|pdf',
-            'max_size'         => 5120,
-            'encrypt_name'     => TRUE,
-            'remove_spaces'    => TRUE
-        );
-
-        $this->load->library('upload');
-
-        // Penting: reset konfigurasi setiap upload
-        $this->upload->initialize($config, TRUE);
-
-        if (!$this->upload->do_upload($field)) {
-            throw new RuntimeException(
-                strip_tags($this->upload->display_errors('', ''))
-            );
-        }
-
-        $file = $this->upload->data();
-
-        return 'uploads/' . $folder . '/' . $file['file_name'];
+        return NULL;
     }
+
+    $uploadPath = FCPATH . 'uploads/' . $folder . '/';
+
+    if (!is_dir($uploadPath)) {
+        mkdir($uploadPath, 0755, TRUE);
+    }
+
+    $config = array(
+        'upload_path'   => $uploadPath,
+        'allowed_types' => 'jpg|jpeg|png|pdf',
+        'max_size'      => 5120,
+        'encrypt_name'  => TRUE,
+        'remove_spaces' => TRUE
+    );
+
+    $this->load->library('upload');
+
+    // WAJIB reset config karena library upload bisa sudah pernah diload
+    $this->upload->initialize($config, TRUE);
+
+    // DEBUG sementara
+    log_message('error', 'UPLOAD DEBUG: ' . json_encode(array(
+        'name' => $_FILES[$field]['name'],
+        'type' => $_FILES[$field]['type'],
+        'mime' => mime_content_type($_FILES[$field]['tmp_name']),
+        'size' => $_FILES[$field]['size']
+    )));
+
+    if (!$this->upload->do_upload($field)) {
+        throw new RuntimeException(
+            strip_tags($this->upload->display_errors('', ''))
+        );
+    }
+
+    $file = $this->upload->data();
+
+    return 'uploads/' . $folder . '/' . $file['file_name'];
+}
 }
 
 class Public_Controller extends MY_Controller
