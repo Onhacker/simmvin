@@ -80,31 +80,45 @@ class MY_Controller extends CI_Controller
     $uploadPath = FCPATH . 'uploads/' . $folder . '/';
 
     if (!is_dir($uploadPath)) {
-        mkdir($uploadPath, 0755, TRUE);
+        if (!mkdir($uploadPath, 0755, TRUE) && !is_dir($uploadPath)) {
+            throw new RuntimeException('Folder upload tidak dapat dibuat.');
+        }
     }
 
     $config = array(
-        'upload_path'   => $uploadPath,
-        'allowed_types' => 'jpg|jpeg|png|pdf',
-        'max_size'      => 5120,
-        'encrypt_name'  => TRUE,
-        'remove_spaces' => TRUE
+        'upload_path'      => $uploadPath,
+        'allowed_types'    => 'jpg|jpeg|png|pdf',
+        'max_size'         => 5120,
+        'encrypt_name'     => TRUE,
+        'remove_spaces'    => TRUE
     );
 
+    // Jangan kirim config saat load.
     $this->load->library('upload');
 
-    // WAJIB reset config karena library upload bisa sudah pernah diload
+    // Paksa reset config setiap kali upload.
     $this->upload->initialize($config, TRUE);
 
-    // DEBUG sementara
-    log_message('error', 'UPLOAD DEBUG: ' . json_encode(array(
-        'name' => $_FILES[$field]['name'],
-        'type' => $_FILES[$field]['type'],
-        'mime' => mime_content_type($_FILES[$field]['tmp_name']),
-        'size' => $_FILES[$field]['size']
+    log_message('error', 'UPLOAD CONFIG DEBUG: '.json_encode(array(
+        'allowed_types' => $this->upload->allowed_types,
+        'upload_path'   => $this->upload->upload_path,
+        'filename'      => $_FILES[$field]['name'],
+        'browser_mime'  => $_FILES[$field]['type'],
+        'real_mime'     => mime_content_type($_FILES[$field]['tmp_name'])
     )));
 
     if (!$this->upload->do_upload($field)) {
+
+        log_message('error', 'UPLOAD CI DEBUG: '.json_encode(array(
+            'file_name' => $this->upload->file_name,
+            'file_type' => $this->upload->file_type,
+            'file_ext'  => $this->upload->file_ext,
+            'file_size' => $this->upload->file_size,
+            'error'     => strip_tags(
+                $this->upload->display_errors('', '')
+            )
+        )));
+
         throw new RuntimeException(
             strip_tags($this->upload->display_errors('', ''))
         );
