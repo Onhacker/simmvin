@@ -70,21 +70,41 @@ class MY_Controller extends CI_Controller
     protected function upload_document($field, $folder, $required = FALSE)
     {
         if (empty($_FILES[$field]['name'])) {
-            if ($required) throw new RuntimeException('Bukti transaksi wajib diunggah.');
+            if ($required) {
+                throw new RuntimeException('Bukti transaksi wajib diunggah.');
+            }
             return NULL;
         }
-        $config = array(
-            'upload_path' => FCPATH . 'uploads/' . $folder . '/',
-            'allowed_types' => 'jpg|jpeg|png|pdf',
-            'max_size' => 5120,
-            'encrypt_name' => TRUE,
-            'remove_spaces' => TRUE
-        );
-        $this->load->library('upload', $config);
-        if (!$this->upload->do_upload($field)) {
-            throw new RuntimeException(strip_tags($this->upload->display_errors('', '')));
+
+        $uploadPath = FCPATH . 'uploads/' . $folder . '/';
+
+        if (!is_dir($uploadPath)) {
+            if (!mkdir($uploadPath, 0755, TRUE) && !is_dir($uploadPath)) {
+                throw new RuntimeException('Folder upload tidak dapat dibuat.');
+            }
         }
+
+        $config = array(
+            'upload_path'      => $uploadPath,
+            'allowed_types'    => 'jpg|jpeg|png|pdf',
+            'max_size'         => 5120,
+            'encrypt_name'     => TRUE,
+            'remove_spaces'    => TRUE
+        );
+
+        $this->load->library('upload');
+
+        // Penting: reset konfigurasi setiap upload
+        $this->upload->initialize($config, TRUE);
+
+        if (!$this->upload->do_upload($field)) {
+            throw new RuntimeException(
+                strip_tags($this->upload->display_errors('', ''))
+            );
+        }
+
         $file = $this->upload->data();
+
         return 'uploads/' . $folder . '/' . $file['file_name'];
     }
 }
