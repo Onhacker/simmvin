@@ -107,6 +107,25 @@ class MY_Controller extends CI_Controller
         'real_mime'     => mime_content_type($_FILES[$field]['tmp_name'])
     )));
 
+    $tmp = $_FILES[$field]['tmp_name'];
+$runtimeMimes = get_mimes();
+
+log_message('error', 'UPLOAD DEEP DEBUG: ' . json_encode(array(
+    'environment' => ENVIRONMENT,
+    'tmp_exists' => file_exists($tmp),
+    'tmp_readable' => is_readable($tmp),
+
+    'mime_content_type' => mime_content_type($tmp),
+
+    'getimagesize' => @getimagesize($tmp),
+
+    'runtime_jpg_mimes' => isset($runtimeMimes['jpg'])
+        ? $runtimeMimes['jpg']
+        : 'TIDAK ADA',
+
+    'ci_jpg_mimes' => $this->upload->mimes_types('jpg')
+)));
+
     if (!$this->upload->do_upload($field)) {
 
         log_message('error', 'UPLOAD CI DEBUG: '.json_encode(array(
